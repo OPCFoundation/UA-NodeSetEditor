@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "NodeSetEditor.DbTool.Migrate": {
+      "commandName": "Project",
+      "commandLineArgs": "migrate"
+    },
+    "NodeSetEditor.DbTool.Import": {
+      "commandName": "Project",
+      "commandLineArgs": "import-file D:\\Work\\OPC\\nodesets\\v105\\Schema\\Opc.Ua.NodeSet2.Services.xml --verify"
+    }
+  }
+}

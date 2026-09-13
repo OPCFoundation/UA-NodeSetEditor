@@ -1,0 +1,30 @@
+# Build context for docker/Dockerfile. Everything the image build does not need is excluded —
+# most importantly db/*.sql, which holds multi-hundred-megabyte database dumps that would
+# otherwise be uploaded to the daemon on every build.
+
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+**/.vs/
+**/.vscode/
+.git/
+.github/
+.claude/
+
+# Database dumps and backups
+db/*.sql
+!db/grant_webapp.sql
+!db/revoke_webapp.sql
+
+# Test projects are not part of the runtime image
+NodeSetEditor.Model.Tests/
+NodeSetEditor.Server.Tests/
+UANodeSetSerializer/**/bin/
+
+# Local developer state
+**/*.user
+**/appsettings.Development.json
+NodeSetEditor.Server/counter.txt
+NodeSetEditor.Server/cloudlib-diagnostics/
+tools/

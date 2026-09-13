@@ -1,0 +1,61 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <UserSecretsId>nodeseteditor-model-tests</UserSecretsId>
+    <Configurations>Debug;Release;Staging</Configurations>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="TestNodeSets\Opc.Ua.Di.NodeSet2.xml" />
+    <None Remove="TestNodeSets\Opc.Ua.Machinery.NodeSet2.xml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="10.0.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.10" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Core" Version="1.5.378.156" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NodeSetModel\NodeSetEditor.Model.csproj" />
+    <!-- Transitively pulled in via NodeSetEditor.Model; alias to avoid type
+         collisions with Opc.Ua.Types (both ship Opc.Ua.Export.UANodeSet). -->
+    <ProjectReference Include="..\UANodeSetSerializer\Opc.Ua.NodeSetSerializer\Opc.Ua.NodeSetSerializer.csproj">
+      <!-- Aliased because this assembly and Opc.Ua.Types both define UANodeSet, UANode,
+           ModelTableEntry and DataTypeDefinition. Without the alias every use of those
+           names is ambiguous (CS0433) and the "extern alias JsonNodeSet;" at the top of
+           the consuming files fails with CS0430. -->
+      <Aliases>JsonNodeSet</Aliases>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="appsettings.test.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="TestNodeSets\Opc.Ua.Di.NodeSet2.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="TestNodeSets\Opc.Ua.Machinery.NodeSet2.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

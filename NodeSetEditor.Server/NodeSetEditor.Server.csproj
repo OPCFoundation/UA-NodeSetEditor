@@ -1,0 +1,85 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <SpaRoot>..\nodeseteditor.client</SpaRoot>
+    <SpaProxyLaunchCommand>npm run dev</SpaProxyLaunchCommand>
+    <SpaProxyServerUrl>https://localhost:5173</SpaProxyServerUrl>
+    <UserSecretsId>52e793dc-6568-46e3-b875-70ac2ce1b7b8</UserSecretsId>
+    <Configurations>Debug;Release;Staging</Configurations>
+  </PropertyGroup>
+
+  <!-- The OpenAPI document is generated from the controllers at build time and checked into git
+       as OpenApi\v1.json. Nothing generates it at runtime: /openapi/v1.json and the Swagger UI
+       page both serve this file, so what the build produced is exactly what callers see.
+       Regenerating on every build means a controller change shows up as a diff in the spec. -->
+  <PropertyGroup>
+    <OpenApiGenerateDocuments>true</OpenApiGenerateDocuments>
+    <OpenApiGenerateDocumentsOnBuild>true</OpenApiGenerateDocumentsOnBuild>
+    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)\OpenApi</OpenApiDocumentsDirectory>
+    <OpenApiGenerateDocumentsOptions>--file-name v1 --openapi-version OpenApi3_0</OpenApiGenerateDocumentsOptions>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.11" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.AspNetCore.SpaProxy">
+      <Version>10.*-*</Version>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="10.8.0" />
+    <PackageReference Include="Microsoft.Identity.Web" Version="4.13.2" />
+    <PackageReference Include="Microsoft.OpenApi" Version="2.11.0" />
+    <PackageReference Include="MailKit" Version="4.*" />
+    <PackageReference Include="Postmark" Version="5.4.1" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Core" Version="1.5.378.156" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Server" Version="1.5.378.156" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Types" Version="1.5.378.156" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The SPA project uses the Visual Studio JavaScript SDK, which needs Node and the VS
+         tooling. The container build produces the SPA itself in a Node stage and drops the
+         output into wwwroot before publishing, so it sets SkipSpaProjectReference=true. -->
+    <ProjectReference Include="..\nodeseteditor.client\nodeseteditor.client.esproj" Condition="'$(SkipSpaProjectReference)' != 'true'">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\Opc.Ua.RestfulApi\Opc.Ua.RestfulApi.csproj" />
+    <ProjectReference Include="..\Opc.Ua.CloudLibraryApi\Opc.Ua.CloudLibraryApi.csproj" />
+    <ProjectReference Include="..\NodeSetModel\NodeSetEditor.Model.csproj" />
+    <ProjectReference Include="..\UANodeSetSerializer\Opc.Ua.NodeSetSerializer\Opc.Ua.NodeSetSerializer.csproj">
+      <!-- Aliased because this assembly and Opc.Ua.Types both define UANodeSet, UANode,
+           ModelTableEntry and DataTypeDefinition. Without the alias every use of those
+           names is ambiguous (CS0433) and the "extern alias JsonNodeSet;" at the top of
+           the consuming files fails with CS0430. -->
+      <Aliases>JsonNodeSet</Aliases>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="wwwroot\" />
+  </ItemGroup>
+
+  <!-- The spec, the Swagger UI page and its vendored assets live outside wwwroot: wwwroot is
+       served anonymously by MapStaticAssets, and these are login-only. Remove-then-Include so
+       there is exactly one item per file regardless of the Web SDK's default content globs. -->
+  <ItemGroup>
+    <Content Remove="OpenApi\**" />
+    <Content Include="OpenApi\**" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Windows-only: the script is PowerShell and there is no build counter to bump on a
+       Linux build agent or inside the container image build. -->
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition="'$(OS)' == 'Windows_NT'">
+    <Exec Command="powershell .\incrementbuildverision.ps1" />
+  </Target>
+
+  <!-- GenerateOpenApiDocuments decides whether to re-run from its own file-list cache, not from the
+       document, so deleting OpenApi\v1.json otherwise leaves the build happily skipping the step and
+       the app with no spec to serve. Drop the cache when the document is missing so it comes back. -->
+  <Target Name="ForceOpenApiRegenerationWhenMissing" BeforeTargets="GenerateOpenApiDocuments" Condition="!Exists('$(OpenApiDocumentsDirectory)\v1.json')">
+    <Delete Files="$(BaseIntermediateOutputPath)$(MSBuildProjectName).OpenApiFiles.cache" />
+  </Target>
+
+</Project>

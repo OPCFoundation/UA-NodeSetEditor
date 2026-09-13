@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Configurations>Debug;Release;Staging</Configurations>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.*" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.*" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Core" Version="1.5.378.156" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- For Part 6 JSON value (de)serialization via VariantConverter.
+         Aliased to avoid type collisions: Opc.Ua.JsonNodeSet ships its own
+         xsd-generated Opc.Ua.Export.UANode that conflicts with the same type
+         in the OPC Foundation Opc.Ua.Types reference. -->
+    <ProjectReference Include="..\UANodeSetSerializer\Opc.Ua.NodeSetSerializer\Opc.Ua.NodeSetSerializer.csproj">
+      <!-- Aliased because this assembly and Opc.Ua.Types both define UANodeSet, UANode,
+           ModelTableEntry and DataTypeDefinition. Without the alias every use of those
+           names is ambiguous (CS0433) and the "extern alias JsonNodeSet;" at the top of
+           the consuming files fails with CS0430. -->
+      <Aliases>JsonNodeSet</Aliases>
+    </ProjectReference>
+  </ItemGroup>
+
+</Project>

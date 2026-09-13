@@ -1,0 +1,3 @@
+[submodule "UANodeSetSerializer"]
+	path = UANodeSetSerializer
+	url = https://github.com/OPCFoundation/UANodeSetSerializer.git

@@ -1,0 +1,4693 @@
+{
+  "openapi": "3.0.4",
+  "info": {
+    "title": "OPC UA NodeSet Editor API",
+    "description": "REST API for the OPC UA NodeSet Editor.\n\nMost endpoints act on a workspace identified by the `OpcUa-Server` header, and NodeIds appearing in a URL path are base64url-encoded rather than percent-encoded.\n\nThis document is generated from the controllers at build time and checked into the repository; it is not produced at runtime.",
+    "contact": {
+      "name": "OPC Foundation",
+      "url": "https://opcfoundation.org"
+    },
+    "version": "v1"
+  },
+  "paths": {
+    "/api/opcua/v1/discovery": {
+      "get": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "start",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "format": "int32",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfWorkspaceDescription"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfWorkspaceDescription"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfWorkspaceDescription"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/servers/{applicationUri}": {
+      "get": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "applicationUri",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceDescription"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceDescription"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceDescription"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "applicationUri",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateServerRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateServerRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateServerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceDescription"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceDescription"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceDescription"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "applicationUri",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/servers": {
+      "post": {
+        "tags": [
+          "Editor"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateServerRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateServerRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateServerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceDescription"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceDescription"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceDescription"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/namespaces/info": {
+      "get": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "format": "int32",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfWorkspaceNamespaceInfo"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfWorkspaceNamespaceInfo"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfWorkspaceNamespaceInfo"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNamespaceRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNamespaceRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNamespaceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceNamespaceInfo"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceNamespaceInfo"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceNamespaceInfo"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/namespaces/info/{id}": {
+      "put": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNamespaceRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNamespaceRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNamespaceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceNamespaceInfo"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceNamespaceInfo"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceNamespaceInfo"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/namespaces/info/{id}/versions": {
+      "get": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelVersionInfo"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelVersionInfo"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelVersionInfo"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/namespaces/info/{id}/versions/{versionId}": {
+      "delete": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelVersionInfo"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelVersionInfo"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelVersionInfo"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/namespaces/shared": {
+      "get": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelInfo"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelInfo"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelInfo"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/namespaces/info/{id}/link": {
+      "post": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkNamespaceRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkNamespaceRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkNamespaceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfWorkspaceNamespaceInfo"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfWorkspaceNamespaceInfo"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfWorkspaceNamespaceInfo"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/namespaces/info/{id}/checkout": {
+      "post": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfWorkspaceNamespaceInfo"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfWorkspaceNamespaceInfo"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfWorkspaceNamespaceInfo"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/namespaces/info/{id}/checkin": {
+      "post": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckinNamespaceRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckinNamespaceRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckinNamespaceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfWorkspaceNamespaceInfo"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfWorkspaceNamespaceInfo"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfWorkspaceNamespaceInfo"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/namespaces/info/detect-license": {
+      "post": {
+        "tags": [
+          "Editor"
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ContentType": {
+                    "type": "string"
+                  },
+                  "ContentDisposition": {
+                    "type": "string"
+                  },
+                  "Headers": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "Length": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)$",
+                    "format": "int64"
+                  },
+                  "Name": {
+                    "type": "string"
+                  },
+                  "FileName": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LicenseDetectionResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LicenseDetectionResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LicenseDetectionResult"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/namespaces/info/import": {
+      "post": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "ContentType": {
+                        "type": "string"
+                      },
+                      "ContentDisposition": {
+                        "type": "string"
+                      },
+                      "Headers": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "Length": {
+                        "pattern": "^-?(?:0|[1-9]\\d*)$",
+                        "format": "int64"
+                      },
+                      "Name": {
+                        "type": "string"
+                      },
+                      "FileName": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "fileName": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "chunkIndex": {
+                        "pattern": "^-?(?:0|[1-9]\\d*)$",
+                        "format": "int32",
+                        "default": 0
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "totalChunks": {
+                        "pattern": "^-?(?:0|[1-9]\\d*)$",
+                        "format": "int32",
+                        "default": 1
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "uploadId": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "license": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "licenseUrl": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "copyrightHolder": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResult"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/namespaces/info/{id}/export": {
+      "get": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "xml"
+            }
+          },
+          {
+            "name": "includeDependencies",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/nodes/{nodeId}": {
+      "get": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNodeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNodeRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNodeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/nodes/{nodeId}/path": {
+      "get": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/nodes/{nodeId}/references": {
+      "get": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "format": "int32",
+              "default": 1000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfReferenceDescription"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfReferenceDescription"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfReferenceDescription"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReferenceRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReferenceRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReferenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/nodes": {
+      "post": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNodeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNodeRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNodeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/nodes/{parentNodeId}/children": {
+      "post": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "parentNodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNodeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNodeRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNodeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/nodes/{nodeId}/references/{referenceTypeId}/{targetNodeId}": {
+      "delete": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "referenceTypeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "targetNodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "isForward",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/types/{category}/{nodeId}/subtypes": {
+      "get": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "category",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "depth",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "format": "int32",
+              "default": 3
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "format": "int32",
+              "default": 1000
+            }
+          },
+          {
+            "name": "includeSelf",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "modelUri",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/types/{category}/{nodeId}/instantiate": {
+      "post": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "category",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstantiateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstantiateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstantiateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/nodes/{nodeId}/instantiate-children": {
+      "post": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstantiateChildrenRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstantiateChildrenRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstantiateChildrenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/nodes/{nodeId}/add-interface": {
+      "post": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddInterfaceRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddInterfaceRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddInterfaceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/types/data-types/{nodeId}/definition": {
+      "get": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "full",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataTypeDefinitionResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataTypeDefinitionResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataTypeDefinitionResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DataTypeDefinitionResponse"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DataTypeDefinitionResponse"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/DataTypeDefinitionResponse"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataTypeDefinitionResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataTypeDefinitionResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataTypeDefinitionResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/types/data-types/{nodeId}/json-schema": {
+      "get": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/query/types": {
+      "get": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "namespaceUri",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "nodeClass",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "format": "int32",
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/nodes/{nodeId}/children": {
+      "get": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "referenceTypeId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "full",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "depth",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "format": "int32",
+              "default": 1000
+            }
+          },
+          {
+            "name": "includeSubtypes",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "modelUri",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/nodes/{nodeId}/instance-declarations": {
+      "get": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "format": "int32",
+              "default": 1000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfNode"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/licenses": {
+      "get": {
+        "tags": [
+          "Editor"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LicenseOptionInfo"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LicenseOptionInfo"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LicenseOptionInfo"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [ ]
+      }
+    },
+    "/api/opcua/v1/user/preferences": {
+      "get": {
+        "tags": [
+          "Editor"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferences"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferences"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferences"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Editor"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserPreferences"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserPreferences"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserPreferences"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferences"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferences"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferences"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/user/terms": {
+      "post": {
+        "tags": [
+          "Editor"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/validation/documents": {
+      "get": {
+        "tags": [
+          "Validation"
+        ],
+        "parameters": [
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ValidationDocumentInfo"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ValidationDocumentInfo"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ValidationDocumentInfo"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/validation/documents/upload": {
+      "post": {
+        "tags": [
+          "Validation"
+        ],
+        "parameters": [
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "ContentType": {
+                        "type": "string"
+                      },
+                      "ContentDisposition": {
+                        "type": "string"
+                      },
+                      "Headers": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "Length": {
+                        "pattern": "^-?(?:0|[1-9]\\d*)$",
+                        "format": "int64"
+                      },
+                      "Name": {
+                        "type": "string"
+                      },
+                      "FileName": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "fileName": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "chunkIndex": {
+                        "pattern": "^-?(?:0|[1-9]\\d*)$",
+                        "format": "int32",
+                        "default": 0
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "totalChunks": {
+                        "pattern": "^-?(?:0|[1-9]\\d*)$",
+                        "format": "int32",
+                        "default": 1
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "uploadId": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentUploadResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentUploadResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentUploadResult"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/validation/documents/{documentId}": {
+      "delete": {
+        "tags": [
+          "Validation"
+        ],
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/validation/documents/{documentId}/settings": {
+      "put": {
+        "tags": [
+          "Validation"
+        ],
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidationDocumentSettingsDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidationDocumentSettingsDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidationDocumentSettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/validation/profile-groups": {
+      "get": {
+        "tags": [
+          "Validation"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProfileGroupDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProfileGroupDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProfileGroupDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/validation/documents/{documentId}/jobs": {
+      "post": {
+        "tags": [
+          "Validation"
+        ],
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "modelId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationJobInfo"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationJobInfo"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationJobInfo"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/validation/jobs/{jobId}/cancel": {
+      "post": {
+        "tags": [
+          "Validation"
+        ],
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/validation/jobs/{jobId}/reset": {
+      "post": {
+        "tags": [
+          "Validation"
+        ],
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/validation/jobs/{jobId}": {
+      "delete": {
+        "tags": [
+          "Validation"
+        ],
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/validation/jobs/{jobId}/result": {
+      "get": {
+        "tags": [
+          "Validation"
+        ],
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationResultDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AddInterfaceRequest": {
+        "type": "object",
+        "properties": {
+          "interfaceTypeNodeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "modelUri": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "CheckinNamespaceRequest": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "nullable": true
+          },
+          "version": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "CreateNamespaceRequest": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "version": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "license": {
+            "type": "string",
+            "nullable": true
+          },
+          "licenseUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "copyrightHolder": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "CreateNodeRequest": {
+        "type": "object",
+        "properties": {
+          "modelUri": {
+            "type": "string",
+            "nullable": true
+          },
+          "nodeClass": {
+            "type": "string",
+            "nullable": true
+          },
+          "browseName": {
+            "type": "string",
+            "nullable": true
+          },
+          "browseNameModelUri": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "referenceTypeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "typeDefinitionId": {
+            "type": "string",
+            "nullable": true
+          },
+          "modellingRuleId": {
+            "type": "string",
+            "nullable": true
+          },
+          "isAbstract": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "symmetric": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "inverseName": {
+            "type": "string",
+            "nullable": true
+          },
+          "isOptionSet": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "category": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "designToolOnly": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "dataType": {
+            "type": "string",
+            "nullable": true
+          },
+          "valueRank": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "arrayDimensions": {
+            "type": "string",
+            "nullable": true
+          },
+          "sourceNodeId": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "CreateReferenceRequest": {
+        "type": "object",
+        "properties": {
+          "referenceTypeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "targetNodeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "isForward": {
+            "type": "boolean",
+            "nullable": true
+          }
+        }
+      },
+      "CreateServerRequest": {
+        "type": "object",
+        "properties": {
+          "applicationName": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "acl": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        }
+      },
+      "DataTypeDefinitionResponse": {
+        "type": "object",
+        "properties": {
+          "form": {
+            "type": "string",
+            "nullable": true
+          },
+          "isUnion": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "isOptionSet": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DataTypeFieldDescription"
+            },
+            "nullable": true
+          }
+        }
+      },
+      "DataTypeFieldDescription": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "dataType": {
+            "type": "string",
+            "nullable": true
+          },
+          "dataTypeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "valueRank": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "arrayDimensions": {
+            "type": "string",
+            "nullable": true
+          },
+          "maxStringLength": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "isOptional": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "allowSubTypes": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "description": {
+            "oneOf": [
+              {
+                "enum": [
+                  null
+                ]
+              },
+              {
+                "$ref": "#/components/schemas/LocalizedText"
+              }
+            ]
+          },
+          "isInherited": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "sourceTypeNodeId": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "DocumentUploadResult": {
+        "type": "object",
+        "properties": {
+          "uploadId": {
+            "type": "string"
+          },
+          "chunksReceived": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "totalChunks": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "isComplete": {
+            "type": "boolean"
+          },
+          "documentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        }
+      },
+      "IdType": {
+        "enum": [
+          "Numeric",
+          "String",
+          "Guid",
+          "Opaque"
+        ]
+      },
+      "InstantiateChildrenRequest": {
+        "type": "object",
+        "properties": {
+          "sourceNodeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "typeNodeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "modelUri": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "InstantiateRequest": {
+        "type": "object",
+        "properties": {
+          "parentNodeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "modelUri": {
+            "type": "string",
+            "nullable": true
+          },
+          "browseName": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "referenceTypeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "modellingRuleId": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "JsonElement": { },
+      "JsonObject": {
+        "type": "object"
+      },
+      "LicenseDetectionResult": {
+        "type": "object",
+        "properties": {
+          "license": {
+            "type": "string",
+            "nullable": true
+          },
+          "licenseUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "copyrightHolder": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "LicenseOptionInfo": {
+        "type": "object",
+        "properties": {
+          "spdxId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "referenceUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "isCustom": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          }
+        }
+      },
+      "LinkNamespaceRequest": {
+        "type": "object",
+        "properties": {
+          "isPrivate": {
+            "type": "boolean",
+            "nullable": true
+          }
+        }
+      },
+      "LocalizedText": {
+        "type": "object",
+        "properties": {
+          "locale": {
+            "type": "string",
+            "nullable": true
+          },
+          "text": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "ModelInfo": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "modelUri": {
+            "type": "string",
+            "nullable": true
+          },
+          "publicationDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "modelVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "path": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasErrors": {
+            "type": "boolean"
+          },
+          "creator": {
+            "type": "string",
+            "nullable": true
+          },
+          "license": {
+            "type": "string",
+            "nullable": true
+          },
+          "licenseUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "copyrightHolder": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "ModelVersionInfo": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "string",
+            "nullable": true
+          },
+          "publicationDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "origin": {
+            "type": "string",
+            "nullable": true
+          },
+          "isPrivate": {
+            "type": "boolean"
+          },
+          "isPublished": {
+            "type": "boolean"
+          },
+          "isCurrent": {
+            "type": "boolean"
+          },
+          "isEditable": {
+            "type": "boolean"
+          },
+          "otherWorkspaceCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "canDelete": {
+            "type": "boolean"
+          },
+          "blockedReason": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "Node": {
+        "type": "object",
+        "properties": {
+          "nodeId": {
+            "type": "string"
+          },
+          "nodeClass": {
+            "$ref": "#/components/schemas/NodeClass"
+          },
+          "browseName": {
+            "type": "string"
+          },
+          "displayName": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "description": {
+            "oneOf": [
+              {
+                "enum": [
+                  null
+                ]
+              },
+              {
+                "$ref": "#/components/schemas/LocalizedText"
+              }
+            ]
+          },
+          "writeMask": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "userWriteMask": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "value": { },
+          "dataType": {
+            "type": "string",
+            "nullable": true
+          },
+          "dataTypeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "valueRank": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "arrayDimensions": {
+            "type": "array",
+            "items": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "accessLevel": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "userAccessLevel": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "minimumSamplingInterval": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "format": "double"
+          },
+          "historizing": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "executable": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "userExecutable": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "isAbstract": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "designToolOnly": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "isProperty": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "symmetric": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "inverseName": {
+            "oneOf": [
+              {
+                "enum": [
+                  null
+                ]
+              },
+              {
+                "$ref": "#/components/schemas/LocalizedText"
+              }
+            ]
+          },
+          "containsNoLoops": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "eventNotifier": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "typeDefinition": {
+            "type": "string",
+            "nullable": true
+          },
+          "typeDefinitionName": {
+            "type": "string",
+            "nullable": true
+          },
+          "modellingRule": {
+            "type": "string",
+            "nullable": true
+          },
+          "superTypeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "superTypeIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "parentNodeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "modelUri": {
+            "type": "string",
+            "nullable": true
+          },
+          "referenceType": {
+            "type": "string",
+            "nullable": true
+          },
+          "referenceTypeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasNoSubtypes": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "hasNoChildren": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "isInherited": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "sourceTypeNodeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "isOverride": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "dataTypeForm": {
+            "type": "string",
+            "nullable": true
+          },
+          "documentation": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        }
+      },
+      "NodeClass": {
+        "enum": [
+          "Object",
+          "Variable",
+          "Method",
+          "ObjectType",
+          "VariableType",
+          "ReferenceType",
+          "DataType",
+          "View"
+        ]
+      },
+      "PaginatedResponseOfNode": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Node"
+            }
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          }
+        }
+      },
+      "PaginatedResponseOfReferenceDescription": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReferenceDescription"
+            }
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          }
+        }
+      },
+      "PaginatedResponseOfWorkspaceDescription": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceDescription"
+            }
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          }
+        }
+      },
+      "PaginatedResponseOfWorkspaceNamespaceInfo": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceNamespaceInfo"
+            }
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          }
+        }
+      },
+      "ProfileGroupDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string"
+          },
+          "sort": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          }
+        }
+      },
+      "ReferenceDescription": {
+        "type": "object",
+        "properties": {
+          "referenceTypeId": {
+            "type": "string"
+          },
+          "referenceTypeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "isForward": {
+            "type": "boolean"
+          },
+          "targetNodeId": {
+            "type": "string"
+          },
+          "targetBrowseName": {
+            "type": "string",
+            "nullable": true
+          },
+          "targetDisplayName": {
+            "oneOf": [
+              {
+                "enum": [
+                  null
+                ]
+              },
+              {
+                "$ref": "#/components/schemas/LocalizedText"
+              }
+            ]
+          },
+          "targetNodeClass": {
+            "type": "string",
+            "nullable": true
+          },
+          "typeDefinition": {
+            "type": "string",
+            "nullable": true
+          },
+          "modellingRule": {
+            "type": "string",
+            "nullable": true
+          },
+          "dataType": {
+            "type": "string",
+            "nullable": true
+          },
+          "dataTypeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "valueRank": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "isCanonicalParent": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ServerConfiguration": {
+        "type": "object",
+        "properties": {
+          "endpointUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "transportProfileUri": {
+            "type": "string",
+            "nullable": true
+          },
+          "securityMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "securityPolicyUri": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "UpdateNamespaceRequest": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "version": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "license": {
+            "type": "string",
+            "nullable": true
+          },
+          "licenseUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "copyrightHolder": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "UpdateNodeRequest": {
+        "type": "object",
+        "properties": {
+          "browseName": {
+            "type": "string",
+            "nullable": true
+          },
+          "browseNameModelUri": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "isAbstract": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "symmetric": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "inverseName": {
+            "type": "string",
+            "nullable": true
+          },
+          "isOptionSet": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "category": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "typeDefinitionId": {
+            "type": "string",
+            "nullable": true
+          },
+          "modellingRuleId": {
+            "type": "string",
+            "nullable": true
+          },
+          "referenceTypeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "dataType": {
+            "type": "string",
+            "nullable": true
+          },
+          "valueRank": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "arrayDimensions": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "oneOf": [
+              {
+                "enum": [
+                  null
+                ]
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateServerRequest": {
+        "type": "object",
+        "properties": {
+          "applicationName": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "acl": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        }
+      },
+      "UploadResult": {
+        "type": "object",
+        "properties": {
+          "uploadId": {
+            "type": "string",
+            "nullable": true
+          },
+          "chunksReceived": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "isComplete": {
+            "type": "boolean"
+          },
+          "model": {
+            "oneOf": [
+              {
+                "enum": [
+                  null
+                ]
+              },
+              {
+                "$ref": "#/components/schemas/ModelInfo"
+              }
+            ]
+          }
+        }
+      },
+      "UserPreferences": {
+        "type": "object",
+        "properties": {
+          "selectedServer": {
+            "type": "string",
+            "nullable": true
+          },
+          "themeMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "defaultDomain": {
+            "type": "string",
+            "nullable": true
+          },
+          "defaultLicense": {
+            "type": "string",
+            "nullable": true
+          },
+          "defaultLicenseUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "defaultCopyrightHolder": {
+            "type": "string",
+            "nullable": true
+          },
+          "termsAccepted": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "betaTester": {
+            "type": "boolean",
+            "nullable": true
+          }
+        }
+      },
+      "ValidationDocumentInfo": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int64"
+          },
+          "uploadedUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "uploadedByUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string"
+          },
+          "jobId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "modelUri": {
+            "type": "string",
+            "nullable": true
+          },
+          "errorCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "warningCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "infoCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "profileGroupName": {
+            "type": "string",
+            "nullable": true
+          },
+          "verbose": {
+            "type": "boolean"
+          },
+          "suppressedCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ValidationDocumentSettingsDto": {
+        "type": "object",
+        "properties": {
+          "profileGroupName": {
+            "type": "string",
+            "nullable": true
+          },
+          "verbose": {
+            "type": "boolean"
+          },
+          "suppressedCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        }
+      },
+      "ValidationEntryDto": {
+        "type": "object",
+        "properties": {
+          "section": {
+            "type": "string",
+            "nullable": true
+          },
+          "table": {
+            "type": "string",
+            "nullable": true
+          },
+          "severity": {
+            "type": "string",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "ValidationJobInfo": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "documentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "type": "string"
+          },
+          "createdUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startedUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completedUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "errorCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "warningCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "infoCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          }
+        }
+      },
+      "ValidationResultDto": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "type": "string"
+          },
+          "errorCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "warningCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "infoCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "summary": {
+            "type": "string",
+            "nullable": true
+          },
+          "exitCode": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "completedUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ValidationEntryDto"
+            }
+          }
+        }
+      },
+      "WorkspaceDescription": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "oneOf": [
+              {
+                "enum": [
+                  null
+                ]
+              },
+              {
+                "$ref": "#/components/schemas/LocalizedText"
+              }
+            ]
+          },
+          "serverConfiguration": {
+            "oneOf": [
+              {
+                "enum": [
+                  null
+                ]
+              },
+              {
+                "$ref": "#/components/schemas/ServerConfiguration"
+              }
+            ]
+          },
+          "owner": {
+            "type": "string",
+            "nullable": true
+          },
+          "isOwner": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "canWrite": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "acl": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "modifiedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "applicationUri": {
+            "type": "string",
+            "nullable": true
+          },
+          "productUri": {
+            "type": "string",
+            "nullable": true
+          },
+          "applicationName": {
+            "oneOf": [
+              {
+                "enum": [
+                  null
+                ]
+              },
+              {
+                "$ref": "#/components/schemas/LocalizedText"
+              }
+            ]
+          },
+          "discoveryUrls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "isDefault": {
+            "type": "boolean",
+            "nullable": true
+          }
+        }
+      },
+      "WorkspaceNamespaceInfo": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "isPrivate": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "isEditable": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "isReadOnly": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "requiredNamespaceUris": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "hasErrors": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "license": {
+            "type": "string",
+            "nullable": true
+          },
+          "licenseUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "copyrightHolder": {
+            "type": "string",
+            "nullable": true
+          },
+          "errorMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "version": {
+            "type": "string",
+            "nullable": true
+          },
+          "publicationDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "description": {
+            "oneOf": [
+              {
+                "enum": [
+                  null
+                ]
+              },
+              {
+                "$ref": "#/components/schemas/LocalizedText"
+              }
+            ]
+          },
+          "isNamespaceSubset": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "staticNodeIdTypes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IdType"
+            },
+            "nullable": true
+          },
+          "staticNumericNodeIdRange": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "staticStringNodeIdPattern": {
+            "type": "string",
+            "nullable": true
+          },
+          "index": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "uri": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "AzureAd": {
+        "type": "http",
+        "description": "Azure AD access token — the \"sign in with Microsoft\" path.",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "EmailCookie": {
+        "type": "apiKey",
+        "description": "Session cookie issued by the passwordless email-code sign-in (`POST /api/auth/verify-code`). Sent automatically by the browser.",
+        "name": "opc-email-auth",
+        "in": "cookie"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Editor"
+    },
+    {
+      "name": "Validation"
+    }
+  ]
+}

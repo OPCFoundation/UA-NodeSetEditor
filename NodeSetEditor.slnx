@@ -1,0 +1,36 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Release" />
+    <BuildType Name="Staging" />
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/db/">
+    <File Path="db/backup_cloudlib_db.ps1" />
+    <File Path="db/backup_db.ps1" />
+    <File Path="db/create_app_user.ps1" />
+    <File Path="db/drop_app_user.ps1" />
+    <File Path="db/grant_webapp.sql" />
+    <File Path="db/initialize_db.ps1" />
+    <File Path="db/restore_cloudlib_db.ps1" />
+    <File Path="db/restore_db.ps1" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="nodeseteditor.client/nodeseteditor.client.esproj">
+    <Platform Project="AnyCPU" />
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="NodeSetEditor.DbTool/NodeSetEditor.DbTool.csproj" />
+  <Project Path="NodeSetEditor.Model.Tests/NodeSetEditor.Model.Tests.csproj" />
+  <Project Path="NodeSetEditor.Server.Tests/NodeSetEditor.Server.Tests.csproj" />
+  <Project Path="NodeSetEditor.Server/NodeSetEditor.Server.csproj" />
+  <Project Path="NodeSetModel/NodeSetEditor.Model.csproj" Id="c82f904a-d8f9-4889-b4d4-21a772be1e85" />
+  <Project Path="Opc.Ua.CloudLibraryApi/Opc.Ua.CloudLibraryApi.csproj" />
+  <Project Path="Opc.Ua.RestfulApi/Opc.Ua.RestfulApi.csproj" />
+  <Project Path="UANodeSetSerializer/Opc.Ua.NodeSetSerializer/Opc.Ua.NodeSetSerializer.csproj" />
+</Solution>

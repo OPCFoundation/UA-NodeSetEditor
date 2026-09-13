@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>a53a05a5-4d1c-4630-9815-e9635e41829d</UserSecretsId>
+    <Configurations>Debug;Release;Staging</Configurations>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.CommandLine" Version="10.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.10" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NodeSetModel\NodeSetEditor.Model.csproj" />
+    <ProjectReference Include="..\UANodeSetSerializer\Opc.Ua.NodeSetSerializer\Opc.Ua.NodeSetSerializer.csproj">
+      <!-- Aliased because this assembly and Opc.Ua.Types both define UANodeSet, UANode,
+           ModelTableEntry and DataTypeDefinition. Without the alias every use of those
+           names is ambiguous (CS0433) and the "extern alias JsonNodeSet;" at the top of
+           the consuming files fails with CS0430. -->
+      <Aliases>JsonNodeSet</Aliases>
+    </ProjectReference>
+  </ItemGroup>
+
+</Project>

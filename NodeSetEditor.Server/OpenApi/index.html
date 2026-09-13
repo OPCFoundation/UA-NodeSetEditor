@@ -1,0 +1,29 @@
+<!doctype html>
+<!--
+  Swagger UI for the NodeSet Editor API.
+
+  Served from an explicitly mapped, authenticated endpoint (see Program.cs) rather than from
+  wwwroot, which is anonymous. The assets under swagger-ui/ are vendored rather than loaded from
+  a CDN because the site's Content-Security-Policy is script-src 'self'; the initializer is a
+  separate file for the same reason (no inline script).
+
+  The spec it renders is OpenApi/v1.json, generated from the controllers at build time and
+  checked into the repository. Nothing here reads a runtime-generated document.
+-->
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>NodeSet Editor API</title>
+    <link rel="stylesheet" href="/swagger/swagger-ui.css" />
+    <style>
+        body { margin: 0; background: #fafafa; }
+    </style>
+</head>
+<body>
+    <div id="swagger-ui"></div>
+    <script src="/swagger/swagger-ui-bundle.js"></script>
+    <script src="/swagger/swagger-initializer.js"></script>
+</body>
+</html>

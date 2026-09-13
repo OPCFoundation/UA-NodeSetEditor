@@ -1,0 +1,1253 @@
+﻿[
+    {
+        "Id":  "14110693-b721-4d81-a7d1-1c0071c80688",
+        "ModelUri":  "http://vdma.org/UA/AdditiveManufacturing-Example/",
+        "PublicationDate":  "2025-02-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "AdditiveManufacturing-Example.xml",
+        "Path":  "AdditiveManufacturing/AdditiveManufacturing-Example.xml",
+        "Description":  "An information model for AdditiveManufacturing-Example.xml."
+    },
+    {
+        "Id":  "293bb00e-1bfc-4c87-b114-b0ab1404ecb3",
+        "ModelUri":  "http://opcfoundation.org/UA/AdditiveManufacturing/",
+        "PublicationDate":  "2025-02-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "AdditiveManufacturing",
+        "Path":  "AdditiveManufacturing/Opc.Ua.AdditiveManufacturing.Nodeset2.xml",
+        "Description":  "An information model for AdditiveManufacturing."
+    },
+    {
+        "Id":  "91988e55-5a97-4f8c-91cc-02fd5d045a63",
+        "ModelUri":  "http://opcfoundation.org/UA/ADI/",
+        "PublicationDate":  "2013-07-31T00:00:00Z",
+        "ModelVersion":  "1.01",
+        "Name":  "ADI",
+        "Path":  "ADI/Opc.Ua.Adi.NodeSet2.xml",
+        "Description":  "An information model for ADI."
+    },
+    {
+        "Id":  "ef82ef5d-a67e-4e1b-bde7-189c8d6626cf",
+        "ModelUri":  "http://opcfoundation.org/UA/AMB/",
+        "PublicationDate":  "2024-02-27T00:00:00Z",
+        "ModelVersion":  "1.01.1",
+        "Name":  "AMB",
+        "Path":  "AMB/Opc.Ua.AMB.NodeSet2.xml",
+        "Description":  "An information model for AMB."
+    },
+    {
+        "Id":  "82fc4714-7bc8-4976-834e-09dfd375d746",
+        "ModelUri":  "http://opcfoundation.org/UA/AML/",
+        "PublicationDate":  "2016-02-22T00:00:01Z",
+        "ModelVersion":  "1.00",
+        "Name":  "AMLBaseTypes",
+        "Path":  "AML/Opc.Ua.AMLBaseTypes.NodeSet2.xml",
+        "Description":  "An information model for AMLBaseTypes."
+    },
+    {
+        "Id":  "778c670a-f78f-4b32-a512-18b46a9e7fb2",
+        "ModelUri":  "http://opcfoundation.org/UA/AMLLibs/",
+        "PublicationDate":  null,
+        "ModelVersion":  null,
+        "Name":  "AMLLibraries",
+        "Path":  "AML/Opc.Ua.AMLLibraries.NodeSet2.xml",
+        "Description":  "An information model for AMLLibraries."
+    },
+    {
+        "Id":  "489c5ad0-be73-4dd8-bf6d-b102bf22f2bc",
+        "ModelUri":  "http://www.iosb.fraunhofer.de/Topology.aml",
+        "PublicationDate":  null,
+        "ModelVersion":  null,
+        "Name":  "Topology.xml",
+        "Path":  "AML/Topology.xml",
+        "Description":  "An information model for Topology.xml."
+    },
+    {
+        "Id":  "f3f709b2-ad20-4cfe-91c9-fecc0337de6c",
+        "ModelUri":  "http://opcfoundation.org/UA/AutoID/",
+        "PublicationDate":  "2020-06-18T13:52:03Z",
+        "ModelVersion":  "1.01",
+        "Name":  "AutoID",
+        "Path":  "AutoID/Opc.Ua.AutoID.NodeSet2.xml",
+        "Description":  "An information model for AutoID."
+    },
+    {
+        "Id":  "9e35b7fa-1905-4a3c-9cfe-2fc6f792291d",
+        "ModelUri":  "http://opcfoundation.org/UA/BACnet_V2/",
+        "PublicationDate":  "2023-05-17T00:00:00Z",
+        "ModelVersion":  "2.00.1",
+        "Name":  "BACnet",
+        "Path":  "BACnet/Opc.Ua.BACnet.NodeSet2.xml",
+        "Description":  "An information model for BACnet."
+    },
+    {
+        "Id":  "94353b27-89bb-4a7d-8924-a6636cce768d",
+        "ModelUri":  "http://opcfoundation.org/UA/CAS/",
+        "PublicationDate":  "2021-07-13T00:00:00Z",
+        "ModelVersion":  "1.00.1",
+        "Name":  "CAS",
+        "Path":  "CAS/Opc.Ua.CAS.NodeSet2.xml",
+        "Description":  "An information model for CAS."
+    },
+    {
+        "Id":  "a5eb3533-9249-42d8-ba9a-711cb670aaa0",
+        "ModelUri":  "http://opcfoundation.org/UA/CNC",
+        "PublicationDate":  "2017-06-19T16:01:03Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "CNC",
+        "Path":  "CNC/Opc.Ua.CNC.NodeSet.xml",
+        "Description":  "An information model for CNC."
+    },
+    {
+        "Id":  "d0159119-fc69-4d1b-9527-d9d92081ad29",
+        "ModelUri":  "http://opcfoundation.org/UA/CommercialKitchenEquipment/",
+        "PublicationDate":  "2019-07-12T00:00:00Z",
+        "ModelVersion":  "1.0",
+        "Name":  "CommercialKitchenEquipment",
+        "Path":  "CommercialKitchenEquipment/Opc.Ua.CommercialKitchenEquipment.NodeSet2.xml",
+        "Description":  "An information model for CommercialKitchenEquipment."
+    },
+    {
+        "Id":  "3f5bf091-77dd-4c12-8c91-729ac716c97b",
+        "ModelUri":  "http://opcfoundation.org/UA/CranesHoists/",
+        "PublicationDate":  "2023-09-01T00:00:00Z",
+        "ModelVersion":  "1.00",
+        "Name":  "CranesHoists",
+        "Path":  "CranesHoists/Opc.Ua.CranesHoists.NodeSet2.xml",
+        "Description":  "An information model for CranesHoists."
+    },
+    {
+        "Id":  "4a8b8ba2-9a8e-4500-9a94-77e522ca4165",
+        "ModelUri":  "http://opcfoundation.org/UA/CSPPlusForMachine/",
+        "PublicationDate":  "2017-11-28T00:00:00Z",
+        "ModelVersion":  "1.00",
+        "Name":  "CSPPlusForMachine",
+        "Path":  "CSPPlusForMachine/Opc.Ua.CSPPlusForMachine.NodeSet2.xml",
+        "Description":  "An information model for CSPPlusForMachine."
+    },
+    {
+        "Id":  "3830a086-3f60-49cf-965a-71ac3ddc7bb7",
+        "ModelUri":  "http://opcfoundation.org/UA/CuttingTool/",
+        "PublicationDate":  "2024-11-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "CuttingTool",
+        "Path":  "CuttingTool/Opc.Ua.CuttingTool.NodeSet2.xml",
+        "Description":  "An information model for CuttingTool."
+    },
+    {
+        "Id":  "a73bc873-a8fa-4b1f-87de-999881fb726b",
+        "ModelUri":  "http://opcfoundation.org/UA/DEXPI/",
+        "PublicationDate":  "2021-09-10T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "DEXPI",
+        "Path":  "DEXPI/Opc.Ua.DEXPI.NodeSet2.xml",
+        "Description":  "An information model for DEXPI."
+    },
+    {
+        "Id":  "d44e9ee4-825c-4623-a07e-f45e1001096a",
+        "ModelUri":  "http://opcfoundation.org/UA/DI/",
+        "PublicationDate":  "2025-11-15T00:00:00Z",
+        "ModelVersion":  "1.05.0",
+        "Name":  "DI",
+        "Path":  "DI/Opc.Ua.Di.NodeSet2.xml",
+        "Description":  "An information model for DI."
+    },
+    {
+        "Id":  "6ac8fb98-2306-45c3-a6be-c6b687d34c48",
+        "ModelUri":  "http://opcfoundation.org/UA/DI/PackageMetadata/",
+        "PublicationDate":  "2025-04-01T00:00:00Z",
+        "ModelVersion":  "1.05.0",
+        "Name":  "DI/PackageMetadata",
+        "Path":  "DI/Opc.Ua.Di.PackageMetadata.NodeSet2.xml",
+        "Description":  "An information model for DI/PackageMetadata."
+    },
+    {
+        "Id":  "96bb1d16-d6ce-48a7-8383-b6a008bacc69",
+        "ModelUri":  "http://opcfoundation.org/UA/ECM/",
+        "PublicationDate":  "2025-02-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "ECM",
+        "Path":  "ECM/Opc.Ua.ECM.NodeSet2.xml",
+        "Description":  "An information model for ECM."
+    },
+    {
+        "Id":  "db331d65-a2a0-495f-a369-78146cb822f8",
+        "ModelUri":  "http://fdi-cooperation.com/OPCUA/FDI5/",
+        "PublicationDate":  "2017-07-14T00:00:00Z",
+        "ModelVersion":  "1.1",
+        "Name":  "FDI5",
+        "Path":  "FDI/Opc.Ua.Fdi5.NodeSet2.xml",
+        "Description":  "An information model for FDI5."
+    },
+    {
+        "Id":  "71f880f3-48a4-4b25-8604-0c0ec71e146f",
+        "ModelUri":  "http://fdi-cooperation.com/OPCUA/FDI7/",
+        "PublicationDate":  "2017-07-14T00:00:00Z",
+        "ModelVersion":  null,
+        "Name":  "FDI7",
+        "Path":  "FDI/Opc.Ua.Fdi7.NodeSet2.xml",
+        "Description":  "An information model for FDI7."
+    },
+    {
+        "Id":  "964fad12-879f-414d-b4ed-008f416c427b",
+        "ModelUri":  "http://opcfoundation.org/UA/FDT/",
+        "PublicationDate":  "2021-08-06T00:00:00Z",
+        "ModelVersion":  "1.01.00",
+        "Name":  "FDT",
+        "Path":  "FDT/Opc.Ua.FDT.NodeSet.xml",
+        "Description":  "An information model for FDT."
+    },
+    {
+        "Id":  "3e2c4e8a-e2f1-4a35-ba3e-b5cec87b320e",
+        "ModelUri":  "http://opcfoundation.org/UA/GDS/",
+        "PublicationDate":  "2025-10-31T00:00:00Z",
+        "ModelVersion":  "1.05.06",
+        "Name":  "GDS",
+        "Path":  "GDS/Opc.Ua.Gds.NodeSet2.xml",
+        "Description":  "An information model for GDS."
+    },
+    {
+        "Id":  "1991d3da-e82b-4c1a-b321-0d58ea4d667f",
+        "ModelUri":  "http://opcfoundation.org/UA/Glass/Flat/",
+        "PublicationDate":  "2022-01-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "Glass",
+        "Path":  "Glass/Flat/Opc.Ua.Glass.NodeSet2.xml",
+        "Description":  "An information model for Glass."
+    },
+    {
+        "Id":  "534ddabd-64a1-427c-a26e-9ada07229c29",
+        "ModelUri":  "http://opcfoundation.org/UA/Glass/Flat/v2/",
+        "PublicationDate":  "2024-10-01T00:00:00Z",
+        "ModelVersion":  "2.0.0",
+        "Name":  "Glass.v2",
+        "Path":  "Glass/Flat/v2/Opc.Ua.Glass.v2.NodeSet2.xml",
+        "Description":  "An information model for Glass.v2."
+    },
+    {
+        "Id":  "ca2d6c51-cb0d-4704-aa1b-4648e81d44aa",
+        "ModelUri":  "http://opcfoundation.org/UA/GMS/",
+        "PublicationDate":  "2023-07-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "GMS",
+        "Path":  "GMS/opc.ua.gms.nodeset2.xml",
+        "Description":  "An information model for GMS."
+    },
+    {
+        "Id":  "34872d44-29ff-40f9-9adc-a27cdc98690f",
+        "ModelUri":  "http://opcfoundation.org/UA/GPOS/",
+        "PublicationDate":  "2025-09-25T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "GPOS",
+        "Path":  "GPOS/Opc.Ua.GPOS.NodeSet2.xml",
+        "Description":  "An information model for GPOS."
+    },
+    {
+        "Id":  "dc42d48d-8d90-4c6e-b1b7-fda825ab2b25",
+        "ModelUri":  "http://opcfoundation.org/UA/I4AAS/",
+        "PublicationDate":  "2021-06-04T00:00:00Z",
+        "ModelVersion":  "5.0.0",
+        "Name":  "I4AAS",
+        "Path":  "I4AAS/Opc.Ua.I4AAS.NodeSet2.xml",
+        "Description":  "An information model for I4AAS."
+    },
+    {
+        "Id":  "683d19e0-b7d9-41a9-8dd7-4ddc54907b85",
+        "ModelUri":  "http://opcfoundation.org/UA/IA/Examples/",
+        "PublicationDate":  "2025-05-23T00:00:00Z",
+        "ModelVersion":  "1.01.4",
+        "Name":  "IA",
+        "Path":  "IA/Opc.Ua.IA.NodeSet2.examples.xml",
+        "Description":  "An information model for IA."
+    },
+    {
+        "Id":  "06f62378-c1b4-4dea-9519-d8fb076f456e",
+        "ModelUri":  "http://opcfoundation.org/UA/IA/",
+        "PublicationDate":  "2025-05-23T00:00:00Z",
+        "ModelVersion":  "1.01.4",
+        "Name":  "IA",
+        "Path":  "IA/Opc.Ua.IA.NodeSet2.xml",
+        "Description":  "An information model for IA."
+    },
+    {
+        "Id":  "2e0e1d8c-66fa-4793-9a86-1d3eb66acd2e",
+        "ModelUri":  "http://opcfoundation.org/UA/IJT/Base/",
+        "PublicationDate":  "2025-10-06T00:00:00Z",
+        "ModelVersion":  "1.01.0",
+        "Name":  "IJT/Base",
+        "Path":  "IJT/Base/Opc.Ua.Ijt.Base.NodeSet2.xml",
+        "Description":  "An information model for IJT/Base."
+    },
+    {
+        "Id":  "eb0aa575-1d03-4124-8df8-399f35026576",
+        "ModelUri":  "http://opcfoundation.org/UA/IJT/Tightening/",
+        "PublicationDate":  "2025-10-06T00:00:00Z",
+        "ModelVersion":  "2.00.1",
+        "Name":  "IJT/Tightening",
+        "Path":  "IJT/Tightening/Opc.Ua.Ijt.Tightening.NodeSet2.xml",
+        "Description":  "An information model for IJT/Tightening."
+    },
+    {
+        "Id":  "b409b273-d9a5-489f-8bfa-9fab880fc38f",
+        "ModelUri":  "http://opcfoundation.org/UA/IOLink/",
+        "PublicationDate":  "2022-03-24T00:00:00Z",
+        "ModelVersion":  "1.00.1",
+        "Name":  "IOLink",
+        "Path":  "IOLink/Opc.Ua.IOLink.NodeSet2.xml",
+        "Description":  "An information model for IOLink."
+    },
+    {
+        "Id":  "996d457a-a211-4256-bda8-c42cb4587cc1",
+        "ModelUri":  "http://opcfoundation.org/UA/IOLink/IODD/",
+        "PublicationDate":  "2022-02-18T00:00:00Z",
+        "ModelVersion":  "1.00.1",
+        "Name":  "IOLinkIODD",
+        "Path":  "IOLink/Opc.Ua.IOLinkIODD.NodeSet2.xml",
+        "Description":  "An information model for IOLinkIODD."
+    },
+    {
+        "Id":  "6cd8b8ce-ccd2-40e7-9674-727d85d132d2",
+        "ModelUri":  "http://opcfoundation.org/UA/Mining/ExternalStandards/IREDES",
+        "PublicationDate":  "2024-02-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "Mining/ExternalStandards/IREDES",
+        "Path":  "IREDES/Opc.Ua.IREDES.NodeSet2.xml",
+        "Description":  "An information model for Mining/ExternalStandards/IREDES."
+    },
+    {
+        "Id":  "4dc80e26-8c62-4684-8b1e-aba43d828d44",
+        "ModelUri":  "http://www.OPCFoundation.org/UA/2013/01/ISA95",
+        "PublicationDate":  "2013-11-06T00:00:00Z",
+        "ModelVersion":  "1.00",
+        "Name":  "Opc.ISA95",
+        "Path":  "ISA-95/Opc.ISA95.NodeSet2.xml",
+        "Description":  "An information model for Opc.ISA95."
+    },
+    {
+        "Id":  "da9c6443-4a0b-4044-9cd3-739912f7737a",
+        "ModelUri":  "http://opcfoundation.org/UA/ISA95-JOBCONTROL_V2/",
+        "PublicationDate":  "2024-01-31T00:00:00Z",
+        "ModelVersion":  "2.0.0",
+        "Name":  "isa95-jobcontrol",
+        "Path":  "ISA95-JOBCONTROL/opc.ua.isa95-jobcontrol.nodeset2.xml",
+        "Description":  "An information model for isa95-jobcontrol."
+    },
+    {
+        "Id":  "313622d4-7c08-4137-b063-4077a96cdbb4",
+        "ModelUri":  "http://opcfoundation.org/UA/LADS/",
+        "PublicationDate":  "2023-11-30T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "LADS",
+        "Path":  "LADS/Opc.Ua.LADS.NodeSet2.xml",
+        "Description":  "An information model for LADS."
+    },
+    {
+        "Id":  "2bdd510e-688a-4445-a5e6-2700b1071d47",
+        "ModelUri":  "http://vdma.org/UA/LaserSystem-Example/",
+        "PublicationDate":  "2023-12-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "LaserSystem-Example",
+        "Path":  "LaserSystems/LaserSystem-Example.NodeSet2.xml",
+        "Description":  "An information model for LaserSystem-Example."
+    },
+    {
+        "Id":  "d7a64d11-d2fc-435c-93aa-71592ab03d36",
+        "ModelUri":  "http://opcfoundation.org/UA/LaserSystems/",
+        "PublicationDate":  "2024-02-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "LaserSystems",
+        "Path":  "LaserSystems/Opc.Ua.LaserSystems.NodeSet2.xml",
+        "Description":  "An information model for LaserSystems."
+    },
+    {
+        "Id":  "47c6f2a6-467c-4db7-90c6-8bc89bcf6c68",
+        "ModelUri":  "http://opcfoundation.org/UA/Machinery/Example/",
+        "PublicationDate":  "2026-02-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "Machinery.Examples",
+        "Path":  "Machinery/Opc.Ua.Machinery.Examples.NodeSet2.xml",
+        "Description":  "An information model for Machinery.Examples."
+    },
+    {
+        "Id":  "da407703-a2dc-4cab-bb01-c495cb0f7aad",
+        "ModelUri":  "http://opcfoundation.org/UA/Machinery/",
+        "PublicationDate":  "2026-01-01T00:00:00Z",
+        "ModelVersion":  "1.04.1",
+        "Name":  "Machinery",
+        "Path":  "Machinery/Opc.Ua.Machinery.NodeSet2.xml",
+        "Description":  "An information model for Machinery."
+    },
+    {
+        "Id":  "265af7d0-bce1-4261-a403-42afe37f23d3",
+        "ModelUri":  "http://opcfoundation.org/UA/Machinery/Energy/",
+        "PublicationDate":  "2025-11-01T00:00:00Z",
+        "ModelVersion":  "1.00",
+        "Name":  "Machinery/Energy",
+        "Path":  "Machinery/Energy/Opc.Ua.Machinery.Energy.NodeSet2.xml",
+        "Description":  "An information model for Machinery/Energy."
+    },
+    {
+        "Id":  "a6381a52-3cfe-454d-bb08-21005e5b7875",
+        "ModelUri":  "http://opcfoundation.org/UA/Machinery/Jobs/",
+        "PublicationDate":  "2024-05-01T00:00:00Z",
+        "ModelVersion":  "1.0.1",
+        "Name":  "Machinery/Jobs",
+        "Path":  "Machinery/Jobs/Opc.Ua.Machinery.Jobs.Nodeset2.xml",
+        "Description":  "An information model for Machinery/Jobs."
+    },
+    {
+        "Id":  "652377a8-982f-4b94-b65a-fd42385b84da",
+        "ModelUri":  "http://opcfoundation.org/UA/Machinery/ProcessValues/",
+        "PublicationDate":  "2023-05-01T00:00:00Z",
+        "ModelVersion":  "1.00.0",
+        "Name":  "Machinery/ProcessValues",
+        "Path":  "Machinery/ProcessValues/Opc.Ua.Machinery.ProcessValues.NodeSet2.xml",
+        "Description":  "An information model for Machinery/ProcessValues."
+    },
+    {
+        "Id":  "65e1437d-ef67-4922-811b-4af1d995b596",
+        "ModelUri":  "http://opcfoundation.org/UA/Machinery/Result/",
+        "PublicationDate":  "2025-07-01T00:00:00Z",
+        "ModelVersion":  "1.01.0",
+        "Name":  "Machinery_Result",
+        "Path":  "Machinery/Result/Opc.Ua.Machinery_Result.NodeSet2.xml",
+        "Description":  "An information model for Machinery_Result."
+    },
+    {
+        "Id":  "7e4de4f1-a1db-4f1b-982c-b9c2136ab9af",
+        "ModelUri":  "http://opcfoundation.org/UA/MachineTool/",
+        "PublicationDate":  "2024-11-01T00:00:00Z",
+        "ModelVersion":  "1.02.0",
+        "Name":  "MachineTool",
+        "Path":  "MachineTool/Opc.Ua.MachineTool.NodeSet2.xml",
+        "Description":  "An information model for MachineTool."
+    },
+    {
+        "Id":  "4e144ee1-fa65-49f2-b14b-967d3c0cec22",
+        "ModelUri":  "http://opcfoundation.org/UA/MachineVision",
+        "PublicationDate":  "2019-07-11T10:18:27Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "MachineVision",
+        "Path":  "MachineVision/Opc.Ua.MachineVision.NodeSet2.xml",
+        "Description":  "An information model for MachineVision."
+    },
+    {
+        "Id":  "ad8fdd0c-919b-4334-a477-da34f6a1f832",
+        "ModelUri":  "http://opcfoundation.org/UA/MachineVision/AMCM/",
+        "PublicationDate":  "2024-05-17T00:00:00Z",
+        "ModelVersion":  "1.00.0",
+        "Name":  "MachineVision/AMCM",
+        "Path":  "MachineVision/AMCM/Opc.Ua.MachineVision.AMCM.NodeSet2.xml",
+        "Description":  "An information model for MachineVision/AMCM."
+    },
+    {
+        "Id":  "3fbf9d3d-75af-4ded-8755-7c8128c739bb",
+        "ModelUri":  "http://opcfoundation.org/UA/MDIS",
+        "PublicationDate":  "2024-11-19T12:00:00",
+        "ModelVersion":  "1.3",
+        "Name":  "Opc.MDIS",
+        "Path":  "MDIS/Opc.MDIS.NodeSet2.xml",
+        "Description":  "An information model for Opc.MDIS."
+    },
+    {
+        "Id":  "6c68c090-7cbb-4f0c-b971-44d5d80686d0",
+        "ModelUri":  "http://schulergroup.com/UA/example/",
+        "PublicationDate":  "2024-02-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "MetalForming_Example.xml",
+        "Path":  "MetalForming/MetalForming_Example.xml",
+        "Description":  "An information model for MetalForming_Example.xml."
+    },
+    {
+        "Id":  "b1688a62-d4d7-4d46-b2a1-83745ec331b1",
+        "ModelUri":  "http://opcfoundation.org/UA/MetalForming/",
+        "PublicationDate":  "2024-02-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "MetalForming",
+        "Path":  "MetalForming/Opc.Ua.MetalForming.NodeSet2.xml",
+        "Description":  "An information model for MetalForming."
+    },
+    {
+        "Id":  "95b693de-42f1-40e6-9c05-c05122dc3542",
+        "ModelUri":  "http://opcfoundation.org/UA/Mining/DevelopmentSupport/Dozer/",
+        "PublicationDate":  "2022-09-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "Mining/DevelopmentSupport/Dozer",
+        "Path":  "Mining/DevelopmentSupport/Dozer/1.0.0/Opc.Ua.Mining.DevelopmentSupport.Dozer.NodeSet2.xml",
+        "Description":  "An information model for Mining/DevelopmentSupport/Dozer."
+    },
+    {
+        "Id":  "9d73dd2f-f4c2-45f2-9c6f-42dd7ab7c513",
+        "ModelUri":  "http://opcfoundation.org/UA/Mining/DevelopmentSupport/General/",
+        "PublicationDate":  "2022-09-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "Mining/DevelopmentSupport/General",
+        "Path":  "Mining/DevelopmentSupport/General/1.0.0/Opc.Ua.Mining.DevelopmentSupport.General.NodeSet2.xml",
+        "Description":  "An information model for Mining/DevelopmentSupport/General."
+    },
+    {
+        "Id":  "ca39aa88-3992-4c08-969f-c556ee7ae92f",
+        "ModelUri":  "http://opcfoundation.org/UA/Mining/DevelopmentSupport/RoofSupportSystem/",
+        "PublicationDate":  "2022-09-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "Mining/DevelopmentSupport/RoofSupportSystem",
+        "Path":  "Mining/DevelopmentSupport/RoofSupportSystem/1.0.0/Opc.Ua.Mining.DevelopmentSupport.RoofSupportSystem.NodeSet2.xml",
+        "Description":  "An information model for Mining/DevelopmentSupport/RoofSupportSystem."
+    },
+    {
+        "Id":  "2af74532-5783-49d2-9255-ee20fdad1a93",
+        "ModelUri":  "http://opcfoundation.org/UA/Mining/Extraction/General/",
+        "PublicationDate":  "2022-09-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "Mining/Extraction/General",
+        "Path":  "Mining/Extraction/General/1.0.0/Opc.Ua.Mining.Extraction.General.NodeSet2.xml",
+        "Description":  "An information model for Mining/Extraction/General."
+    },
+    {
+        "Id":  "cbff8fc5-b9ff-4d69-9fe2-eeedbaef1b21",
+        "ModelUri":  "http://opcfoundation.org/UA/Mining/Extraction/ShearerLoader/",
+        "PublicationDate":  "2022-09-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "Mining/Extraction/ShearerLoader",
+        "Path":  "Mining/Extraction/ShearerLoader/1.0.0/Opc.Ua.Mining.Extraction.ShearerLoader.NodeSet2.xml",
+        "Description":  "An information model for Mining/Extraction/ShearerLoader."
+    },
+    {
+        "Id":  "be2a1eb4-96c7-4e24-9c46-15b1f53bd43b",
+        "ModelUri":  "http://opcfoundation.org/UA/Mining/General/",
+        "PublicationDate":  "2025-10-01T00:00:00Z",
+        "ModelVersion":  "1.01.0",
+        "Name":  "Mining/General",
+        "Path":  "Mining/General/1.0.0/Opc.Ua.Mining.General.NodeSet2.xml",
+        "Description":  "An information model for Mining/General."
+    },
+    {
+        "Id":  "743ded24-a9f3-44df-98c9-0020993ffe89",
+        "ModelUri":  "http://opcfoundation.org/UA/Mining/Loading/General/",
+        "PublicationDate":  "2022-09-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "Mining/Loading/General",
+        "Path":  "Mining/Loading/General/1.0.0/Opc.Ua.Mining.Loading.General.NodeSet2.xml",
+        "Description":  "An information model for Mining/Loading/General."
+    },
+    {
+        "Id":  "3396ac28-ec3c-4b74-9c74-d7541276db8b",
+        "ModelUri":  "http://opcfoundation.org/UA/Mining/Loading/HydraulicExcavator/",
+        "PublicationDate":  "2022-09-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "Mining/Loading/HydraulicExcavator",
+        "Path":  "Mining/Loading/HydraulicExcavator/1.0.0/Opc.Ua.Mining.Loading.HydraulicExcavator.NodeSet2.xml",
+        "Description":  "An information model for Mining/Loading/HydraulicExcavator."
+    },
+    {
+        "Id":  "a499e8a0-3a4c-4b4c-bc42-a29d89a0cb17",
+        "ModelUri":  "http://opcfoundation.org/UA/Mining/MineralProcessing/General/",
+        "PublicationDate":  "2022-09-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "Mining/MineralProcessing/General",
+        "Path":  "Mining/MineralProcessing/General/1.0.0/Opc.Ua.Mining.MineralProcessing.General.NodeSet2.xml",
+        "Description":  "An information model for Mining/MineralProcessing/General."
+    },
+    {
+        "Id":  "e7155e8c-0aad-4216-ac14-4c334ba5ff36",
+        "ModelUri":  "http://opcfoundation.org/UA/Mining/MineralProcessing/RockCrusher/",
+        "PublicationDate":  "2022-09-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "Mining/MineralProcessing/RockCrusher",
+        "Path":  "Mining/MineralProcessing/RockCrusher/1.0.0/Opc.Ua.Mining.MineralProcessing.RockCrusher.NodeSet2.xml",
+        "Description":  "An information model for Mining/MineralProcessing/RockCrusher."
+    },
+    {
+        "Id":  "be55f071-2c8b-4bea-8ec0-fab5c975b3e0",
+        "ModelUri":  "http://opcfoundation.org/UA/Mining/MonitoringSupervisionServices/General/",
+        "PublicationDate":  "2022-09-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "Mining/MonitoringSupervisionServices/General",
+        "Path":  "Mining/MonitoringSupervisionServices/General/1.0.0/Opc.Ua.Mining.MonitoringSupervisionServices.General.NodeSet2.xml",
+        "Description":  "An information model for Mining/MonitoringSupervisionServices/General."
+    },
+    {
+        "Id":  "39a2fd8e-bcc6-4e42-bd5b-58d1f6b676af",
+        "ModelUri":  "http://opcfoundation.org/UA/Mining/PELOServices/FaceAlignmentSystem/",
+        "PublicationDate":  "2022-09-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "Mining/PELOServices/FaceAlignmentSystem",
+        "Path":  "Mining/PELOServices/FaceAlignmentSystem/1.0.0/Opc.Ua.Mining.PELOServices.FaceAlignmentSystem.NodeSet2.xml",
+        "Description":  "An information model for Mining/PELOServices/FaceAlignmentSystem."
+    },
+    {
+        "Id":  "e2576977-2fbd-4e4d-ad70-69da23e087ed",
+        "ModelUri":  "http://opcfoundation.org/UA/Mining/PELOServices/General/",
+        "PublicationDate":  "2022-09-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "Mining/PELOServices/General",
+        "Path":  "Mining/PELOServices/General/1.0.0/Opc.Ua.Mining.PELOServices.General.NodeSet2.xml",
+        "Description":  "An information model for Mining/PELOServices/General."
+    },
+    {
+        "Id":  "04caeb37-3880-4706-a09e-92f9e8097b9f",
+        "ModelUri":  "http://opcfoundation.org/UA/Mining/TransportDumping/ArmouredFaceConveyor/",
+        "PublicationDate":  "2022-09-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "Mining/TransportDumping/ArmouredFaceConveyor",
+        "Path":  "Mining/TransportDumping/ArmouredFaceConveyor/1.0.0/Opc.Ua.Mining.TransportDumping.ArmouredFaceConveyor.NodeSet2.xml",
+        "Description":  "An information model for Mining/TransportDumping/ArmouredFaceConveyor."
+    },
+    {
+        "Id":  "ce4e7415-15a5-4828-afa0-3ae760a34725",
+        "ModelUri":  "http://opcfoundation.org/UA/Mining/TransportDumping/General/",
+        "PublicationDate":  "2022-09-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "Mining/TransportDumping/General",
+        "Path":  "Mining/TransportDumping/General/1.0.0/Opc.Ua.Mining.TransportDumping.General.NodeSet2.xml",
+        "Description":  "An information model for Mining/TransportDumping/General."
+    },
+    {
+        "Id":  "81a697f7-3c41-44f3-9412-3de1511c7940",
+        "ModelUri":  "http://opcfoundation.org/UA/Mining/TransportDumping/RearDumpTruck/",
+        "PublicationDate":  "2022-09-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "Mining/TransportDumping/RearDumpTruck",
+        "Path":  "Mining/TransportDumping/RearDumpTruck/1.0.0/Opc.Ua.Mining.TransportDumping.RearDumpTruck.NodeSet2.xml",
+        "Description":  "An information model for Mining/TransportDumping/RearDumpTruck."
+    },
+    {
+        "Id":  "117e2e36-197b-4d30-9174-99e951ab4ad6",
+        "ModelUri":  "http://opcfoundation.org/UA/MTConnect/v2/",
+        "PublicationDate":  "2020-06-05T00:00:00Z",
+        "ModelVersion":  "2.00.01",
+        "Name":  "MTConnect",
+        "Path":  "MTConnect/Opc.Ua.MTConnect.NodeSet2.xml",
+        "Description":  "An information model for MTConnect."
+    },
+    {
+        "Id":  "9032e5d9-bc0c-4500-a5cc-554ab451fb16",
+        "ModelUri":  "http://opcfoundation.org/UA/Onboarding/",
+        "PublicationDate":  "2025-01-08T00:00:00Z",
+        "ModelVersion":  "1.05.04",
+        "Name":  "Onboarding",
+        "Path":  "Onboarding/Opc.Ua.Onboarding.NodeSet2.xml",
+        "Description":  "An information model for Onboarding."
+    },
+    {
+        "Id":  "57754dac-e7c3-433b-a5e1-a37b275d9333",
+        "ModelUri":  "http://opcfoundation.org/UA/OPENSCS-SER/",
+        "PublicationDate":  "2019-02-04T00:00:00Z",
+        "ModelVersion":  "1.00",
+        "Name":  "OPENSCS",
+        "Path":  "OpenSCS/Opc.Ua.OPENSCS.NodeSet2.xml",
+        "Description":  "An information model for OPENSCS."
+    },
+    {
+        "Id":  "68686fb0-35e0-4930-8dfb-09465ba8a054",
+        "ModelUri":  "http://opcfoundation.org/UA/PackML/",
+        "PublicationDate":  "2020-10-08T11:08:00Z",
+        "ModelVersion":  "1.01",
+        "Name":  "PackML",
+        "Path":  "PackML/Opc.Ua.PackML.NodeSet2.xml",
+        "Description":  "An information model for PackML."
+    },
+    {
+        "Id":  "e7d9073c-7e2e-4f64-a35c-05eb4954c6cd",
+        "ModelUri":  "http://opcfoundation.org/UA/Dictionary/IRDI",
+        "PublicationDate":  "2023-10-27T00:00:00Z",
+        "ModelVersion":  "1.01.0",
+        "Name":  "Dictionary/IRDI",
+        "Path":  "PADIM/Opc.Ua.IRDI.NodeSet2.xml",
+        "Description":  "An information model for Dictionary/IRDI."
+    },
+    {
+        "Id":  "5338c7d5-9563-471c-8704-7eaab92c5416",
+        "ModelUri":  "http://opcfoundation.org/UA/PADIM/",
+        "PublicationDate":  "2023-10-27T00:00:00Z",
+        "ModelVersion":  "1.01.0",
+        "Name":  "PADIM",
+        "Path":  "PADIM/Opc.Ua.PADIM.NodeSet2.xml",
+        "Description":  "An information model for PADIM."
+    },
+    {
+        "Id":  "40fb330c-613a-401f-9f2e-43c708b9234b",
+        "ModelUri":  "http://opcfoundation.org/UA/PAEFS/",
+        "PublicationDate":  "2025-02-01T00:00:00Z",
+        "ModelVersion":  "1.0.1",
+        "Name":  "PAEFS",
+        "Path":  "PAEFS/Opc.Ua.PAEFS.NodeSet2.xml",
+        "Description":  "An information model for PAEFS."
+    },
+    {
+        "Id":  "a053fed9-7636-49a9-8482-925a99858bbc",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion/Calender/",
+        "PublicationDate":  "2021-04-01T00:00:00Z",
+        "ModelVersion":  "1.00",
+        "Name":  "PlasticsRubber/Extrusion/Calender",
+        "Path":  "PlasticsRubber/Extrusion/Calender/1.00/Opc.Ua.PlasticsRubber.Extrusion.Calender.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion/Calender."
+    },
+    {
+        "Id":  "6bbc8ac0-1aff-4072-8a56-ec8b1f4fb97a",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion/Calibrator/",
+        "PublicationDate":  "2020-06-01T00:00:00Z",
+        "ModelVersion":  "1.00",
+        "Name":  "PlasticsRubber/Extrusion/Calibrator",
+        "Path":  "PlasticsRubber/Extrusion/Calibrator/1.00/Opc.Ua.PlasticsRubber.Extrusion.Calibrator.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion/Calibrator."
+    },
+    {
+        "Id":  "591f0fc5-dea4-4f1d-b1f3-cb931753510b",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion/Corrugator/",
+        "PublicationDate":  "2020-06-01T00:00:00Z",
+        "ModelVersion":  "1.00",
+        "Name":  "PlasticsRubber/Extrusion/Corrugator",
+        "Path":  "PlasticsRubber/Extrusion/Corrugator/1.00/Opc.Ua.PlasticsRubber.Extrusion.Corrugator.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion/Corrugator."
+    },
+    {
+        "Id":  "fb97fe28-2ef6-4a9a-b94f-1121c322a600",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion/Cutter/",
+        "PublicationDate":  "2020-06-01T00:00:00Z",
+        "ModelVersion":  "1.00",
+        "Name":  "PlasticsRubber/Extrusion/Cutter",
+        "Path":  "PlasticsRubber/Extrusion/Cutter/1.00/Opc.Ua.PlasticsRubber.Extrusion.Cutter.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion/Cutter."
+    },
+    {
+        "Id":  "5bd2d41f-7d3e-4888-b024-b4b57e9c01f3",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion/Die/",
+        "PublicationDate":  "2020-06-01T00:00:00Z",
+        "ModelVersion":  "1.00",
+        "Name":  "PlasticsRubber/Extrusion/Die",
+        "Path":  "PlasticsRubber/Extrusion/Die/1.00/Opc.Ua.PlasticsRubber.Extrusion.Die.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion/Die."
+    },
+    {
+        "Id":  "689d72d1-38a9-4d9b-9b9e-6ee6667506c1",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion/Extruder/",
+        "PublicationDate":  "2020-06-01T00:00:00Z",
+        "ModelVersion":  "1.00",
+        "Name":  "PlasticsRubber/Extrusion/Extruder",
+        "Path":  "PlasticsRubber/Extrusion/Extruder/1.00/Opc.Ua.PlasticsRubber.Extrusion.Extruder.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion/Extruder."
+    },
+    {
+        "Id":  "71e10716-7781-4fb1-9505-98c1720aa16c",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion/ExtrusionLine/",
+        "PublicationDate":  "2020-11-09T00:00:00Z",
+        "ModelVersion":  "1.00.01",
+        "Name":  "PlasticsRubber/Extrusion/ExtrusionLine",
+        "Path":  "PlasticsRubber/Extrusion/ExtrusionLine/1.00/Opc.Ua.PlasticsRubber.Extrusion.ExtrusionLine.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion/ExtrusionLine."
+    },
+    {
+        "Id":  "716db392-040f-4dd4-b699-51c8514590c3",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion/Filter/",
+        "PublicationDate":  "2020-06-01T00:00:00Z",
+        "ModelVersion":  "1.00",
+        "Name":  "PlasticsRubber/Extrusion/Filter",
+        "Path":  "PlasticsRubber/Extrusion/Filter/1.00/Opc.Ua.PlasticsRubber.Extrusion.Filter.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion/Filter."
+    },
+    {
+        "Id":  "189cc035-007d-4121-9efe-7c63e478981c",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion/GeneralTypes/",
+        "PublicationDate":  "2020-06-01T00:00:00Z",
+        "ModelVersion":  "1.00",
+        "Name":  "PlasticsRubber/Extrusion/GeneralTypes",
+        "Path":  "PlasticsRubber/Extrusion/GeneralTypes/1.00/Opc.Ua.PlasticsRubber.Extrusion.GeneralTypes.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion/GeneralTypes."
+    },
+    {
+        "Id":  "5a71edcf-68b8-4208-8cc1-82c3bdbf1bf5",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion/GeneralTypes/",
+        "PublicationDate":  "2021-04-01T00:00:00Z",
+        "ModelVersion":  "1.01",
+        "Name":  "PlasticsRubber/Extrusion/GeneralTypes",
+        "Path":  "PlasticsRubber/Extrusion/GeneralTypes/1.01/Opc.Ua.PlasticsRubber.Extrusion.GeneralTypes.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion/GeneralTypes."
+    },
+    {
+        "Id":  "c016286d-b86f-4430-810c-3da47b348095",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion/HaulOff/",
+        "PublicationDate":  "2020-06-01T00:00:00Z",
+        "ModelVersion":  "1.00",
+        "Name":  "PlasticsRubber/Extrusion/HaulOff",
+        "Path":  "PlasticsRubber/Extrusion/HaulOff/1.00/Opc.Ua.PlasticsRubber.Extrusion.HaulOff.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion/HaulOff."
+    },
+    {
+        "Id":  "bf06c34a-e380-4cfd-9df5-6a1480c95fb9",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion/MeltPump/",
+        "PublicationDate":  "2020-06-01T00:00:00Z",
+        "ModelVersion":  "1.00",
+        "Name":  "PlasticsRubber/Extrusion/MeltPump",
+        "Path":  "PlasticsRubber/Extrusion/MeltPump/1.00/Opc.Ua.PlasticsRubber.Extrusion.MeltPump.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion/MeltPump."
+    },
+    {
+        "Id":  "f3e9726d-59be-49fd-a338-6748cad5f354",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion/Pelletizer/",
+        "PublicationDate":  "2020-06-01T00:00:00Z",
+        "ModelVersion":  "1.00",
+        "Name":  "PlasticsRubber/Extrusion/Pelletizer",
+        "Path":  "PlasticsRubber/Extrusion/Pelletizer/1.00/Opc.Ua.PlasticsRubber.Extrusion.Pelletizer.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion/Pelletizer."
+    },
+    {
+        "Id":  "a629e915-1786-46a3-8ffc-76567abd00e8",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion_v2/Calender/",
+        "PublicationDate":  "2022-05-01T00:00:00Z",
+        "ModelVersion":  "2.00",
+        "Name":  "PlasticsRubber/Extrusion_v2/Calender",
+        "Path":  "PlasticsRubber/Extrusion_v2/Calender/2.00/Opc.Ua.PlasticsRubber.Extrusion_v2.Calender.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion_v2/Calender."
+    },
+    {
+        "Id":  "5f7258c0-e31c-444e-86b5-a6412e3c15d2",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion_v2/Calibrator/",
+        "PublicationDate":  "2022-05-01T00:00:00Z",
+        "ModelVersion":  "2.00",
+        "Name":  "PlasticsRubber/Extrusion_v2/Calibrator",
+        "Path":  "PlasticsRubber/Extrusion_v2/Calibrator/2.00/Opc.Ua.PlasticsRubber.Extrusion_v2.Calibrator.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion_v2/Calibrator."
+    },
+    {
+        "Id":  "ccca4370-3b64-4f5f-833a-3fed470c3c64",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion_v2/Corrugator/",
+        "PublicationDate":  "2022-05-01T00:00:00Z",
+        "ModelVersion":  "2.00",
+        "Name":  "PlasticsRubber/Extrusion_v2/Corrugator",
+        "Path":  "PlasticsRubber/Extrusion_v2/Corrugator/2.00/Opc.Ua.PlasticsRubber.Extrusion_v2.Corrugator.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion_v2/Corrugator."
+    },
+    {
+        "Id":  "37df07e7-b665-4a90-85b3-90abdef27c3c",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion_v2/Cutter/",
+        "PublicationDate":  "2022-05-01T00:00:00Z",
+        "ModelVersion":  "2.00",
+        "Name":  "PlasticsRubber/Extrusion_v2/Cutter",
+        "Path":  "PlasticsRubber/Extrusion_v2/Cutter/2.00/Opc.Ua.PlasticsRubber.Extrusion_v2.Cutter.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion_v2/Cutter."
+    },
+    {
+        "Id":  "4711b2b1-5569-4399-809e-b651cc51f9e8",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion_v2/Die/",
+        "PublicationDate":  "2022-05-01T00:00:00Z",
+        "ModelVersion":  "2.00",
+        "Name":  "PlasticsRubber/Extrusion_v2/Die",
+        "Path":  "PlasticsRubber/Extrusion_v2/Die/2.00/Opc.Ua.PlasticsRubber.Extrusion_v2.Die.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion_v2/Die."
+    },
+    {
+        "Id":  "74fd8bef-8d77-496a-b1c3-560b733740e2",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion_v2/Extruder/",
+        "PublicationDate":  "2022-05-01T00:00:00Z",
+        "ModelVersion":  "2.00",
+        "Name":  "PlasticsRubber/Extrusion_v2/Extruder",
+        "Path":  "PlasticsRubber/Extrusion_v2/Extruder/2.00/Opc.Ua.PlasticsRubber.Extrusion_v2.Extruder.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion_v2/Extruder."
+    },
+    {
+        "Id":  "de33d813-3542-4eb3-bda0-9f1ef76afbec",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion_v2/ExtrusionLine/",
+        "PublicationDate":  "2022-05-01T00:00:00Z",
+        "ModelVersion":  "2.00",
+        "Name":  "PlasticsRubber/Extrusion_v2/ExtrusionLine",
+        "Path":  "PlasticsRubber/Extrusion_v2/ExtrusionLine/2.00/Opc.Ua.PlasticsRubber.Extrusion_v2.ExtrusionLine.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion_v2/ExtrusionLine."
+    },
+    {
+        "Id":  "cec501ad-9a98-4814-b362-6ce6fb57fd1e",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion_v2/Filter/",
+        "PublicationDate":  "2022-05-01T00:00:00Z",
+        "ModelVersion":  "2.00",
+        "Name":  "PlasticsRubber/Extrusion_v2/Filter",
+        "Path":  "PlasticsRubber/Extrusion_v2/Filter/2.00/Opc.Ua.PlasticsRubber.Extrusion_v2.Filter.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion_v2/Filter."
+    },
+    {
+        "Id":  "15b05b15-628e-410a-9765-c91e50184c03",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion_v2/GeneralTypes/",
+        "PublicationDate":  "2022-05-01T00:00:00Z",
+        "ModelVersion":  "2.00",
+        "Name":  "PlasticsRubber/Extrusion_v2/GeneralTypes",
+        "Path":  "PlasticsRubber/Extrusion_v2/GeneralTypes/2.00/Opc.Ua.PlasticsRubber.Extrusion_v2.GeneralTypes.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion_v2/GeneralTypes."
+    },
+    {
+        "Id":  "abde11e9-3950-420a-bc33-b32ba1841383",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion_v2/HaulOff/",
+        "PublicationDate":  "2022-05-01T00:00:00Z",
+        "ModelVersion":  "2.00",
+        "Name":  "PlasticsRubber/Extrusion_v2/HaulOff",
+        "Path":  "PlasticsRubber/Extrusion_v2/HaulOff/2.00/Opc.Ua.PlasticsRubber.Extrusion_v2.HaulOff.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion_v2/HaulOff."
+    },
+    {
+        "Id":  "bad9042c-384a-4436-b904-6ecab3e54e47",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion_v2/MeltPump/",
+        "PublicationDate":  "2022-05-01T00:00:00Z",
+        "ModelVersion":  "2.00",
+        "Name":  "PlasticsRubber/Extrusion_v2/MeltPump",
+        "Path":  "PlasticsRubber/Extrusion_v2/MeltPump/2.00/Opc.Ua.PlasticsRubber.Extrusion_v2.MeltPump.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion_v2/MeltPump."
+    },
+    {
+        "Id":  "8975adf7-5a13-47d9-8242-e59772db3e79",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/Extrusion_v2/Pelletizer/",
+        "PublicationDate":  "2022-05-01T00:00:00Z",
+        "ModelVersion":  "2.00",
+        "Name":  "PlasticsRubber/Extrusion_v2/Pelletizer",
+        "Path":  "PlasticsRubber/Extrusion_v2/Pelletizer/2.00/Opc.Ua.PlasticsRubber.Extrusion_v2.Pelletizer.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/Extrusion_v2/Pelletizer."
+    },
+    {
+        "Id":  "5e294d41-f6b5-4f2e-903e-b2cde5a317cb",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/GeneralTypes/",
+        "PublicationDate":  "2020-06-01T00:00:00Z",
+        "ModelVersion":  "1.02",
+        "Name":  "PlasticsRubber/GeneralTypes",
+        "Path":  "PlasticsRubber/GeneralTypes/1.02/Opc.Ua.PlasticsRubber.GeneralTypes.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/GeneralTypes."
+    },
+    {
+        "Id":  "74c035c8-3977-4324-b71e-f1fb121206f6",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/GeneralTypes/",
+        "PublicationDate":  "2021-05-10T12:00:00Z",
+        "ModelVersion":  "1.03",
+        "Name":  "PlasticsRubber/GeneralTypes",
+        "Path":  "PlasticsRubber/GeneralTypes/1.03/Opc.Ua.PlasticsRubber.GeneralTypes.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/GeneralTypes."
+    },
+    {
+        "Id":  "82a66990-c1c0-474c-843f-1dfb1c15b2ff",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/HotRunner/",
+        "PublicationDate":  "2021-05-10T12:00:00Z",
+        "ModelVersion":  "1.00",
+        "Name":  "PlasticsRubber/HotRunner",
+        "Path":  "PlasticsRubber/HotRunner/1.00/Opc.Ua.PlasticsRubber.HotRunner.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/HotRunner."
+    },
+    {
+        "Id":  "d7b32395-028f-452d-8a91-178925ffc920",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/IMM2MES/",
+        "PublicationDate":  "2020-06-01T00:00:00Z",
+        "ModelVersion":  "1.01",
+        "Name":  "PlasticsRubber/IMM2MES",
+        "Path":  "PlasticsRubber/IMM2MES/1.01/Opc.Ua.PlasticsRubber.IMM2MES.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/IMM2MES."
+    },
+    {
+        "Id":  "8da0a5ab-cca6-4430-96a2-b3cabe128131",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/LDS/",
+        "PublicationDate":  "2021-06-21T00:00:00Z",
+        "ModelVersion":  "1.00.1",
+        "Name":  "PlasticsRubber/LDS",
+        "Path":  "PlasticsRubber/LDS/1.00/Opc.Ua.PlasticsRubber.LDS.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/LDS."
+    },
+    {
+        "Id":  "8edb8169-f392-4c11-867c-3f532e436646",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/LDS/",
+        "PublicationDate":  "2025-04-01T00:00:00",
+        "ModelVersion":  "1.02.0",
+        "Name":  "PlasticsRubber/LDS",
+        "Path":  "PlasticsRubber/LDS/1.02/Opc.Ua.PlasticsRubber.LDS.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/LDS."
+    },
+    {
+        "Id":  "5ef8c583-5a3c-4265-8d44-305d141bc534",
+        "ModelUri":  "http://opcfoundation.org/UA/PlasticsRubber/TCD/",
+        "PublicationDate":  "2020-06-01T00:00:00Z",
+        "ModelVersion":  "1.01",
+        "Name":  "PlasticsRubber/TCD",
+        "Path":  "PlasticsRubber/TCD/1.01/Opc.Ua.PlasticsRubber.TCD.NodeSet2.xml",
+        "Description":  "An information model for PlasticsRubber/TCD."
+    },
+    {
+        "Id":  "9924f409-4762-4b37-af34-d0d970992fa1",
+        "ModelUri":  "http://PLCopen.org/OpcUa/IEC61131-3/",
+        "PublicationDate":  "2020-11-25T00:00:00Z",
+        "ModelVersion":  "1.02",
+        "Name":  "PLCopen",
+        "Path":  "PLCopen/Opc.Ua.PLCopen.NodeSet2_V1.02.xml",
+        "Description":  "An information model for PLCopen."
+    },
+    {
+        "Id":  "bd0951c3-eb66-4741-91b0-e2e57e9081db",
+        "ModelUri":  "http://opcfoundation.org/UA/PDRV/",
+        "PublicationDate":  "2024-07-04T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "PNDRV",
+        "Path":  "PNDRV/Opc.Ua.PNDRV.Nodeset2.xml",
+        "Description":  "An information model for PNDRV."
+    },
+    {
+        "Id":  "9972005b-10da-49bb-b593-54702af96ae8",
+        "ModelUri":  "http://opcfoundation.org/UA/PNEM/",
+        "PublicationDate":  "2021-03-11T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "PNEM",
+        "Path":  "PNEM/Opc.Ua.PnEm.NodeSet2.xml",
+        "Description":  "An information model for PNEM."
+    },
+    {
+        "Id":  "7f196bb0-aa9c-4eac-8adf-1c24703e361b",
+        "ModelUri":  "http://opcfoundation.org/UA/PNENC/",
+        "PublicationDate":  "2022-10-21T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "PNENC",
+        "Path":  "PNENC/Opc.Ua.PnEnc.Nodeset2.xml",
+        "Description":  "An information model for PNENC."
+    },
+    {
+        "Id":  "8fce3f91-e597-433b-9dbe-a50cc599d2d1",
+        "ModelUri":  "http://opcfoundation.org/UA/PNGSDGM/",
+        "PublicationDate":  "2023-06-30T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "PNGSDGM",
+        "Path":  "PNGSDGM/opc.ua.pngsdgm.Nodeset2.xml",
+        "Description":  "An information model for PNGSDGM."
+    },
+    {
+        "Id":  "d8d789b2-f2f8-4c45-92f1-790e1e08f6b2",
+        "ModelUri":  "http://opcfoundation.org/UA/PNRIO/",
+        "PublicationDate":  "2022-07-11T00:00:00Z",
+        "ModelVersion":  "1.00.1",
+        "Name":  "PNRIO",
+        "Path":  "PNRIO/Opc.Ua.PnRio.Nodeset2.xml",
+        "Description":  "An information model for PNRIO."
+    },
+    {
+        "Id":  "b209bb09-2a77-4973-b828-9a778e096025",
+        "ModelUri":  "http://opcfoundation.org/UA/POWERLINK/",
+        "PublicationDate":  "2017-10-10T13:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "POWERLINK",
+        "Path":  "POWERLINK/Opc.Ua.POWERLINK.NodeSet2.xml",
+        "Description":  "An information model for POWERLINK."
+    },
+    {
+        "Id":  "54591212-88b4-4acd-b1b8-bf5abdd2fd2b",
+        "ModelUri":  "http://opcfoundation.org/UA/Powertrain/",
+        "PublicationDate":  "2024-11-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "Powertrain",
+        "Path":  "Powertrain/Opc.Ua.Powertrain.NodeSet2.xml",
+        "Description":  "An information model for Powertrain."
+    },
+    {
+        "Id":  "2b6340f1-66ec-4dc9-9dea-c3027f90c5cc",
+        "ModelUri":  "http://opcfoundation.org/UA/Dictionary/IRDI",
+        "PublicationDate":  "2024-07-11T15:02:44Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "powertraindictionary",
+        "Path":  "Powertrain/powertraindictionary.nodeset2.xml",
+        "Description":  "An information model for powertraindictionary."
+    },
+    {
+        "Id":  "af27c36f-9c6a-4674-82f0-7e731a4de3af",
+        "ModelUri":  "http://opcfoundation.org/UA/PROFINET/",
+        "PublicationDate":  "2021-04-13T00:00:00Z",
+        "ModelVersion":  "1.0.1",
+        "Name":  "Pn",
+        "Path":  "PROFINET/Opc.Ua.Pn.NodeSet2.xml",
+        "Description":  "An information model for Pn."
+    },
+    {
+        "Id":  "21cbc6f8-9e44-48f8-b842-1a3a9999f06b",
+        "ModelUri":  "http://opcfoundation.org/UA/Pumps/",
+        "PublicationDate":  "2021-04-19T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "Pumps",
+        "Path":  "Pumps/Opc.Ua.Pumps.NodeSet2.xml",
+        "Description":  "An information model for Pumps."
+    },
+    {
+        "Id":  "0d30b3c7-87ae-4d2c-8c2c-0fad4d20d023",
+        "ModelUri":  "http://opcfoundation.org/UA/Robotics/",
+        "PublicationDate":  "2025-09-08T00:00:00Z",
+        "ModelVersion":  "1.02",
+        "Name":  "Robotics",
+        "Path":  "Robotics/Opc.Ua.Robotics.NodeSet2.xml",
+        "Description":  "An information model for Robotics."
+    },
+    {
+        "Id":  "06d39ce2-a5a6-43b3-8de8-51ccbc61cf23",
+        "ModelUri":  "http://opcfoundation.org/UA/RSL/",
+        "PublicationDate":  "2023-01-12T00:00:00Z",
+        "ModelVersion":  "1.00.1",
+        "Name":  "RSL",
+        "Path":  "RSL/Opc.Ua.RSL.NodeSet2.xml",
+        "Description":  "An information model for RSL."
+    },
+    {
+        "Id":  "35f8e3ff-f35d-49ea-a434-21f3de45f76b",
+        "ModelUri":  "http://opcfoundation.org/UA/Safety",
+        "PublicationDate":  "2025-02-05T00:00:00Z",
+        "ModelVersion":  "1.05.04",
+        "Name":  "Safety",
+        "Path":  "Safety/Opc.Ua.Safety.NodeSet2.xml",
+        "Description":  "An information model for Safety."
+    },
+    {
+        "Id":  "7fe0ef90-cdca-4047-a945-d471ba0fb094",
+        "ModelUri":  "http://opcfoundation.org/UA/Scales/V2/",
+        "PublicationDate":  "2025-03-01T00:00:00Z",
+        "ModelVersion":  "2.00",
+        "Name":  "Scales",
+        "Path":  "Scales/Opc.Ua.Scales.NodeSet2.xml",
+        "Description":  "An information model for Scales."
+    },
+    {
+        "Id":  "aa91e2c9-f52e-4a47-99f0-64a38b2097ce",
+        "ModelUri":  "http://opcfoundation.org/UA/Scheduler/",
+        "PublicationDate":  "2022-11-01T00:00:00Z",
+        "ModelVersion":  "1.05.02",
+        "Name":  "Scheduler",
+        "Path":  "Scheduler/Opc.Ua.Scheduler.NodeSet2.xml",
+        "Description":  "An information model for Scheduler."
+    },
+    {
+        "Id":  "c02a9344-ef33-4d77-b78c-7282c420ab9c",
+        "ModelUri":  "http://opcfoundation.org/UA/",
+        "PublicationDate":  "2025-11-08T00:00:00Z",
+        "ModelVersion":  "1.05.06",
+        "Name":  "Core",
+        "Path":  "Schema/Opc.Ua.NodeSet2.Services.xml",
+        "Description":  "An information model for Core."
+    },
+    {
+        "Id":  "d280f30a-c51e-4b33-a929-93fe4cad065c",
+        "ModelUri":  "http://sercos.org/UA/",
+        "PublicationDate":  "2017-03-13T00:00:00Z",
+        "ModelVersion":  "1.00",
+        "Name":  "Sercos",
+        "Path":  "Sercos/Sercos.NodeSet2.xml",
+        "Description":  "An information model for Sercos."
+    },
+    {
+        "Id":  "917b661b-0ea2-4829-8b61-1fd66825f552",
+        "ModelUri":  "http://opcfoundation.org/UA/SurfaceTechnology/Plasma/",
+        "PublicationDate":  "2026-01-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "SurfaceTechnology/Plasma",
+        "Path":  "SurfaceTechnology/Plasma/Opc.Ua.SurfaceTechnology.Plasma.NodeSet2.xml",
+        "Description":  "An information model for SurfaceTechnology/Plasma."
+    },
+    {
+        "Id":  "f3116e9d-14c2-4092-8463-fc2818e0f8a4",
+        "ModelUri":  "http://opcfoundation.org/UA/TMC/v2/",
+        "PublicationDate":  "2022-07-25T00:00:00Z",
+        "ModelVersion":  "2.00.1",
+        "Name":  "TMC",
+        "Path":  "TMC/Opc.Ua.TMC.NodeSet2.xml",
+        "Description":  "An information model for TMC."
+    },
+    {
+        "Id":  "034bf31a-fca9-4daf-8ba5-32867980e65d",
+        "ModelUri":  "http://opcfoundation.org/UA/TTD/",
+        "PublicationDate":  "2025-03-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "TTD",
+        "Path":  "TTD/opc.ua.ttd.nodeset2.xml",
+        "Description":  "An information model for TTD."
+    },
+    {
+        "Id":  "820f8007-2729-41c8-948c-1c6bd6ab9d20",
+        "ModelUri":  "http://opcfoundation.org/UA/FX/AC/",
+        "PublicationDate":  "2025-07-17T12:00:00Z",
+        "ModelVersion":  "1.00.03",
+        "Name":  "FX/AC",
+        "Path":  "UAFX/opc.ua.fx.ac.nodeset2.xml",
+        "Description":  "An information model for FX/AC."
+    },
+    {
+        "Id":  "23673da9-2c40-4227-8ea0-f7a8c3fa9910",
+        "ModelUri":  "http://opcfoundation.org/UA/FX/CM/",
+        "PublicationDate":  "2025-07-17T12:00:00Z",
+        "ModelVersion":  "1.00.03",
+        "Name":  "FX/CM",
+        "Path":  "UAFX/opc.ua.fx.cm.nodeset2.xml",
+        "Description":  "An information model for FX/CM."
+    },
+    {
+        "Id":  "96ef2d6f-1dac-4000-a0ba-3896318d7679",
+        "ModelUri":  "http://opcfoundation.org/UA/FX/Data/",
+        "PublicationDate":  "2025-07-17T12:00:00Z",
+        "ModelVersion":  "1.00.03",
+        "Name":  "FX/Data",
+        "Path":  "UAFX/opc.ua.fx.data.nodeset2.xml",
+        "Description":  "An information model for FX/Data."
+    },
+    {
+        "Id":  "eb62b0d9-2ca1-4a5a-be55-45d82c7947ae",
+        "ModelUri":  "http://opcfoundation.org/UA/Weihenstephan/",
+        "PublicationDate":  "2021-07-12T00:00:00Z",
+        "ModelVersion":  "1.00.0",
+        "Name":  "Weihenstephan",
+        "Path":  "Weihenstephan/Opc.Ua.Weihenstephan.NodeSet2.xml",
+        "Description":  "An information model for Weihenstephan."
+    },
+    {
+        "Id":  "f7cd3c23-f881-495a-acab-02190359f479",
+        "ModelUri":  "http://opcfoundation.org/UA/WireHarness/",
+        "PublicationDate":  "2025-04-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "WireHarness",
+        "Path":  "WireHarness/opc.ua.wireharness.nodeset2.xml",
+        "Description":  "An information model for WireHarness."
+    },
+    {
+        "Id":  "6ff95192-4045-4934-9383-21878d143b32",
+        "ModelUri":  "http://opcfoundation.org/UA/WireHarness/VEC/",
+        "PublicationDate":  "2025-04-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "WireHarness/VEC",
+        "Path":  "WireHarness/opc.ua.wireharness.vec.nodeset2.xml",
+        "Description":  "An information model for WireHarness/VEC."
+    },
+    {
+        "Id":  "532d7f11-397c-4878-ba01-3cbb3295e820",
+        "ModelUri":  "http://opcfoundation.org/UA/WMTP/",
+        "PublicationDate":  "2025-11-01T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "WMTP",
+        "Path":  "WMTP/Opc.Ua.WMTP.Nodeset2.xml",
+        "Description":  "An information model for WMTP."
+    },
+    {
+        "Id":  "adbf185b-64f2-4cb2-b7ba-06151e499942",
+        "ModelUri":  "http://opcfoundation.org/UA/Eumabois/",
+        "PublicationDate":  "2021-01-27T00:14:00Z",
+        "ModelVersion":  "0.14",
+        "Name":  "Eumabois",
+        "Path":  "Woodworking/Opc.Ua.Eumabois.Nodeset2.xml",
+        "Description":  "An information model for Eumabois."
+    },
+    {
+        "Id":  "81d2d52f-f12e-4449-a56c-b7ce37d6141e",
+        "ModelUri":  "http://opcfoundation.org/UA/Woodworking/",
+        "PublicationDate":  "2025-06-01T01:02:00Z",
+        "ModelVersion":  "1.02.0",
+        "Name":  "Woodworking",
+        "Path":  "Woodworking/Opc.Ua.Woodworking.NodeSet2.xml",
+        "Description":  "An information model for Woodworking."
+    },
+    {
+        "Id":  "62efe994-221a-435f-8622-2bcd0e87a874",
+        "ModelUri":  "http://opcfoundation.org/UA/WoT-Con/",
+        "PublicationDate":  "2025-06-30T00:00:00Z",
+        "ModelVersion":  "1.01.0",
+        "Name":  "WotCon",
+        "Path":  "WoT/Opc.Ua.WotCon.NodeSet2.xml",
+        "Description":  "An information model for WotCon."
+    },
+    {
+        "Id":  "fbeceb6a-0857-46c2-aefc-3ee35f4cda17",
+        "ModelUri":  "http://opcfoundation.org/UA/XML/",
+        "PublicationDate":  "2023-01-14T00:00:00Z",
+        "ModelVersion":  "1.0.0",
+        "Name":  "XML",
+        "Path":  "XML/Opc.Ua.Xml.NodeSet2.xml",
+        "Description":  "An information model for XML."
+    }
+]
