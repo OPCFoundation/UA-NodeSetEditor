@@ -32,5 +32,5 @@
   <Project Path="NodeSetModel/NodeSetEditor.Model.csproj" Id="c82f904a-d8f9-4889-b4d4-21a772be1e85" />
   <Project Path="Opc.Ua.CloudLibraryApi/Opc.Ua.CloudLibraryApi.csproj" />
   <Project Path="Opc.Ua.RestfulApi/Opc.Ua.RestfulApi.csproj" />
-  <Project Path="UANodeSetSerializer/Opc.Ua.NodeSetSerializer/Opc.Ua.NodeSetSerializer.csproj" />
+  <Project Path="NodeSetSerializer/Opc.Ua.NodeSetSerializer/Opc.Ua.NodeSetSerializer.csproj" />
 </Solution>

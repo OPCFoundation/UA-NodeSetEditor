@@ -35,7 +35,7 @@
     <ProjectReference Include="..\NodeSetModel\NodeSetEditor.Model.csproj" />
     <!-- Transitively pulled in via NodeSetEditor.Model; alias to avoid type
          collisions with Opc.Ua.Types (both ship Opc.Ua.Export.UANodeSet). -->
-    <ProjectReference Include="..\UANodeSetSerializer\Opc.Ua.NodeSetSerializer\Opc.Ua.NodeSetSerializer.csproj">
+    <ProjectReference Include="..\NodeSetSerializer\Opc.Ua.NodeSetSerializer\Opc.Ua.NodeSetSerializer.csproj">
       <!-- Aliased because this assembly and Opc.Ua.Types both define UANodeSet, UANode,
            ModelTableEntry and DataTypeDefinition. Without the alias every use of those
            names is ambiguous (CS0433) and the "extern alias JsonNodeSet;" at the top of

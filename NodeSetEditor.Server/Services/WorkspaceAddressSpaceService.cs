@@ -3,7 +3,7 @@ extern alias JsonNodeSet;
 using System.Collections.Concurrent;
 using NodeSetEditor.Server.Model;
 using JsonNodeSet::NodeSetTool;
-using JsonNodeSet::Opc.Ua.JsonNodeSet;
+using JsonNodeSet::Opc.Ua.NodeSetSerializer;
 
 namespace NodeSetEditor.Server.Services
 {

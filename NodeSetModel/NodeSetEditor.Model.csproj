@@ -15,10 +15,10 @@
 
   <ItemGroup>
     <!-- For Part 6 JSON value (de)serialization via VariantConverter.
-         Aliased to avoid type collisions: Opc.Ua.JsonNodeSet ships its own
+         Aliased to avoid type collisions: Opc.Ua.NodeSetSerializer ships its own
          xsd-generated Opc.Ua.Export.UANode that conflicts with the same type
          in the OPC Foundation Opc.Ua.Types reference. -->
-    <ProjectReference Include="..\UANodeSetSerializer\Opc.Ua.NodeSetSerializer\Opc.Ua.NodeSetSerializer.csproj">
+    <ProjectReference Include="..\NodeSetSerializer\Opc.Ua.NodeSetSerializer\Opc.Ua.NodeSetSerializer.csproj">
       <!-- Aliased because this assembly and Opc.Ua.Types both define UANodeSet, UANode,
            ModelTableEntry and DataTypeDefinition. Without the alias every use of those
            names is ambiguous (CS0433) and the "extern alias JsonNodeSet;" at the top of

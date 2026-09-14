@@ -1,4 +1,4 @@
-## OPCUA NodeSetEditor
+## UA NodeSetEditor
 
 ### Overview
 This repository has the OPC UA NodeSetEditor which was derived from the [CESMII ProfileDesigner](https://profiledesigner.cesmii.net).
@@ -33,6 +33,3 @@ require a signed-in user: the documentation describes every request body and the
 worker endpoints, and nothing there is intended for anonymous readers. The Swagger UI assets are
 vendored under `OpenApi/swagger-ui/` rather than loaded from a CDN because the site's
 Content-Security-Policy is `script-src 'self'`.
-
-
-

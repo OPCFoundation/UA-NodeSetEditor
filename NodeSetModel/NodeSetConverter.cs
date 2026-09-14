@@ -5,10 +5,10 @@ using System.Text.Json.Nodes;
 using System.Xml;
 using Microsoft.EntityFrameworkCore;
 using Opc.Ua;
-using Part6Variant = JsonNodeSet::Opc.Ua.JsonNodeSet.Part6Variant;
-using JsonAddressSpace = JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace;
-using JsonCore = JsonNodeSet::Opc.Ua.JsonNodeSet.CoreNodeSetLoader;
-using JsonModel = JsonNodeSet::Opc.Ua.JsonNodeSet.Model;
+using Part6Variant = JsonNodeSet::Opc.Ua.NodeSetSerializer.Part6Variant;
+using JsonAddressSpace = JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace;
+using JsonCore = JsonNodeSet::Opc.Ua.NodeSetSerializer.CoreNodeSetLoader;
+using JsonModel = JsonNodeSet::Opc.Ua.NodeSetSerializer.Model;
 
 namespace NodeSetEditor.Model
 {
@@ -470,7 +470,7 @@ namespace NodeSetEditor.Model
 
             // Two-pass build:
             //
-            //   Pass 1 — populate a JsonNodeSet.AddressSpace with this model's DataTypes
+            //   Pass 1 — populate a NodeSetSerializer.AddressSpace with this model's DataTypes
             //            (plus the embedded Core fallback) so the value-emitting writer
             //            in pass 2 can resolve struct wrapper names, recognise built-in
             //            shapes (NodeId/QualifiedName/DateTime), etc. The AddressSpace is
@@ -530,7 +530,7 @@ namespace NodeSetEditor.Model
         }
 
         /// <summary>
-        /// Pass 1 of the two-pass build: assembles a JsonNodeSet.AddressSpace from the
+        /// Pass 1 of the two-pass build: assembles a NodeSetSerializer.AddressSpace from the
         /// in-progress reconstitution. The AddressSpace contains:
         ///   * The embedded Core (Services) NodeSet — gives every spec-compliant NodeSet
         ///     access to standard DataTypes (Argument, EUInformation, BuildInfo, etc.).
@@ -606,7 +606,7 @@ namespace NodeSetEditor.Model
                     IsAbstract = attrs?.IsAbstract,
                 };
 
-                // DataTypeDefinition — convert from internal entry shape to JsonNodeSet shape.
+                // DataTypeDefinition — convert from internal entry shape to NodeSetSerializer shape.
                 if (attrs?.Definition != null)
                 {
                     dt.Definition = ConvertDefinitionToJsonNodeSet(attrs.Definition);
@@ -656,14 +656,14 @@ namespace NodeSetEditor.Model
 
         /// <summary>
         /// Bridges from the internal <see cref="DataTypeDefinitionEntry"/> shape (used in
-        /// DB-stored attributes) to the JsonNodeSet model's
-        /// <see cref="JsonNodeSet::Opc.Ua.JsonNodeSet.Model.DataTypeDefinition"/> so the
-        /// JsonNodeSet AddressSpace can drive the schema-aware Variant writer.
+        /// DB-stored attributes) to the NodeSetSerializer model's
+        /// <see cref="JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.DataTypeDefinition"/> so the
+        /// NodeSetSerializer AddressSpace can drive the schema-aware Variant writer.
         /// </summary>
         private static JsonModel.DataTypeDefinition ConvertDefinitionToJsonNodeSet(
             DataTypeDefinitionEntry src)
         {
-            // No Name: the JsonNodeSet model takes it from the containing DataType's BrowseName.
+            // No Name: the NodeSetSerializer model takes it from the containing DataType's BrowseName.
             var def = new JsonModel.DataTypeDefinition
             {
                 SymbolicName = src.SymbolicName,
@@ -1307,7 +1307,7 @@ namespace NodeSetEditor.Model
         /// Convert an OPC UA Value XmlElement to its Part 6 JSON representation
         /// (Part 6 §5.4 reversible form). The result is the typed JSON value:
         /// primitives as native JSON, structures as <c>{UaTypeId, ...inline body fields}</c>,
-        /// arrays as JSON arrays, etc. Routed through <c>Opc.Ua.JsonNodeSet.Part6Variant</c>
+        /// arrays as JSON arrays, etc. Routed through <c>Opc.Ua.NodeSetSerializer.Part6Variant</c>
         /// so the same converter implementation drives both the standalone NodeSetTool
         /// path and the DB-persisted path.
         /// </summary>

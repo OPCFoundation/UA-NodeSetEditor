@@ -1098,7 +1098,7 @@ namespace NodeSetEditor.Server.Controllers
             Guid workspaceId,
             ModelInfo modelInfo,
             IReadOnlyList<ModelInfo?> models,
-            JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace addressSpace,
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace,
             string fmt)
         {
             var modelByUri = models
@@ -1187,7 +1187,7 @@ namespace NodeSetEditor.Server.Controllers
         /// file extension.
         /// </summary>
         private static MemoryStream SerializeModel(
-            JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace addressSpace,
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace,
             string modelUri,
             string fmt,
             out string contentType,
@@ -1209,7 +1209,7 @@ namespace NodeSetEditor.Server.Controllers
                     || !string.IsNullOrWhiteSpace(license)
                     || !string.IsNullOrWhiteSpace(licenseUrl))
                 {
-                    serializer.Spdx = new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.SpdxDeclaration
+                    serializer.Spdx = new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.SpdxDeclaration
                     {
                         CopyrightText = copyrightText,
                         LicenceId = string.IsNullOrWhiteSpace(license) ? null : license,
@@ -1495,8 +1495,8 @@ namespace NodeSetEditor.Server.Controllers
 
                 var ncEnum = request.NodeClass switch
                 {
-                    "Object" => (JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass?)JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAObject,
-                    "Variable" => JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAVariable,
+                    "Object" => (JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass?)JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAObject,
+                    "Variable" => JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAVariable,
                     _ => null
                 };
                 if (ncEnum == null)
@@ -1513,7 +1513,7 @@ namespace NodeSetEditor.Server.Controllers
                 var displayName = string.IsNullOrWhiteSpace(request.DisplayName)
                     ? request.BrowseName : request.DisplayName;
 
-                var lt = new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.LocalizedText
+                var lt = new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.LocalizedText
                 {
                     T = new List<List<string>> { new() { "", displayName } }
                 };
@@ -1523,19 +1523,19 @@ namespace NodeSetEditor.Server.Controllers
                 // node is a standalone marker — no references (not even
                 // HasTypeDefinition), no children, instantiation rules skipped.
                 bool designToolOnly =
-                    ncEnum.Value == JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAVariable
+                    ncEnum.Value == JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAVariable
                     || request.DesignToolOnly == true;
 
                 // A design-tool-only node keeps its defining HasTypeDefinition as
                 // read-only metadata, but takes no children and no other
                 // references; instantiation of mandatory children is skipped.
                 // Only HasTypeDefinition — no hierarchical parent reference.
-                var references = new List<JsonNodeSet::Opc.Ua.JsonNodeSet.Model.Reference>();
+                var references = new List<JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.Reference>();
                 if (!string.IsNullOrEmpty(request.TypeDefinitionId))
                     references.Add(new() { ReferenceTypeId = "i=40", TargetId = request.TypeDefinitionId, IsForward = true });
 
-                JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UANode uaNode = ncEnum.Value == JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAVariable
-                    ? new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAVariable
+                JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UANode uaNode = ncEnum.Value == JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAVariable
+                    ? new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariable
                     {
                         NodeId = nodeId, NodeClass = ncEnum, BrowseName = qualifiedBrowseName,
                         DisplayName = lt, ParentId = null, TypeId = request.TypeDefinitionId,
@@ -1543,7 +1543,7 @@ namespace NodeSetEditor.Server.Controllers
                         DataType = request.DataType, ValueRank = request.ValueRank,
                         ArrayDimensions = SanitizeArrayDimensions(request.ValueRank, request.ArrayDimensions),
                     }
-                    : new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAObject
+                    : new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAObject
                     {
                         NodeId = nodeId, NodeClass = ncEnum, BrowseName = qualifiedBrowseName,
                         DisplayName = lt, ParentId = null, TypeId = request.TypeDefinitionId,
@@ -1552,7 +1552,7 @@ namespace NodeSetEditor.Server.Controllers
 
                 if (!string.IsNullOrEmpty(request.Description))
                 {
-                    uaNode.Description = new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.LocalizedText
+                    uaNode.Description = new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.LocalizedText
                     {
                         T = new List<List<string>> { new() { "", request.Description } }
                     };
@@ -1669,20 +1669,20 @@ namespace NodeSetEditor.Server.Controllers
 
                 var ncEnum = request.NodeClass switch
                 {
-                    "Object" => JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAObject,
-                    "Variable" => JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAVariable,
-                    "Method" => JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAMethod,
-                    "ObjectType" => JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAObjectType,
-                    "VariableType" => JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAVariableType,
-                    "DataType" => JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UADataType,
-                    "ReferenceType" => JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAReferenceType,
-                    _ => (JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass?)null
+                    "Object" => JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAObject,
+                    "Variable" => JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAVariable,
+                    "Method" => JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAMethod,
+                    "ObjectType" => JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAObjectType,
+                    "VariableType" => JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAVariableType,
+                    "DataType" => JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UADataType,
+                    "ReferenceType" => JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAReferenceType,
+                    _ => (JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass?)null
                 };
 
                 if (ncEnum == null)
                     return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument, nameof(Opc.Ua.StatusCodes.BadInvalidArgument), $"Invalid nodeClass: '{request.NodeClass}'."));
 
-                if (ncEnum == JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAReferenceType)
+                if (ncEnum == JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAReferenceType)
                 {
                     // A new ReferenceType is created as a subtype, so the parent it hangs
                     // off decides whether it is hierarchical.
@@ -1693,7 +1693,7 @@ namespace NodeSetEditor.Server.Controllers
                         return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument, nameof(Opc.Ua.StatusCodes.BadInvalidArgument), attrError));
                 }
 
-                if (ncEnum == JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UADataType
+                if (ncEnum == JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UADataType
                     && request.IsOptionSet == true
                     && !addressSpace.IsTypeOf(parentNodeId, UINTEGER))
                 {
@@ -1704,7 +1704,7 @@ namespace NodeSetEditor.Server.Controllers
                 }
 
                 var refTypeId = request.ReferenceTypeId ?? "i=47";
-                var references = new List<JsonNodeSet::Opc.Ua.JsonNodeSet.Model.Reference>
+                var references = new List<JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.Reference>
                 {
                     new() { ReferenceTypeId = refTypeId, TargetId = parentNodeId, IsForward = false },
                 };
@@ -1722,7 +1722,7 @@ namespace NodeSetEditor.Server.Controllers
                     references.Add(new() { ReferenceTypeId = HAS_SUBTYPE, TargetId = parentNodeId, IsForward = false });
                 }
 
-                var lt = new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.LocalizedText
+                var lt = new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.LocalizedText
                 {
                     T = new List<List<string>> { new() { "", displayName } }
                 };
@@ -1738,19 +1738,19 @@ namespace NodeSetEditor.Server.Controllers
                 // that overrides an inherited child re-declares only the child, so the value
                 // stays on the supertype's copy at the same BrowseName path. ResolveDefaultValue
                 // does that walk and falls back to the child's own TypeDefinition.
-                JsonNodeSet::Opc.Ua.JsonNodeSet.Model.Variant? defaultValue = null;
-                if (ncEnum == JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAVariable && !isTypeNode)
+                JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.Variant? defaultValue = null;
+                if (ncEnum == JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAVariable && !isTypeNode)
                 {
                     if (!string.IsNullOrEmpty(request.SourceNodeId))
-                        defaultValue = (addressSpace.Read(request.SourceNodeId!) as JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAVariable)?.Value;
+                        defaultValue = (addressSpace.Read(request.SourceNodeId!) as JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariable)?.Value;
 
                     defaultValue ??= addressSpace.ResolveDefaultValue(
                         parentNodeId, qualifiedBrowseName, request.TypeDefinitionId);
                 }
 
-                JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UANode uaNode = ncEnum.Value switch
+                JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UANode uaNode = ncEnum.Value switch
                 {
-                    JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAVariable => new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAVariable
+                    JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAVariable => new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariable
                     {
                         NodeId = nodeId, NodeClass = ncEnum, BrowseName = qualifiedBrowseName,
                         DisplayName = lt, ParentId = nodeParentId, TypeId = request.TypeDefinitionId,
@@ -1759,19 +1759,19 @@ namespace NodeSetEditor.Server.Controllers
                         ArrayDimensions = SanitizeArrayDimensions(request.ValueRank, request.ArrayDimensions),
                         Value = defaultValue,
                     },
-                    JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAMethod => new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAMethod
+                    JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAMethod => new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAMethod
                     {
                         NodeId = nodeId, NodeClass = ncEnum, BrowseName = qualifiedBrowseName,
                         DisplayName = lt, ParentId = nodeParentId,
                         ModellingRuleId = effectiveModellingRuleId, References = references,
                     },
-                    JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAObjectType => new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAObjectType
+                    JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAObjectType => new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAObjectType
                     {
                         NodeId = nodeId, NodeClass = ncEnum, BrowseName = qualifiedBrowseName,
                         DisplayName = lt, ParentId = nodeParentId,
                         References = references, IsAbstract = request.IsAbstract,
                     },
-                    JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAVariableType => new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAVariableType
+                    JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAVariableType => new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariableType
                     {
                         NodeId = nodeId, NodeClass = ncEnum, BrowseName = qualifiedBrowseName,
                         DisplayName = lt, ParentId = nodeParentId,
@@ -1779,7 +1779,7 @@ namespace NodeSetEditor.Server.Controllers
                         DataType = request.DataType, ValueRank = request.ValueRank,
                         ArrayDimensions = SanitizeArrayDimensions(request.ValueRank, request.ArrayDimensions),
                     },
-                    JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UADataType => new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UADataType
+                    JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UADataType => new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UADataType
                     {
                         NodeId = nodeId, NodeClass = ncEnum, BrowseName = qualifiedBrowseName,
                         DisplayName = lt, ParentId = nodeParentId,
@@ -1789,14 +1789,14 @@ namespace NodeSetEditor.Server.Controllers
                         // it the new type reads back as a plain UInteger subtype and the editor
                         // never offers the Fields tab needed to add the first bit.
                         Definition = request.IsOptionSet == true
-                            ? new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.DataTypeDefinition
+                            ? new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.DataTypeDefinition
                             {
                                 IsOptionSet = true,
-                                Fields = new List<JsonNodeSet::Opc.Ua.JsonNodeSet.Model.DataTypeField>(),
+                                Fields = new List<JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.DataTypeField>(),
                             }
                             : null,
                     },
-                    JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAReferenceType => new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAReferenceType
+                    JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAReferenceType => new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAReferenceType
                     {
                         NodeId = nodeId, NodeClass = ncEnum, BrowseName = qualifiedBrowseName,
                         DisplayName = lt, ParentId = nodeParentId,
@@ -1804,7 +1804,7 @@ namespace NodeSetEditor.Server.Controllers
                         Symmetric = request.Symmetric == true ? true : null,
                         InverseName = MakeLocalizedText(request.InverseName),
                     },
-                    _ => new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAObject
+                    _ => new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAObject
                     {
                         NodeId = nodeId, NodeClass = ncEnum, BrowseName = qualifiedBrowseName,
                         DisplayName = lt, ParentId = nodeParentId, TypeId = request.TypeDefinitionId,
@@ -1814,7 +1814,7 @@ namespace NodeSetEditor.Server.Controllers
 
                 if (!string.IsNullOrEmpty(request.Description))
                 {
-                    uaNode.Description = new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.LocalizedText
+                    uaNode.Description = new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.LocalizedText
                     {
                         T = new List<List<string>> { new() { "", request.Description } }
                     };
@@ -1830,16 +1830,16 @@ namespace NodeSetEditor.Server.Controllers
                     var parent = addressSpace.Read(parentNodeId);
                     if (parent != null)
                     {
-                        parent.Children ??= new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.ChildList();
+                        parent.Children ??= new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.ChildList();
                         switch (uaNode)
                         {
-                            case JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAVariable v:
+                            case JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariable v:
                                 (parent.Children.Variables ??= new()).Add(v);
                                 break;
-                            case JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAMethod m:
+                            case JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAMethod m:
                                 (parent.Children.Methods ??= new()).Add(m);
                                 break;
-                            case JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAObject o:
+                            case JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAObject o:
                                 (parent.Children.Objects ??= new()).Add(o);
                                 break;
                         }
@@ -1862,7 +1862,7 @@ namespace NodeSetEditor.Server.Controllers
                 }
 
                 // Auto-create Default Binary and Default XML encoding nodes for Structure subtypes
-                if (uaNode is JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UADataType)
+                if (uaNode is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UADataType)
                 {
                     if (IsSubtypeOf(addressSpace, parentNodeId, "i=22")) // Structure
                     {
@@ -1870,17 +1870,17 @@ namespace NodeSetEditor.Server.Controllers
                         {
                             var encNumericId = await _addressSpace.GetNextNodeIdAsync(workspaceId, request.ModelUri);
                             var encNodeId = $"nsu={request.ModelUri};i={encNumericId}";
-                            var encNode = new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAObject
+                            var encNode = new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAObject
                             {
                                 NodeId = encNodeId,
-                                NodeClass = JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAObject,
+                                NodeClass = JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAObject,
                                 BrowseName = encName,
-                                DisplayName = new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.LocalizedText
+                                DisplayName = new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.LocalizedText
                                 {
                                     T = new List<List<string>> { new() { "", encName } }
                                 },
                                 TypeId = "i=76", // DataTypeEncodingType
-                                References = new List<JsonNodeSet::Opc.Ua.JsonNodeSet.Model.Reference>
+                                References = new List<JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.Reference>
                                 {
                                     new() { ReferenceTypeId = "i=38", TargetId = nodeId, IsForward = false }, // HasEncoding (inverse)
                                     new() { ReferenceTypeId = "i=40", TargetId = "i=76", IsForward = true },  // HasTypeDefinition
@@ -1986,7 +1986,7 @@ namespace NodeSetEditor.Server.Controllers
                     // and left the node nameless in every picker. Unset, the node keeps the
                     // name already persisted, falling back to its BrowseName.
                     uaNode.DisplayName = string.IsNullOrWhiteSpace(request.DisplayName) ? null
-                        : new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.LocalizedText
+                        : new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.LocalizedText
                         {
                             T = new List<List<string>> { new() { "", request.DisplayName } }
                         };
@@ -1995,7 +1995,7 @@ namespace NodeSetEditor.Server.Controllers
                 if (request.Description != null)
                 {
                     uaNode.Description = string.IsNullOrEmpty(request.Description) ? null
-                        : new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.LocalizedText
+                        : new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.LocalizedText
                         {
                             T = new List<List<string>> { new() { "", request.Description } }
                         };
@@ -2008,7 +2008,7 @@ namespace NodeSetEditor.Server.Controllers
                 if (request.Category != null)
                     uaNode.ConformanceUnits = NormalizeConformanceUnits(request.Category);
 
-                if (uaNode is JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAReferenceType refType
+                if (uaNode is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAReferenceType refType
                     && (request.Symmetric.HasValue || request.InverseName != null))
                 {
                     // Validate against the state the node would end up in, so one call can
@@ -2027,7 +2027,7 @@ namespace NodeSetEditor.Server.Controllers
                     refType.InverseName = newInverseName;
                 }
 
-                if (uaNode is JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UADataType dtNode
+                if (uaNode is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UADataType dtNode
                     && request.IsOptionSet.HasValue
                     && request.IsOptionSet.Value != (dtNode.Definition?.IsOptionSet == true))
                 {
@@ -2088,7 +2088,7 @@ namespace NodeSetEditor.Server.Controllers
                 }
 
                 // Update Variable-specific attributes
-                if (uaNode is JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAVariable variable)
+                if (uaNode is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariable variable)
                 {
                     if (request.DataType != null)
                         variable.DataType = string.IsNullOrEmpty(request.DataType) ? null : request.DataType;
@@ -2100,7 +2100,7 @@ namespace NodeSetEditor.Server.Controllers
                     if (request.Value.HasValue)
                         variable.Value = JsonElementToVariant(request.Value.Value, variable.DataType, variable.ArrayDimensions, addressSpace);
                 }
-                else if (uaNode is JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAVariableType variableType)
+                else if (uaNode is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariableType variableType)
                 {
                     if (request.DataType != null)
                         variableType.DataType = string.IsNullOrEmpty(request.DataType) ? null : request.DataType;
@@ -2434,8 +2434,8 @@ namespace NodeSetEditor.Server.Controllers
                     return NotFound(MakeError(Opc.Ua.StatusCodes.BadNotFound, nameof(Opc.Ua.StatusCodes.BadNotFound), $"Type '{nodeId}' not found."));
                 }
 
-                if (typeNode.NodeClass != JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAObjectType
-                    && typeNode.NodeClass != JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAVariableType)
+                if (typeNode.NodeClass != JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAObjectType
+                    && typeNode.NodeClass != JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAVariableType)
                 {
                     return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument, nameof(Opc.Ua.StatusCodes.BadInvalidArgument), "Node must be an ObjectType or VariableType."));
                 }
@@ -2626,8 +2626,8 @@ namespace NodeSetEditor.Server.Controllers
                 var node = addressSpace.Read(nodeId);
                 if (node == null)
                     return NotFound(MakeError(Opc.Ua.StatusCodes.BadNotFound, nameof(Opc.Ua.StatusCodes.BadNotFound), $"Node '{nodeId}' not found."));
-                if (node.NodeClass != JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAObject
-                    && node.NodeClass != JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAObjectType)
+                if (node.NodeClass != JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAObject
+                    && node.NodeClass != JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAObjectType)
                     return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument, nameof(Opc.Ua.StatusCodes.BadInvalidArgument),
                         "Interfaces can only be added to an Object or ObjectType."));
                 if (node.DesignToolOnly == true)
@@ -2723,7 +2723,7 @@ namespace NodeSetEditor.Server.Controllers
                 var addressSpace = await _addressSpace.GetAddressSpaceAsync(workspaceId);
 
                 var node = addressSpace.Read(nodeId);
-                if (node is not JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UADataType dt)
+                if (node is not JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UADataType dt)
                 {
                     return NotFound(MakeError(Opc.Ua.StatusCodes.BadNotFound, nameof(Opc.Ua.StatusCodes.BadNotFound), $"DataType '{nodeId}' not found."));
                 }
@@ -2756,7 +2756,7 @@ namespace NodeSetEditor.Server.Controllers
                 var addressSpace = await _addressSpace.GetAddressSpaceAsync(workspaceId);
 
                 var node = addressSpace.Read(nodeId);
-                if (node is not JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UADataType dt)
+                if (node is not JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UADataType dt)
                 {
                     return NotFound(MakeError(Opc.Ua.StatusCodes.BadNotFound, nameof(Opc.Ua.StatusCodes.BadNotFound), $"DataType '{nodeId}' not found."));
                 }
@@ -2767,7 +2767,7 @@ namespace NodeSetEditor.Server.Controllers
                 foreach (var ancestorId in superTypeIds)
                 {
                     var ancestor = addressSpace.Read(ancestorId);
-                    if (ancestor is JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UADataType ancestorDt
+                    if (ancestor is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UADataType ancestorDt
                         && ancestorDt.Definition?.Fields != null)
                     {
                         foreach (var f in ancestorDt.Definition.Fields)
@@ -2812,8 +2812,8 @@ namespace NodeSetEditor.Server.Controllers
 
                 // Update the definition. `??=` matters for an OptionSet: the flag lives on
                 // the definition created with the node, and replacing it would lose it.
-                dt.Definition ??= new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.DataTypeDefinition();
-                dt.Definition.Fields = ownFields.Select(f => new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.DataTypeField
+                dt.Definition ??= new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.DataTypeDefinition();
+                dt.Definition.Fields = ownFields.Select(f => new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.DataTypeField
                 {
                     Name = f.Name,
                     Value = f.Value,
@@ -2824,7 +2824,7 @@ namespace NodeSetEditor.Server.Controllers
                     IsOptional = f.IsOptional,
                     AllowSubTypes = f.AllowSubTypes,
                     Description = f.Description?.Text != null
-                        ? new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.LocalizedText
+                        ? new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.LocalizedText
                         {
                             T = new List<List<string>> { new() { "", f.Description.Text } }
                         }
@@ -2872,7 +2872,7 @@ namespace NodeSetEditor.Server.Controllers
                 var workspaceId = workspace!.Id!.Value;
                 var addressSpace = await _addressSpace.GetAddressSpaceAsync(workspaceId);
 
-                if (addressSpace.Read(nodeId) is not JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UADataType)
+                if (addressSpace.Read(nodeId) is not JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UADataType)
                 {
                     return NotFound(MakeError(Opc.Ua.StatusCodes.BadNotFound, nameof(Opc.Ua.StatusCodes.BadNotFound), $"DataType '{nodeId}' not found."));
                 }
@@ -2890,9 +2890,9 @@ namespace NodeSetEditor.Server.Controllers
 
         private sealed class AddressSpaceDataTypeResolver : NodeSetEditor.Model.IDataTypeResolver
         {
-            private readonly JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace _addressSpace;
+            private readonly JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace _addressSpace;
 
-            public AddressSpaceDataTypeResolver(JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace addressSpace)
+            public AddressSpaceDataTypeResolver(JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace)
             {
                 _addressSpace = addressSpace;
             }
@@ -2900,7 +2900,7 @@ namespace NodeSetEditor.Server.Controllers
             public NodeSetEditor.Model.DataTypeSchemaInfo? Resolve(string nodeId)
             {
                 var node = _addressSpace.Read(nodeId);
-                if (node is not JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UADataType dt) return null;
+                if (node is not JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UADataType dt) return null;
 
                 string? superTypeId = null;
                 var inverseRefs = _addressSpace.Browse(nodeId, HAS_SUBTYPE,
@@ -2917,10 +2917,10 @@ namespace NodeSetEditor.Server.Controllers
                 };
             }
 
-            // The JsonNodeSet definition carries no Name; the DataType's BrowseName is the
+            // The NodeSetSerializer definition carries no Name; the DataType's BrowseName is the
             // normative source.
             private static NodeSetEditor.Model.DataTypeDefinitionEntry? ConvertDefinition(
-                JsonNodeSet::Opc.Ua.JsonNodeSet.Model.DataTypeDefinition? def, string? browseName)
+                JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.DataTypeDefinition? def, string? browseName)
             {
                 if (def == null) return null;
                 return new NodeSetEditor.Model.DataTypeDefinitionEntry
@@ -2945,7 +2945,7 @@ namespace NodeSetEditor.Server.Controllers
             }
 
             private static List<NodeSetEditor.Model.LocalizedTextEntry>? ConvertDescription(
-                JsonNodeSet::Opc.Ua.JsonNodeSet.Model.LocalizedText? lt)
+                JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.LocalizedText? lt)
             {
                 if (lt?.T == null) return null;
                 var list = new List<NodeSetEditor.Model.LocalizedTextEntry>();
@@ -2963,8 +2963,8 @@ namespace NodeSetEditor.Server.Controllers
         }
 
         private DataTypeDefinitionResponse BuildDefinitionResponse(
-            JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace addressSpace,
-            JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UADataType dt,
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace,
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UADataType dt,
             string nodeId,
             bool full)
         {
@@ -2985,7 +2985,7 @@ namespace NodeSetEditor.Server.Controllers
                 foreach (var ancestorId in superTypeIds)
                 {
                     var ancestor = addressSpace.Read(ancestorId);
-                    if (ancestor is not JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UADataType ancestorDt) continue;
+                    if (ancestor is not JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UADataType ancestorDt) continue;
                     if (ancestorDt.Definition?.Fields == null) continue;
 
                     int nextValue = 0;
@@ -3178,7 +3178,7 @@ namespace NodeSetEditor.Server.Controllers
         }
 
         private static List<string> GetSuperTypeIds(
-            JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace addressSpace, string nodeId)
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace, string nodeId)
         {
             var chain = new List<string>();
             var current = nodeId;
@@ -3390,10 +3390,10 @@ namespace NodeSetEditor.Server.Controllers
         /// hierarchical references, so they can have no children.
         /// </summary>
         private static bool IsPropertyNode(
-            JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace? addressSpace,
-            JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UANode? node)
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace? addressSpace,
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UANode? node)
         {
-            return node?.NodeClass == JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAVariable
+            return node?.NodeClass == JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAVariable
                 && !string.IsNullOrEmpty(node.TypeId)
                 && addressSpace?.IsTypeOf(node.TypeId, PROPERTY_TYPE) == true;
         }
@@ -3415,7 +3415,7 @@ namespace NodeSetEditor.Server.Controllers
         /// alongside its subtypes knows whether the row is expandable without fetching.
         /// </summary>
         private static bool? ComputeHasNoChildren(
-            JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace addressSpace,
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace,
             string nodeId)
         {
             var refs = addressSpace.BrowseWithSubtypes(
@@ -3427,7 +3427,7 @@ namespace NodeSetEditor.Server.Controllers
         /// Recursively collects subtypes into a flat list with superTypeId set.
         /// </summary>
         private static void CollectSubtypes(
-            JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace addressSpace,
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace,
             string parentNodeId,
             int remainingDepth,
             List<Opc.Ua.RestfulApi.Node> results)
@@ -3487,7 +3487,7 @@ namespace NodeSetEditor.Server.Controllers
 
         /// <summary>The immediate supertype of a type node (inverse HasSubtype), or null.</summary>
         private static string? GetImmediateSupertype(
-            JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace addressSpace, string nodeId)
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace, string nodeId)
         {
             var inv = addressSpace.Browse(nodeId, HAS_SUBTYPE, includeForward: false, includeInverse: true);
             return inv.Count > 0 ? inv[0].TargetNodeId : null;
@@ -3503,7 +3503,7 @@ namespace NodeSetEditor.Server.Controllers
         /// chains — not the whole type universe.
         /// </summary>
         private static void CollectNamespaceTypeTree(
-            JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace addressSpace,
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace,
             string rootNodeId, string modelUri,
             List<Opc.Ua.RestfulApi.Node> results)
         {
@@ -3545,7 +3545,7 @@ namespace NodeSetEditor.Server.Controllers
         /// never reaches the root are dropped. Pruned leaves get <c>HasNoChildren</c>.
         /// </summary>
         private static void CollectNamespaceInstanceTree(
-            JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace addressSpace,
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace,
             string rootNodeId, string modelUri,
             List<Opc.Ua.RestfulApi.Node> results)
         {
@@ -3557,10 +3557,10 @@ namespace NodeSetEditor.Server.Controllers
                 if (string.IsNullOrEmpty(id) || id == rootNodeId) continue;
                 if (!IsInNamespace(id, modelUri)) continue;
                 // Type nodes never live under the Objects folder — skip them.
-                if (node is JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAObjectType
-                    or JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAVariableType
-                    or JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UADataType
-                    or JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAReferenceType) continue;
+                if (node is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAObjectType
+                    or JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariableType
+                    or JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UADataType
+                    or JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAReferenceType) continue;
                 if (byId.ContainsKey(id)) continue;
 
                 // Walk the structural-parent chain up to the root, buffering the
@@ -3627,15 +3627,15 @@ namespace NodeSetEditor.Server.Controllers
         /// nodes (Root, root type with no supertype).
         /// </summary>
         private static (string parentNodeId, string referenceTypeId)? GetStructuralParent(
-            JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace addressSpace,
-            JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UANode node)
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace,
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UANode node)
         {
             if (string.IsNullOrEmpty(node.NodeId)) return null;
 
-            bool isType = node is JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAObjectType
-                or JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAVariableType
-                or JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UADataType
-                or JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAReferenceType;
+            bool isType = node is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAObjectType
+                or JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariableType
+                or JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UADataType
+                or JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAReferenceType;
             if (isType)
             {
                 // Subtypes: structural parent is the supertype via inverse
@@ -3706,7 +3706,7 @@ namespace NodeSetEditor.Server.Controllers
         /// so users can navigate the type hierarchy past pure-type leaves.
         /// </summary>
         private static void CollectChildren(
-            JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace addressSpace,
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace,
             string parentNodeId,
             string referenceTypeId,
             int remainingDepth,
@@ -3776,7 +3776,7 @@ namespace NodeSetEditor.Server.Controllers
             }
         }
 
-        private static string? GetLocalizedText(JsonNodeSet::Opc.Ua.JsonNodeSet.Model.LocalizedText? lt)
+        private static string? GetLocalizedText(JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.LocalizedText? lt)
         {
             return lt?.T?.FirstOrDefault()?.ElementAtOrDefault(1);
         }
@@ -3785,10 +3785,10 @@ namespace NodeSetEditor.Server.Controllers
         /// Wraps a plain string as an invariant-locale LocalizedText. Blank means "unset",
         /// so it yields null rather than an empty text (see UpdateNode's DisplayName).
         /// </summary>
-        private static JsonNodeSet::Opc.Ua.JsonNodeSet.Model.LocalizedText? MakeLocalizedText(string? text)
+        private static JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.LocalizedText? MakeLocalizedText(string? text)
         {
             if (string.IsNullOrWhiteSpace(text)) return null;
-            return new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.LocalizedText
+            return new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.LocalizedText
             {
                 T = new List<List<string>> { new() { "", text } }
             };
@@ -3826,7 +3826,7 @@ namespace NodeSetEditor.Server.Controllers
         /// dedicated DB columns, so edits must be mirrored here or they vanish on the next rebuild.
         /// </summary>
         private static System.Text.Json.Nodes.JsonArray? LocalizedTextToAttr(
-            JsonNodeSet::Opc.Ua.JsonNodeSet.Model.LocalizedText? lt)
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.LocalizedText? lt)
         {
             if (lt?.T == null || lt.T.Count == 0) return null;
             var arr = new System.Text.Json.Nodes.JsonArray();
@@ -3844,7 +3844,7 @@ namespace NodeSetEditor.Server.Controllers
         /// <summary>
         /// Ensure the model identified by <paramref name="modelUri"/> has a NamespaceMetadata object,
         /// creating it through the SAME instantiation engine used when a user creates an instance of a
-        /// type (<see cref="JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace.Instantiate"/>). Because the
+        /// type (<see cref="JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace.Instantiate"/>). Because the
         /// engine walks NamespaceMetadataType's instance declarations, the object gets ALL of its
         /// mandatory children (NamespaceUri, NamespaceVersion, NamespacePublicationDate,
         /// IsNamespaceSubset, StaticNodeIdTypes, StaticNumericNodeIdRange, StaticStringNodeIdPattern) —
@@ -3890,22 +3890,22 @@ namespace NodeSetEditor.Server.Controllers
                 modellingRuleId: null);
 
             // Seed the well-known scalar values on the freshly created mandatory children.
-            foreach (var v in created.OfType<JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAVariable>())
+            foreach (var v in created.OfType<JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariable>())
             {
                 switch (BrowseNameLocalPart(v.BrowseName))
                 {
                     case "NamespaceUri":
-                        v.Value = new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.Variant(12, modelUri); break;
+                        v.Value = new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.Variant(12, modelUri); break;
                     case "NamespaceVersion":
-                        v.Value = new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.Variant(12, version); break;
+                        v.Value = new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.Variant(12, version); break;
                     case "NamespacePublicationDate":
-                        v.Value = new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.Variant(13, pubDate); break;
+                        v.Value = new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.Variant(13, pubDate); break;
                     case "IsNamespaceSubset":
-                        v.Value = new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.Variant(1, false); break;
+                        v.Value = new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.Variant(1, false); break;
                     case "StaticNodeIdTypes":
                         // IdType[] = [Numeric (0)]. Stored as an Int32 array; the
                         // variable's IdType DataType drives the <ListOfInt32> rendering.
-                        v.Value = new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.Variant(6, new List<int> { 0 }); break;
+                        v.Value = new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.Variant(6, new List<int> { 0 }); break;
                 }
             }
 
@@ -3946,7 +3946,7 @@ namespace NodeSetEditor.Server.Controllers
         }
 
         private async Task PersistModelAsync(
-            JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace addressSpace,
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace,
             Guid workspaceId,
             string nodeId,
             ModelChangeset? changeset = null,
@@ -4012,10 +4012,10 @@ namespace NodeSetEditor.Server.Controllers
         }
 
         /// <summary>
-        /// Maps a JsonNodeSet UANode to a NodeChange for the changeset.
+        /// Maps a NodeSetSerializer UANode to a NodeChange for the changeset.
         /// </summary>
         private static NodeChange BuildNodeChange(
-            JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UANode node, ChangeKind kind)
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UANode node, ChangeKind kind)
         {
             var nc = new NodeChange
             {
@@ -4044,13 +4044,13 @@ namespace NodeSetEditor.Server.Controllers
             var attrs = new System.Text.Json.Nodes.JsonObject();
             string nodeType = node switch
             {
-                JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAObjectType => "ObjectType",
-                JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAVariableType => "VariableType",
-                JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAReferenceType => "ReferenceType",
-                JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UADataType => "DataType",
-                JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAObject => "Object",
-                JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAVariable => "Variable",
-                JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAMethod => "Method",
+                JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAObjectType => "ObjectType",
+                JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariableType => "VariableType",
+                JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAReferenceType => "ReferenceType",
+                JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UADataType => "DataType",
+                JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAObject => "Object",
+                JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariable => "Variable",
+                JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAMethod => "Method",
                 _ => "Object"
             };
             attrs["NodeType"] = nodeType;
@@ -4084,25 +4084,25 @@ namespace NodeSetEditor.Server.Controllers
 
             switch (node)
             {
-                case JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAVariable v:
+                case JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariable v:
                     if (v.DataType != null) attrs["DataType"] = v.DataType;
                     if (v.ValueRank.HasValue) attrs["ValueRank"] = v.ValueRank.Value;
                     if (v.ArrayDimensions != null) attrs["ArrayDimensions"] = v.ArrayDimensions;
                     if (v.Value != null) attrs["Value"] = VariantToTypedJson(v.Value, v.DataType);
                     break;
-                case JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAVariableType vt:
+                case JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariableType vt:
                     if (vt.DataType != null) attrs["DataType"] = vt.DataType;
                     if (vt.ValueRank.HasValue) attrs["ValueRank"] = vt.ValueRank.Value;
                     if (vt.ArrayDimensions != null) attrs["ArrayDimensions"] = vt.ArrayDimensions;
                     if (vt.Value != null) attrs["Value"] = VariantToTypedJson(vt.Value, vt.DataType);
                     break;
-                case JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UADataType dt:
+                case JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UADataType dt:
                     if (dt.Definition != null)
                     {
                         // Convert to DataTypeDefinitionEntry format expected by DB storage
                         var defEntry = new NodeSetEditor.Model.DataTypeDefinitionEntry
                         {
-                            // The JsonNodeSet definition carries no Name; the DataType's BrowseName
+                            // The NodeSetSerializer definition carries no Name; the DataType's BrowseName
                             // (already in nsu=uri;Name form) is the normative source.
                             Name = node.BrowseName,
                             SymbolicName = dt.Definition.SymbolicName,
@@ -4129,7 +4129,7 @@ namespace NodeSetEditor.Server.Controllers
                         attrs["Definition"] = System.Text.Json.JsonSerializer.SerializeToNode(defEntry);
                     }
                     break;
-                case JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAReferenceType rt:
+                case JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAReferenceType rt:
                     if (rt.Symmetric == true) attrs["Symmetric"] = true;
                     // Like DisplayName/Description, InverseName is regenerated from the
                     // Attributes JSON on the XML rebuild path — omit it here and an edit
@@ -4144,8 +4144,8 @@ namespace NodeSetEditor.Server.Controllers
         }
 
         private static Opc.Ua.RestfulApi.Node UaNodeToRestNode(
-            JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UANode node,
-            JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace? addressSpace = null)
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UANode node,
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace? addressSpace = null)
         {
             // An empty DisplayName is "not set", not "named the empty string" — fall back to
             // the BrowseName the same way a missing one does. Nodes saved before the write
@@ -4156,11 +4156,11 @@ namespace NodeSetEditor.Server.Controllers
                 : StripNamespace(node.BrowseName);
             var description = GetLocalizedText(node.Description);
 
-            var dataTypeId = node is JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAVariable v ? v.DataType
-                : node is JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAVariableType vt ? vt.DataType
+            var dataTypeId = node is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariable v ? v.DataType
+                : node is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariableType vt ? vt.DataType
                 : null;
 
-            var referenceType = node as JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAReferenceType;
+            var referenceType = node as JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAReferenceType;
             var inverseName = GetLocalizedText(referenceType?.InverseName);
 
             return new Opc.Ua.RestfulApi.Node
@@ -4169,14 +4169,14 @@ namespace NodeSetEditor.Server.Controllers
                 ModelUri = ExtractNamespaceUri(node.NodeId),
                 NodeClass = node.NodeClass switch
                 {
-                    JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAObjectType => Opc.Ua.RestfulApi.NodeClass.ObjectType,
-                    JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAVariableType => Opc.Ua.RestfulApi.NodeClass.VariableType,
-                    JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAReferenceType => Opc.Ua.RestfulApi.NodeClass.ReferenceType,
-                    JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UADataType => Opc.Ua.RestfulApi.NodeClass.DataType,
-                    JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAObject => Opc.Ua.RestfulApi.NodeClass.Object,
-                    JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAVariable => Opc.Ua.RestfulApi.NodeClass.Variable,
-                    JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAMethod => Opc.Ua.RestfulApi.NodeClass.Method,
-                    JsonNodeSet::Opc.Ua.JsonNodeSet.Model.NodeClass.UAView => Opc.Ua.RestfulApi.NodeClass.View,
+                    JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAObjectType => Opc.Ua.RestfulApi.NodeClass.ObjectType,
+                    JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAVariableType => Opc.Ua.RestfulApi.NodeClass.VariableType,
+                    JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAReferenceType => Opc.Ua.RestfulApi.NodeClass.ReferenceType,
+                    JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UADataType => Opc.Ua.RestfulApi.NodeClass.DataType,
+                    JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAObject => Opc.Ua.RestfulApi.NodeClass.Object,
+                    JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAVariable => Opc.Ua.RestfulApi.NodeClass.Variable,
+                    JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAMethod => Opc.Ua.RestfulApi.NodeClass.Method,
+                    JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAView => Opc.Ua.RestfulApi.NodeClass.View,
                     _ => Opc.Ua.RestfulApi.NodeClass.Object,
                 },
                 BrowseName = node.BrowseName ?? string.Empty,
@@ -4200,17 +4200,17 @@ namespace NodeSetEditor.Server.Controllers
                 DataType = dataTypeId,
                 DataTypeName = ResolveBrowseName(addressSpace, dataTypeId),
                 // Variables and VariableTypes always have a ValueRank (Scalar = -1
-                // by default); the JsonNodeSet model stores Scalar as null, so
+                // by default); the NodeSetSerializer model stores Scalar as null, so
                 // surface -1 to the API to keep the attribute present.
-                ValueRank = node is JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAVariable v2 ? (v2.ValueRank ?? -1)
-                    : node is JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAVariableType vt2 ? (vt2.ValueRank ?? -1)
+                ValueRank = node is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariable v2 ? (v2.ValueRank ?? -1)
+                    : node is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariableType vt2 ? (vt2.ValueRank ?? -1)
                     : null,
-                Value = node is JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAVariable v3 ? UnwrapVariantValue(v3.Value?.Value)
-                    : node is JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UAVariableType vt3 ? UnwrapVariantValue(vt3.Value?.Value)
+                Value = node is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariable v3 ? UnwrapVariantValue(v3.Value?.Value)
+                    : node is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariableType vt3 ? UnwrapVariantValue(vt3.Value?.Value)
                     : null,
-                DataTypeForm = node is JsonNodeSet::Opc.Ua.JsonNodeSet.Model.UADataType dtForm ? dtForm.DataTypeForm : null,
+                DataTypeForm = node is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UADataType dtForm ? dtForm.DataTypeForm : null,
                 Documentation = string.IsNullOrEmpty(node.Documentation) ? null : node.Documentation,
-                // Conformance units. The JsonNodeSet model spells the XML <Category>
+                // Conformance units. The NodeSetSerializer model spells the XML <Category>
                 // elements "ConformanceUnits"; the API keeps the XML name.
                 Category = node.ConformanceUnits is { Count: > 0 } cu ? new List<string>(cu) : null,
             };
@@ -4232,7 +4232,7 @@ namespace NodeSetEditor.Server.Controllers
         }
 
         /// <summary>
-        /// Unwraps <see cref="JsonNodeSet::Opc.Ua.JsonNodeSet.Model.ExtensionObject"/> values
+        /// Unwraps <see cref="JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.ExtensionObject"/> values
         /// for the REST GET response so that structure-typed variables return the Body JObject
         /// directly (with internal <c>$typeName</c>/<c>$typeNs</c> sidecars stripped). This
         /// keeps the shape symmetric with the PUT payload the client originally sent.
@@ -4244,7 +4244,7 @@ namespace NodeSetEditor.Server.Controllers
         /// ASP.NET Core's default serializer produces clean user-facing JSON.</para>
         /// </summary>
         /// <summary>
-        /// Renders a runtime <see cref="JsonNodeSet::Opc.Ua.JsonNodeSet.Model.Variant"/>
+        /// Renders a runtime <see cref="JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.Variant"/>
         /// value as Part 6 JSON for the REST GET response. ExtensionObject becomes the
         /// <c>{UaTypeId, ...inlined body fields}</c> wrapper; arrays of ExtensionObject
         /// become a JSON array of those wrappers; primitives pass through.
@@ -4253,7 +4253,7 @@ namespace NodeSetEditor.Server.Controllers
         {
             if (value == null) return null;
 
-            if (value is JsonNodeSet::Opc.Ua.JsonNodeSet.Model.ExtensionObject eo)
+            if (value is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.ExtensionObject eo)
                 return BuildPart6ExtensionObjectJson(eo);
 
             // Newtonsoft JObject / JValue / JArray cannot be serialized by ASP.NET's
@@ -4266,12 +4266,12 @@ namespace NodeSetEditor.Server.Controllers
             // Excludes JObject etc. — see IsScalarObject's docstring.
             if (value is System.Collections.IList list && !IsScalarObject(value))
             {
-                if (list.Count > 0 && list[0] is JsonNodeSet::Opc.Ua.JsonNodeSet.Model.ExtensionObject)
+                if (list.Count > 0 && list[0] is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.ExtensionObject)
                 {
                     var arr = new System.Text.Json.Nodes.JsonArray();
                     foreach (var item in list)
                     {
-                        if (item is JsonNodeSet::Opc.Ua.JsonNodeSet.Model.ExtensionObject itemEo)
+                        if (item is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.ExtensionObject itemEo)
                             arr.Add(BuildPart6ExtensionObjectJson(itemEo));
                         else
                             arr.Add(null);
@@ -4304,7 +4304,7 @@ namespace NodeSetEditor.Server.Controllers
         /// <c>{UaTypeId, &lt;field1&gt;, &lt;field2&gt;, ...}</c> — for outbound REST responses.
         /// </summary>
         private static System.Text.Json.Nodes.JsonObject BuildPart6ExtensionObjectJson(
-            JsonNodeSet::Opc.Ua.JsonNodeSet.Model.ExtensionObject eo)
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.ExtensionObject eo)
         {
             var obj = new System.Text.Json.Nodes.JsonObject();
             if (eo.TypeId != null) obj["UaTypeId"] = eo.TypeId;
@@ -4360,7 +4360,7 @@ namespace NodeSetEditor.Server.Controllers
         /// Resolves a NodeId to a formatted BrowseName with model prefix.
         /// </summary>
         private static string? ResolveBrowseName(
-            JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace? addressSpace,
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace? addressSpace,
             string? nodeId)
         {
             if (string.IsNullOrEmpty(nodeId) || addressSpace == null) return null;
@@ -4832,7 +4832,7 @@ namespace NodeSetEditor.Server.Controllers
         /// E.g., Variant(12, "Hello") with DataType="i=12" → {"String": "Hello"}
         /// </summary>
         /// <summary>
-        /// Converts an in-memory <see cref="JsonNodeSet::Opc.Ua.JsonNodeSet.Model.Variant"/>
+        /// Converts an in-memory <see cref="JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.Variant"/>
         /// into Part 6 §5.4 JSON for DB persistence. The result is the typed JSON value
         /// directly: built-in scalars as native JSON, arrays as JSON arrays, structures
         /// as the Part 6 inline-fields ExtensionObject wrapper <c>{UaTypeId, ...fields}</c>,
@@ -4840,7 +4840,7 @@ namespace NodeSetEditor.Server.Controllers
         /// wrapper — that shape is incompatible with the Part 6 reader on the way back.
         /// </summary>
         private static System.Text.Json.Nodes.JsonNode? VariantToTypedJson(
-            JsonNodeSet::Opc.Ua.JsonNodeSet.Model.Variant variant, string? dataType)
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.Variant variant, string? dataType)
         {
             if (variant.Value == null) return null;
 
@@ -4884,7 +4884,7 @@ namespace NodeSetEditor.Server.Controllers
             || value is byte[]
             || value is Newtonsoft.Json.Linq.JObject
             || value is Newtonsoft.Json.Linq.JValue
-            || value is JsonNodeSet::Opc.Ua.JsonNodeSet.Model.ExtensionObject;
+            || value is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.ExtensionObject;
 
         /// <summary>
         /// Serializes a single Variant value into a System.Text.Json JsonNode using Part 6
@@ -4896,7 +4896,7 @@ namespace NodeSetEditor.Server.Controllers
         {
             if (value == null) return null;
 
-            if (value is JsonNodeSet::Opc.Ua.JsonNodeSet.Model.ExtensionObject eo)
+            if (value is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.ExtensionObject eo)
             {
                 var node = new System.Text.Json.Nodes.JsonObject();
                 if (eo.TypeId != null) node["UaTypeId"] = eo.TypeId;
@@ -4983,15 +4983,15 @@ namespace NodeSetEditor.Server.Controllers
         /// Maps UaType number to XML element name using the BuiltInType enum.
         /// </summary>
         private static string UaTypeToXmlName(int uaType) =>
-            Enum.IsDefined(typeof(JsonNodeSet::Opc.Ua.JsonNodeSet.Model.BuiltInType), uaType)
-                ? ((JsonNodeSet::Opc.Ua.JsonNodeSet.Model.BuiltInType)uaType).ToString()
-                : nameof(JsonNodeSet::Opc.Ua.JsonNodeSet.Model.BuiltInType.String);
+            Enum.IsDefined(typeof(JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.BuiltInType), uaType)
+                ? ((JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.BuiltInType)uaType).ToString()
+                : nameof(JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.BuiltInType.String);
 
         /// <summary>
         /// Checks if a node is equal to or a subtype of the given ancestor DataType.
         /// </summary>
         private static bool IsSubtypeOf(
-            JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace addressSpace,
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace,
             string nodeId, string ancestorId)
         {
             var current = nodeId;
@@ -5046,7 +5046,7 @@ namespace NodeSetEditor.Server.Controllers
         /// Enumeration subtypes → Int32 (6), Structure subtypes → ExtensionObject (22), etc.
         /// </summary>
         private static int ResolveBuiltInType(string dataType,
-            JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace? addressSpace)
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace? addressSpace)
         {
             if (addressSpace == null) return 12; // String fallback
 
@@ -5081,9 +5081,9 @@ namespace NodeSetEditor.Server.Controllers
         /// <summary>
         /// Converts a JSON element from the API request into a Variant.
         /// </summary>
-        private static JsonNodeSet::Opc.Ua.JsonNodeSet.Model.Variant JsonElementToVariant(
+        private static JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.Variant JsonElementToVariant(
             System.Text.Json.JsonElement element, string? dataType, string? arrayDimensions = null,
-            JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace? addressSpace = null)
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace? addressSpace = null)
         {
             int uaType = 12; // Default to String
             if (dataType != null && !DataTypeToUaType.TryGetValue(dataType, out uaType))
@@ -5155,13 +5155,13 @@ namespace NodeSetEditor.Server.Controllers
                 };
             }
 
-            return new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.Variant(uaType, value, dims);
+            return new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.Variant(uaType, value, dims);
         }
 
         /// <summary>
         /// Parses an inbound JSON object into a Part 6 ExtensionObject wrapping a
         /// Newtonsoft body. The DataType NodeId is preserved on the wrapper so the
-        /// XML emit path (<see cref="JsonNodeSet::Opc.Ua.JsonNodeSet.VariantConverter"/>)
+        /// XML emit path (<see cref="JsonNodeSet::Opc.Ua.NodeSetSerializer.VariantConverter"/>)
         /// can recover the inner struct wrapper element name from the AddressSpace.
         /// No bespoke <c>$typeName</c> sidecar is attached — Part 6 carries that
         /// information in <c>UaTypeId</c> alone.
@@ -5170,9 +5170,9 @@ namespace NodeSetEditor.Server.Controllers
         ///   * Part 6 inline-fields wrapper:  {UaTypeId: "...", Field1: ..., Field2: ...}
         ///   * Bare body object:              {Field1: ..., Field2: ...}
         /// </summary>
-        private static JsonNodeSet::Opc.Ua.JsonNodeSet.Model.ExtensionObject ParseStructureBody(
+        private static JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.ExtensionObject ParseStructureBody(
             System.Text.Json.JsonElement element, string? dataType,
-            JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace? addressSpace)
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace? addressSpace)
         {
             var raw = Newtonsoft.Json.Linq.JObject.Parse(element.GetRawText());
 
@@ -5187,7 +5187,7 @@ namespace NodeSetEditor.Server.Controllers
                 body.Add(prop.Name, prop.Value);
             }
 
-            return new JsonNodeSet::Opc.Ua.JsonNodeSet.Model.ExtensionObject
+            return new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.ExtensionObject
             {
                 TypeId = typeId,
                 Body = body,
@@ -5200,7 +5200,7 @@ namespace NodeSetEditor.Server.Controllers
         /// </summary>
         private static void FlattenJsonArray(System.Text.Json.JsonElement arr, int uaType,
             List<object> items, string? dataType = null,
-            JsonNodeSet::Opc.Ua.JsonNodeSet.AddressSpace? addressSpace = null)
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace? addressSpace = null)
         {
             foreach (var item in arr.EnumerateArray())
             {

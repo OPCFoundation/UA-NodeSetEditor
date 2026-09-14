@@ -1,6 +1,6 @@
 extern alias JsonNodeSet;
 
-using JsonNodeSet::Opc.Ua.JsonNodeSet;
+using JsonNodeSet::Opc.Ua.NodeSetSerializer;
 
 namespace NodeSetEditor.Server.Services
 {

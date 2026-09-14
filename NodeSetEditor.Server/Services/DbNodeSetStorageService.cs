@@ -1762,7 +1762,7 @@ namespace NodeSetEditor.Server.Services
 
             // Self-heal path: when the DB has no Core model (fresh init script
             // failed, or the user reset the schema without re-importing), fall
-            // back to the Core NodeSet embedded in Opc.Ua.JsonNodeSet so every
+            // back to the Core NodeSet embedded in Opc.Ua.NodeSetSerializer so every
             // workspace can still be created with a usable type system. The
             // initialize_db.ps1 import path is still preferred (it pulls the
             // latest from GitHub); this is the safety net.
@@ -1814,14 +1814,14 @@ namespace NodeSetEditor.Server.Services
 
         /// <summary>
         /// Opens a stream over the Core NodeSet XML embedded in the
-        /// <c>Opc.Ua.JsonNodeSet</c> assembly (resource name
-        /// <c>Opc.Ua.JsonNodeSet.Resources.Opc.Ua.NodeSet2.Services.xml</c>).
+        /// <c>Opc.Ua.NodeSetSerializer</c> assembly (resource name
+        /// <c>Opc.Ua.NodeSetSerializer.Resources.Opc.Ua.NodeSet2.Services.xml</c>).
         /// Returns null if the resource isn't present.
         /// </summary>
         private static Stream? LoadEmbeddedCoreNodeSetStream()
         {
-            const string resourceName = "Opc.Ua.JsonNodeSet.Resources.Opc.Ua.NodeSet2.Services.xml";
-            var asm = typeof(JsonNodeSet::Opc.Ua.JsonNodeSet.CoreNodeSetLoader).Assembly;
+            const string resourceName = "Opc.Ua.NodeSetSerializer.Resources.Opc.Ua.NodeSet2.Services.xml";
+            var asm = typeof(JsonNodeSet::Opc.Ua.NodeSetSerializer.CoreNodeSetLoader).Assembly;
             return asm.GetManifestResourceStream(resourceName);
         }
 
