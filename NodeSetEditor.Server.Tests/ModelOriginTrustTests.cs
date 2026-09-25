@@ -130,6 +130,17 @@ public class ModelOriginTrustTests : UaRestTestBase
                     db.Models.Add(model);
                     await db.SaveChangesAsync();
                 }
+                else
+                {
+                    // The reused row carries whatever state the shared DB left on it, and a run
+                    // in an environment with no Cloud Library configured (where the guard is a
+                    // deliberate no-op) leaves Published=true on it permanently. The assertion
+                    // below is "publishing did not happen", so it only says anything if we start
+                    // from a known-unpublished row. Nothing else is reset: the publish path reads
+                    // only Uri, so the row's Origin/Creator are not this test's to rewrite.
+                    model.Published = false;
+                    await db.SaveChangesAsync();
+                }
                 modelId = model.Id;
 
                 if (!await db.WorkspaceModels.AnyAsync(wm => wm.WorkspaceId == ws.Id && wm.ModelId == modelId))
