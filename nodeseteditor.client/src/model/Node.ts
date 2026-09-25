@@ -36,6 +36,12 @@ export interface Node {
    parentNodeId?: string;
    hasNoSubtypes?: boolean;
    hasNoChildren?: boolean;
+   /**
+    * The subtype walk hit the requested depth here, so this node's subtypes are NOT in the
+    * response even though it has some — re-browse from this node when it is expanded. Absent
+    * means the response already carries whatever subtypes it has.
+    */
+   subtypesTruncated?: boolean;
    modelUri?: string;
    referenceType?: string;
    referenceTypeId?: string;

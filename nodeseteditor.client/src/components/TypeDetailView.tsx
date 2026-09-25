@@ -51,7 +51,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import SubdirectoryArrowRightIcon from '@mui/icons-material/SubdirectoryArrowRight';
 import FolderIcon from '@mui/icons-material/Folder';
-import DataObjectIcon from '@mui/icons-material/DataObject';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import FunctionsIcon from '@mui/icons-material/Functions';
 import LabelIcon from '@mui/icons-material/Label';
 import SettingsEthernetIcon from '@mui/icons-material/SettingsEthernet';
@@ -201,7 +201,7 @@ function stripModelPrefix(value: string): string {
 /** Tooltip label + glyph for each per-NodeClass child-create button. */
 const CHILD_KIND_META: Record<ChildKind, { labelKey: string; icon: React.ReactElement }> = {
    object: { labelKey: 'typeDetail.createObject', icon: <FolderIcon /> },
-   datavariable: { labelKey: 'typeDetail.createDataVariable', icon: <DataObjectIcon /> },
+   datavariable: { labelKey: 'typeDetail.createDataVariable', icon: <LocalOfferIcon /> },
    property: { labelKey: 'typeDetail.createProperty', icon: <LabelIcon /> },
    method: { labelKey: 'typeDetail.createMethod', icon: <FunctionsIcon /> },
 };

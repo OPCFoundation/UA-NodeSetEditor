@@ -3521,11 +3521,15 @@ namespace NodeSetEditor.Server.Controllers
                 // flag for a client that shows them.
                 restNode.HasNoChildren = ComputeHasNoChildren(addressSpace, r.TargetNodeId);
 
-                // Check if this node has subtypes (for leaf detection)
+                // Leaf/continuation state. This is the deepest level the caller asked for, so the
+                // row must say which of the two it is: genuinely subtype-free, or cut off with
+                // subtypes the response doesn't carry. A client that prefetches a shallow tree
+                // needs the second case to know it has to re-browse from here on expand.
                 if (remainingDepth == 1)
                 {
                     var childRefs = addressSpace.Browse(r.TargetNodeId, HAS_SUBTYPE, includeForward: true, includeInverse: false);
                     restNode.HasNoSubtypes = childRefs.Count == 0 ? true : null;
+                    restNode.SubtypesTruncated = childRefs.Count > 0 ? true : null;
                 }
 
                 children.Add((r.TargetNodeId, restNode));
@@ -3604,7 +3608,25 @@ namespace NodeSetEditor.Server.Controllers
                 }
             }
 
-            MarkPrunedLeaves(byId, n => n.SuperTypeId, (n, leaf) => n.HasNoSubtypes = leaf);
+            // Say which rows are incomplete. Pruning withholds subtypes that are perfectly valid
+            // picks (a Core type outside the active namespace, say), so a row that kept fewer
+            // subtypes than it really has must advertise that — "no children in the payload"
+            // previously became HasNoSubtypes=true, which told the client a node with subtypes
+            // was terminal and left no way to ever see them.
+            var keptSubtypeCounts = byId.Values
+                .Where(n => !string.IsNullOrEmpty(n.SuperTypeId))
+                .GroupBy(n => n.SuperTypeId!, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
+
+            foreach (var (id, rest) in byId)
+            {
+                var realSubtypes = addressSpace.Browse(id, HAS_SUBTYPE, includeForward: true, includeInverse: false).Count;
+                var kept = keptSubtypeCounts.TryGetValue(id, out var k) ? k : 0;
+
+                rest.HasNoSubtypes = realSubtypes == 0 ? true : null;
+                rest.SubtypesTruncated = realSubtypes > kept ? true : null;
+            }
+
             results.AddRange(byId.Values);
         }
 

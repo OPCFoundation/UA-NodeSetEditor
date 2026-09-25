@@ -13,7 +13,6 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import DownloadIcon from '@mui/icons-material/Download';
 import DeleteIcon from '@mui/icons-material/Delete';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
-import ChecklistIcon from '@mui/icons-material/Checklist';
 import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import HistoryIcon from '@mui/icons-material/History';
@@ -724,15 +723,6 @@ const ModelLibraryPage: React.FC = () => {
       navigate(`/validation?${params.toString()}`);
    };
 
-   const handleViewConformanceUnits = (ns: WorkspaceNamespaceInfo) => {
-      // Read-only view, so it works for any model in the workspace. Pass the model id and URI
-      // on the URL for the same reasons as handleValidateModel.
-      const params = new URLSearchParams();
-      if (ns.id) params.set('model', ns.id);
-      if (ns.uri) params.set('ns', ns.uri);
-      navigate(`/conformance_units?${params.toString()}`);
-   };
-
    const handleDownloadModel = (ns: WorkspaceNamespaceInfo) => {
       setModelToDownload(nsToModelInfo(ns));
       setDownloadFormat('xml');
@@ -1201,11 +1191,6 @@ const ModelLibraryPage: React.FC = () => {
                                  tooltipKey: 'modelLibrary.viewTypeDefinitions'
                               },
                               {
-                                 onAction: () => handleViewConformanceUnits(ns),
-                                 icon: <ChecklistIcon />,
-                                 tooltipKey: 'conformanceUnits.open'
-                              },
-                              {
                                  onAction: () => handleValidateModel(ns),
                                  icon: <FactCheckIcon />,
                                  tooltipKey: 'validation.open',
@@ -1652,7 +1637,7 @@ const ModelLibraryPage: React.FC = () => {
                                  </Link>
                               )}
                               <TextField
-                                 label={t('conformanceUnits.profileGroup', 'Profile Group')}
+                                 label={t('modelLibrary.profileGroup', 'Profile Group')}
                                  value={editModelProfileGroup || ''}
                                  placeholder={t('common.notSet', 'Not set')}
                                  fullWidth

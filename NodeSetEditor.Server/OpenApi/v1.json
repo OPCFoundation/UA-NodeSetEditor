@@ -10,69 +10,6 @@
     "version": "v1"
   },
   "paths": {
-    "/api/opcua/v1/conformance-units": {
-      "get": {
-        "tags": [
-          "ConformanceUnits"
-        ],
-        "parameters": [
-          {
-            "name": "modelId",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "OpcUa-Server",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConformanceUnitInfo"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConformanceUnitInfo"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConformanceUnitInfo"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "AzureAd": [ ]
-          },
-          {
-            "EmailCookie": [ ]
-          }
-        ]
-      }
-    },
     "/api/opcua/v1/discovery": {
       "get": {
         "tags": [
@@ -3317,18 +3254,6 @@
           }
         }
       },
-      "ConformanceUnitInfo": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "nodeCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "format": "int32"
-          }
-        }
-      },
       "CreateNamespaceRequest": {
         "type": "object",
         "properties": {
@@ -3967,6 +3892,10 @@
             "nullable": true
           },
           "hasNoSubtypes": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "subtypesTruncated": {
             "type": "boolean",
             "nullable": true
           },
@@ -4782,9 +4711,6 @@
     }
   },
   "tags": [
-    {
-      "name": "ConformanceUnits"
-    },
     {
       "name": "Editor"
     },

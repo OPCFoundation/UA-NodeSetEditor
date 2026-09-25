@@ -61,22 +61,6 @@
     "severityInfo": "Info",
     "downloadCsv": "Download CSV"
   },
-  "conformanceUnits": {
-    "shortName": "Conformance Units",
-    "title": "View Conformance Units",
-    "pageTitle": "View Conformance Units",
-    "open": "View conformance units",
-    "backToModels": "Back to models",
-    "noWorkspace": "Select a workspace to view conformance units.",
-    "noSelectedModel": "No model selected — open this page from a model's Conformance Units icon.",
-    "searchHint": "Search conformance units…",
-    "nodeCount_one": "{{count}} node",
-    "nodeCount_other": "{{count}} nodes",
-    "noUnits": "This NodeSet does not declare any conformance units.",
-    "noMatchingUnits": "No conformance units match your search.",
-    "profileGroup": "Profile Group",
-    "pageTitleFor": "Conformance Units — {{model}}"
-  },
   "common": {
     "cancel": "Cancel",
     "ok": "OK",
@@ -355,7 +339,8 @@
     "downloadRemoveUnusedNodes": "Remove unused nodes",
     "removeUnusedHelp": "Each dependency keeps only the nodes this model uses. The model itself is unchanged.",
     "removeUnusedNeedsDependencies": "Only available when dependencies are included.",
-    "removeUnusedXmlOnly": "Only available for the XML format."
+    "removeUnusedXmlOnly": "Only available for the XML format.",
+    "profileGroup": "Profile Group"
   },
   "modelVersions": {
     "dialogTitle": "Model Versions",

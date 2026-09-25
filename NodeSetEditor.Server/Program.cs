@@ -56,7 +56,6 @@ builder.Services.AddDbContext<NodeSetEditorDbContext>(options =>
             .EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(5), errorCodesToAdd: null)));
 builder.Services.AddScoped<INodeSetStorageService, DbNodeSetStorageService>();
 builder.Services.AddScoped<IValidationService, ValidationService>();
-builder.Services.AddScoped<IConformanceUnitService, ConformanceUnitService>();
 builder.Services.AddScoped<INodeSetSubsetService, NodeSetSubsetService>();
 Console.WriteLine("[Startup] Using DbNodeSetStorageService (PostgreSQL)");
 

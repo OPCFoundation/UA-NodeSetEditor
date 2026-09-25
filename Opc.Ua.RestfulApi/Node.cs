@@ -130,6 +130,21 @@ namespace Opc.Ua.RestfulApi
         [JsonPropertyName("hasNoSubtypes")]
         public bool? HasNoSubtypes { get; set; }
 
+        /// <summary>
+        /// True when the subtype walk stopped at this row because it hit the requested depth, so
+        /// the response does NOT contain this node's subtypes even though it has some. A client
+        /// that prefetches a shallow tree must re-browse from this node when the user expands it.
+        ///
+        /// <para>Absent means the opposite: whatever subtypes this node has are already in the
+        /// same response (or it has none — see <see cref="HasNoSubtypes"/>). Without this flag a
+        /// client has to guess "no children in the payload" = "not yet fetched", which is wrong
+        /// for a node that genuinely has none and hides real subtypes when it guesses the other
+        /// way.</para>
+        /// </summary>
+        [JsonPropertyName("subtypesTruncated")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? SubtypesTruncated { get; set; }
+
         [JsonPropertyName("hasNoChildren")]
         public bool? HasNoChildren { get; set; }
 

@@ -2,7 +2,7 @@ import * as React from 'react';
 import type { SvgIconProps } from '@mui/material/SvgIcon';
 
 import FolderIcon from '@mui/icons-material/Folder';
-import DataObjectIcon from '@mui/icons-material/DataObject';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import FunctionsIcon from '@mui/icons-material/Functions';
 import CategoryIcon from '@mui/icons-material/Category';
 import TuneIcon from '@mui/icons-material/Tune';
@@ -33,7 +33,7 @@ export function getNodeClassIcon(nodeClass: number, props?: SvgIconProps): React
       case NodeClass.Object:
          return <FolderIcon {...iconProps} />;
       case NodeClass.Variable:
-         return <DataObjectIcon {...iconProps} />;
+         return <LocalOfferIcon {...iconProps} />;
       case NodeClass.Method:
          return <FunctionsIcon {...iconProps} />;
       case NodeClass.ObjectType:
