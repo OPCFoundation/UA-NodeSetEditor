@@ -60,5 +60,13 @@ namespace Opc.Ua.RestfulApi
         /// </summary>
         [JsonPropertyName("betaTester")]
         public bool? BetaTester { get; set; }
+
+        /// <summary>
+        /// True when the user may edit shared/standard models on everyone's behalf. Derived from
+        /// the server's allow-list, so read-only on PUT — the server enforces the rule regardless
+        /// of what a client believes.
+        /// </summary>
+        [JsonPropertyName("admin")]
+        public bool? Admin { get; set; }
     }
 }

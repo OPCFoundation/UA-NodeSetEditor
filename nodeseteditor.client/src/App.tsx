@@ -7,6 +7,7 @@ import { pages, type PageLayout } from "./AppRoutes";
 import AuthCallbackPage from './pages/AuthCallbackPage';
 import LoginPage from './pages/LoginPage';
 import ValidationPage from './pages/ValidationPage';
+import ConformanceUnitsPage from './pages/ConformanceUnitsPage';
 import { RequireAuth } from './components/RequireAuth';
 
 const App: React.FC = () => {
@@ -31,6 +32,18 @@ const App: React.FC = () => {
                path: '/validation',
                title: 'validation.shortName',
                main: <RequireAuth><ValidationPage /></RequireAuth>,
+               icon: null,
+            }} />}
+         />
+         {/* Conformance-unit view — reached from a model's Conformance Units action.
+             Kept out of the `pages` nav array for the same reason as /validation:
+             it needs a model (?ns=…) to have anything to show. */}
+         <Route
+            path="/conformance_units"
+            element={<Layout page={{
+               path: '/conformance_units',
+               title: 'conformanceUnits.shortName',
+               main: <RequireAuth><ConformanceUnitsPage /></RequireAuth>,
                icon: null,
             }} />}
          />

@@ -3,8 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import Box from '@mui/material/Box';
-import Autocomplete from '@mui/material/Autocomplete';
-import TextField from '@mui/material/TextField';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormGroup from '@mui/material/FormGroup';
 import Checkbox from '@mui/material/Checkbox';
@@ -12,9 +10,10 @@ import Switch from '@mui/material/Switch';
 import Typography from '@mui/material/Typography';
 
 import { ModelDialog } from './ModelDialog';
+import { ProfileGroupSelect } from './ProfileGroupSelect';
 import api from '../api/axios.api';
 import { idToUrn } from '../model/WorkspaceDescription';
-import type { ProfileGroup, ValidationDocumentInfo, ValidationResult, ValidationDocumentSettings } from '../model/Validation';
+import type { ValidationDocumentInfo, ValidationResult, ValidationDocumentSettings } from '../model/Validation';
 
 interface Props {
    open: boolean;
@@ -35,14 +34,6 @@ export const EditValidationOptionsDialog: React.FC<Props> = ({ open, onClose, wo
    const [suppressed, setSuppressed] = React.useState<Set<string>>(new Set(doc.suppressedCodes ?? []));
    const [saving, setSaving] = React.useState(false);
    const [error, setError] = React.useState<Error | null>(null);
-
-   // Profile groups (sorted server-side) for the dropdown.
-   const { data: profileGroups } = useQuery<ProfileGroup[]>({
-      queryKey: ['validation-profile-groups'],
-      queryFn: async () => (await api.get<ProfileGroup[]>('/opcua/v1/validation/profile-groups', { headers: header })).data,
-      enabled: open,
-      staleTime: 6 * 60 * 60 * 1000,
-   });
 
    // Error codes present in the latest result, for the suppress checklist.
    const { data: result } = useQuery<ValidationResult>({
@@ -85,8 +76,6 @@ export const EditValidationOptionsDialog: React.FC<Props> = ({ open, onClose, wo
       }
    };
 
-   const groupOptions = React.useMemo(() => (profileGroups ?? []).map(g => g.fullName), [profileGroups]);
-
    return (
       <ModelDialog
          open={open}
@@ -106,21 +95,12 @@ export const EditValidationOptionsDialog: React.FC<Props> = ({ open, onClose, wo
                {doc.fileName}
             </Typography>
 
-            {/* 1) Profile Group Name — freeSolo: pick a known group or type any value; clear = none. */}
-            <Autocomplete
-               freeSolo
-               size="small"
-               fullWidth
-               options={groupOptions}
-               inputValue={profileGroupName}
-               onInputChange={(_e, val) => setProfileGroupName(val)}
-               renderInput={(params) => (
-                  <TextField
-                     {...params}
-                     label={t('validation.profileGroup', 'Profile Group Name')}
-                     placeholder={t('validation.profileGroupNone', 'Select none')}
-                  />
-               )}
+            {/* 1) Profile Group Name */}
+            <ProfileGroupSelect
+               value={profileGroupName}
+               onChange={setProfileGroupName}
+               workspaceId={workspaceId}
+               enabled={open}
             />
 
             {/* 2) Verbose */}

@@ -56,6 +56,8 @@ builder.Services.AddDbContext<NodeSetEditorDbContext>(options =>
             .EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(5), errorCodesToAdd: null)));
 builder.Services.AddScoped<INodeSetStorageService, DbNodeSetStorageService>();
 builder.Services.AddScoped<IValidationService, ValidationService>();
+builder.Services.AddScoped<IConformanceUnitService, ConformanceUnitService>();
+builder.Services.AddScoped<INodeSetSubsetService, NodeSetSubsetService>();
 Console.WriteLine("[Startup] Using DbNodeSetStorageService (PostgreSQL)");
 
 // Register workspace address space service
@@ -73,6 +75,9 @@ if (testMode.Enabled)
 
 // Allow-list for beta features (the non-XML download formats). Read once at startup.
 builder.Services.AddSingleton<NodeSetEditor.Server.Services.BetaTesterPolicy>();
+
+// Allow-list for who may edit shared/standard models for everyone (AdminEmails). Read once.
+builder.Services.AddSingleton<NodeSetEditor.Server.Services.AdminPolicy>();
 
 // Allow-list for who may request a sign-in code at all. Empty means everyone.
 builder.Services.AddSingleton<NodeSetEditor.Server.Services.EmailDomainPolicy>();

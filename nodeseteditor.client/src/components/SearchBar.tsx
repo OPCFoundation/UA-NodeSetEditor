@@ -59,13 +59,15 @@ export const SearchBar = ({ hint, value, onChange, onRefresh, sx, children, righ
                   }}
                >
                   <SearchIcon sx={{ color: theme.palette.grey[800] }} />
+                  {/* The box sizes to its content, so on md+ it needs a floor wide enough for
+                      the longest placeholder ("Search conformance units…") — it was clipping. */}
                   <TextField
                      variant="outlined"
                      placeholder={hint ?? t('main.search')}
                      size="small"
                      value={value}
                      onChange={onChange}
-                     sx={{ flex: 1, minWidth: 0 }}
+                     sx={{ flex: 1, minWidth: { xs: 0, md: 280 } }}
                   />
                </Box>
                {children}

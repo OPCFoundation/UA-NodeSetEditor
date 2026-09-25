@@ -104,17 +104,23 @@ namespace NodeSetEditor.Server.Controllers
         private readonly INodeSetStorageService _storage;
         private readonly IWorkspaceAddressSpaceService _addressSpace;
         private readonly BetaTesterPolicy _betaTesters;
+        private readonly AdminPolicy _admins;
+        private readonly INodeSetSubsetService _subsets;
         private readonly ILogger<UaRestApiController> _logger;
 
         public UaRestApiController(
             INodeSetStorageService storage,
             IWorkspaceAddressSpaceService addressSpace,
             BetaTesterPolicy betaTesters,
+            AdminPolicy admins,
+            INodeSetSubsetService subsets,
             ILogger<UaRestApiController> logger)
         {
             _storage = storage;
             _addressSpace = addressSpace;
             _betaTesters = betaTesters;
+            _admins = admins;
+            _subsets = subsets;
             _logger = logger;
         }
 
@@ -399,6 +405,7 @@ namespace NodeSetEditor.Server.Controllers
                         License = m?.License,
                         LicenseUrl = m?.LicenseUrl,
                         CopyrightHolder = m?.CopyrightHolder,
+                        ProfileGroupName = m?.ProfileGroupName,
                     };
                 }).ToList();
 
@@ -585,13 +592,19 @@ namespace NodeSetEditor.Server.Controllers
                         "The version cannot be changed while the model is checked out for editing."));
                 }
 
+                // Admins curate shared/standard models on everyone's behalf, so the private-only
+                // and reserved-namespace rules below are lifted for them. Their edit lands on the
+                // shared model row and every workspace linked to it sees the result.
+                var isAdmin = _admins.IsAdmin(user?.Email);
+                var mayEditSharedModel = modelRef?.IsPrivate == true || isAdmin;
+
                 // License/copyright are editable, but only on the user's own private models
                 // (shared/published models stay read-only). Validate when a change is requested.
                 var editingLicense = request.License != null || request.CopyrightHolder != null || request.LicenseUrl != null;
                 string? resolvedLicenseUrl = null;
                 if (editingLicense)
                 {
-                    if (modelRef?.IsPrivate != true)
+                    if (!mayEditSharedModel)
                     {
                         return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument, nameof(Opc.Ua.StatusCodes.BadInvalidArgument),
                             "License and copyright can only be changed on your own private models."));
@@ -609,6 +622,14 @@ namespace NodeSetEditor.Server.Controllers
                     resolvedLicenseUrl = licUrl;
                 }
 
+                // Same rule as license/copyright: the profile group is a property of the shared
+                // model row, so a non-admin may only set it through their own private link.
+                if (request.ProfileGroupName != null && !mayEditSharedModel)
+                {
+                    return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument, nameof(Opc.Ua.StatusCodes.BadInvalidArgument),
+                        "The profile group can only be changed on your own private models."));
+                }
+
                 var modelInfo = await _storage.UpdateModelInfoAsync(
                     workspaceId,
                     id,
@@ -618,7 +639,17 @@ namespace NodeSetEditor.Server.Controllers
                     license: editingLicense ? request.License!.Trim() : null,
                     licenseUrl: editingLicense ? resolvedLicenseUrl : null,
                     copyrightHolder: editingLicense ? request.CopyrightHolder!.Trim() : null,
-                    enforceReadOnlyReserved: true);
+                    profileGroupName: request.ProfileGroupName,
+                    // The OPC Foundation namespace is read-only to users, but curating exactly
+                    // those standard models is what the admin role is for.
+                    enforceReadOnlyReserved: !isAdmin);
+
+                // The profile group is emitted into the generated NodeSet XML (the
+                // ProfileGroup:<Name> conformance unit on the NamespaceMetadata object), and the
+                // cached address space is built from that XML — so unlike the other fields edited
+                // here, this one changes what export produces and the cache has to be dropped.
+                if (request.ProfileGroupName != null)
+                    _addressSpace.Invalidate(workspaceId);
 
                 return Ok(ToNamespaceInfo(modelInfo, modelRef?.IsPrivate, modelRef?.IsEditable));
             }
@@ -1033,7 +1064,8 @@ namespace NodeSetEditor.Server.Controllers
             Guid id,
             [FromHeader(Name = "OpcUa-Server")] string? opcUaServer,
             [FromQuery] string format = "xml",
-            [FromQuery] bool includeDependencies = false)
+            [FromQuery] bool includeDependencies = false,
+            [FromQuery] bool removeUnusedNodes = false)
         {
             try
             {
@@ -1065,7 +1097,10 @@ namespace NodeSetEditor.Server.Controllers
 
                 if (includeDependencies)
                 {
-                    return await ExportNamespaceBundle(workspaceId, modelInfo, models, addressSpace, fmt);
+                    // Trimming is generated from the DB, which emits XML; the other formats are
+                    // serialized from the address space and have no trimmed path.
+                    var trim = removeUnusedNodes && fmt == OpenExportFormat;
+                    return await ExportNamespaceBundle(workspaceId, modelInfo, models, addressSpace, fmt, trim, user);
                 }
 
                 var ms = SerializeModel(addressSpace, modelInfo.ModelUri!, fmt, out var contentType, out var extension,
@@ -1099,7 +1134,9 @@ namespace NodeSetEditor.Server.Controllers
             ModelInfo modelInfo,
             IReadOnlyList<ModelInfo?> models,
             JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace,
-            string fmt)
+            string fmt,
+            bool removeUnusedNodes = false,
+            AuthenticatedUser? user = null)
         {
             var modelByUri = models
                 .Where(m => m != null && !string.IsNullOrEmpty(m!.ModelUri))
@@ -1118,6 +1155,24 @@ namespace NodeSetEditor.Server.Controllers
 
             var bundleUris = ResolveDependencyClosure(modelInfo.ModelUri!, modelByUri.Keys, modelDeps);
 
+            // "Remove unused nodes": each DEPENDENCY keeps only what the downloaded model reaches.
+            // The model itself is never trimmed — it is the thing being shipped.
+            IReadOnlySet<string>? keep = null;
+            if (removeUnusedNodes)
+            {
+                var dependencyIds = bundleUris
+                    .Where(u => !string.Equals(u, modelInfo.ModelUri, StringComparison.Ordinal))
+                    .Select(u => modelByUri.TryGetValue(u, out var m) ? m.Id : null)
+                    .Where(id => id.HasValue)
+                    .Select(id => id!.Value)
+                    .ToList();
+
+                keep = await _subsets.ComputeDependencyClosureAsync(modelInfo.Id!.Value, dependencyIds);
+            }
+
+            var provenance = new SubsetProvenance(
+                user?.DisplayName, user?.Email, modelInfo.ModelUri!, DateTime.UtcNow);
+
             var zipStream = new MemoryStream();
             using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, leaveOpen: true))
             {
@@ -1126,9 +1181,24 @@ namespace NodeSetEditor.Server.Controllers
                 {
                     if (!modelByUri.TryGetValue(uri, out var depInfo)) continue;
 
-                    using var modelStream = SerializeModel(addressSpace, uri, fmt, out _, out var ext,
-                        depInfo.CopyrightHolder, depInfo.License, depInfo.LicenseUrl);
+                    var isPrimary = string.Equals(uri, modelInfo.ModelUri, StringComparison.Ordinal);
 
+                    Stream modelStream;
+                    string ext;
+                    if (keep != null && !isPrimary && depInfo.Id.HasValue)
+                    {
+                        var trimmed = await _subsets.ExportTrimmedAsync(depInfo.Id.Value, keep, provenance);
+                        if (trimmed == null) continue;
+                        modelStream = new MemoryStream(trimmed);
+                        ext = ".xml";
+                    }
+                    else
+                    {
+                        modelStream = SerializeModel(addressSpace, uri, fmt, out _, out ext,
+                            depInfo.CopyrightHolder, depInfo.License, depInfo.LicenseUrl);
+                    }
+
+                    using var _modelStream = modelStream;
                     var entryName = GenerateExportFileName(depInfo, ext);
                     if (!usedNames.Add(entryName))
                     {
@@ -1198,11 +1268,10 @@ namespace NodeSetEditor.Server.Controllers
         {
             var serializer = NodeSetSerializer.FromAddressSpace(addressSpace, modelUri);
 
-            // JSON-family NodeSets carry SPDX license/copyright as a structured header object (JSON has
-            // no comment syntax); the XML path injects comment headers post-serialization instead. The
-            // header is written once — on the first file of a multi-file archive. (JSON-LD conveys
-            // provenance through its own RDF/OWL vocabulary and is left untouched here.)
-            if (fmt is "json" or "compressed")
+            // A JSON NodeSet carries SPDX license/copyright as a structured header object (JSON has
+            // no comment syntax); the XML path injects comment headers post-serialization instead.
+            // (JSON-LD conveys provenance through its own RDF/OWL vocabulary and is left untouched.)
+            if (fmt is "json")
             {
                 var copyrightText = NodeSetEditor.Model.SpdxHeaders.FormatCopyrightText(copyrightHolder);
                 if (copyrightText != null
@@ -1231,14 +1300,16 @@ namespace NodeSetEditor.Server.Controllers
                     contentType = "application/json";
                     extension = ".json";
                     break;
-                case "compressed":
-                    serializer.SaveArchive(ms, 10000);
-                    contentType = "application/gzip";
-                    extension = ".uanodeset";
-                    break;
-                // "jsonld" is deliberately absent. RDF/JSON-LD is a prototype of a draft encoding
-                // and ships in its own assembly, which this build does not reference — so there is
-                // no route to serve it and an asking client falls through to XML below.
+                // "compressed" and "jsonld" are deliberately absent. The .uanodeset package and the
+                // RDF/JSON-LD encoding are prototypes of a draft specification and ship in their own
+                // assembly, which this build does not reference — so there is no route to serve
+                // either and an asking client falls through to XML below. The client offers both as
+                // disabled placeholders for the same reason.
+                //
+                // The package encoding used to be reachable here, when it was a gzipped tar the
+                // serializer itself could write. It is now an ASiC-E container carrying JSONL, built
+                // by Opc.Ua.NodeSetSerializer.Jsonl — taking that on would mean shipping a draft
+                // encoding from this build.
                 default:
                     serializer.SaveXml(ms);
                     contentType = "text/xml";
@@ -4469,6 +4540,7 @@ namespace NodeSetEditor.Server.Controllers
                     DefaultCopyrightHolder = pref.DefaultCopyrightHolder,
                     TermsAccepted = pref.TermsAcceptedAt.HasValue,
                     BetaTester = _betaTesters.IsBetaTester(user.Email),
+                    Admin = _admins.IsAdmin(user.Email),
                 });
             }
             catch (Exception e)
@@ -4559,6 +4631,7 @@ namespace NodeSetEditor.Server.Controllers
                     DefaultCopyrightHolder = pref.DefaultCopyrightHolder,
                     TermsAccepted = pref.TermsAcceptedAt.HasValue,
                     BetaTester = _betaTesters.IsBetaTester(user.Email),
+                    Admin = _admins.IsAdmin(user.Email),
                 });
             }
             catch (Exception e)
@@ -4779,6 +4852,7 @@ namespace NodeSetEditor.Server.Controllers
                 License = m.License,
                 LicenseUrl = m.LicenseUrl,
                 CopyrightHolder = m.CopyrightHolder,
+                ProfileGroupName = m.ProfileGroupName,
             };
         }
 
@@ -5310,6 +5384,12 @@ namespace NodeSetEditor.Server.Controllers
 
         /// <summary>Copyright holder — editable for private models. Required when changing the license.</summary>
         public string? CopyrightHolder { get; set; }
+
+        /// <summary>
+        /// Profile group for the NodeSet's conformance units — editable for private models.
+        /// Empty string clears it; omitted (null) leaves it unchanged.
+        /// </summary>
+        public string? ProfileGroupName { get; set; }
     }
 
     public class LinkNamespaceRequest

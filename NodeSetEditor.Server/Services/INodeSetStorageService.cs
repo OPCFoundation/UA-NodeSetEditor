@@ -202,8 +202,11 @@ namespace NodeSetEditor.Server.Services
         // resolves the URL before passing them, and only sets them when non-null.
         // enforceReadOnlyReserved=true (the user-facing edit path) rejects edits to models in the
         // reserved http://opcfoundation.org/ namespace even when private; internal importers leave it false.
+        // profileGroupName follows the same null-means-leave-alone convention, but an empty string
+        // clears it (unlike license/copyright, it stays editable for the life of the model).
         Task<ModelInfo> UpdateModelInfoAsync(Guid workspaceId, Guid modelId, string? name, string? version, string? description,
             string? license = null, string? licenseUrl = null, string? copyrightHolder = null,
+            string? profileGroupName = null,
             bool enforceReadOnlyReserved = false);
 
         /// <summary>

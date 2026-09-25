@@ -13,6 +13,7 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import DownloadIcon from '@mui/icons-material/Download';
 import DeleteIcon from '@mui/icons-material/Delete';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
+import ChecklistIcon from '@mui/icons-material/Checklist';
 import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import HistoryIcon from '@mui/icons-material/History';
@@ -67,6 +68,7 @@ import { ImportSharedModelDialog } from '../components/ImportSharedModelDialog';
 import Link from '@mui/material/Link';
 import { useLicenseOptions } from '../hooks/useLicenseOptions';
 import { LicenseFields, isLicenseValid, type LicenseValue } from '../components/LicenseFields';
+import { ProfileGroupSelect } from '../components/ProfileGroupSelect';
 import { ModelVersionsDialog } from '../components/ModelVersionsDialog';
 
 // Helper function to format publication date as YYYY-MM-DD
@@ -175,7 +177,7 @@ const ModelLibraryPage: React.FC = () => {
    const { selectedWorkspaceId, setSelectedWorkspaceId, highlightModelUri, selectedModelUri, setSelectedModelUri, modelLibraryCategories, setModelLibraryCategories, setSelectedType } = React.useContext(WorkspaceContext);
    const { email: userEmail, defaultDomain: userDefaultDomain,
       defaultLicense: userDefaultLicense, defaultLicenseUrl: userDefaultLicenseUrl,
-      defaultCopyrightHolder: userDefaultCopyright, betaTester } = React.useContext(UserContext);
+      defaultCopyrightHolder: userDefaultCopyright, betaTester, admin } = React.useContext(UserContext);
    const { data: licenseOptions } = useLicenseOptions();
    const [filter, setFilter] = React.useState<string>('');
    const visibleCategories = modelLibraryCategories;
@@ -195,6 +197,7 @@ const ModelLibraryPage: React.FC = () => {
    const [modelToDownload, setModelToDownload] = React.useState<ModelInfo | null>(null);
    const [downloadFormat, setDownloadFormat] = React.useState<string>('xml');
    const [downloadIncludeDeps, setDownloadIncludeDeps] = React.useState<boolean>(false);
+   const [downloadRemoveUnused, setDownloadRemoveUnused] = React.useState<boolean>(false);
 
    // Create menu and workspace dialog state
    const [createMenuAnchor, setCreateMenuAnchor] = React.useState<HTMLElement | null>(null);
@@ -252,6 +255,9 @@ const ModelLibraryPage: React.FC = () => {
    const [editModelLicense, setEditModelLicense] = React.useState('');
    const [editModelLicenseUrl, setEditModelLicenseUrl] = React.useState('');
    const [editModelCopyright, setEditModelCopyright] = React.useState('');
+   const [editModelProfileGroup, setEditModelProfileGroup] = React.useState('');
+   // True when the model being edited is shared — used to warn an admin that the edit is global.
+   const [editModelIsShared, setEditModelIsShared] = React.useState(false);
    // While a model is checked out the version is owned by the checkout/check-in
    // lifecycle, so the Version field is disabled in the edit dialog.
    const [editModelVersionLocked, setEditModelVersionLocked] = React.useState(false);
@@ -718,10 +724,20 @@ const ModelLibraryPage: React.FC = () => {
       navigate(`/validation?${params.toString()}`);
    };
 
+   const handleViewConformanceUnits = (ns: WorkspaceNamespaceInfo) => {
+      // Read-only view, so it works for any model in the workspace. Pass the model id and URI
+      // on the URL for the same reasons as handleValidateModel.
+      const params = new URLSearchParams();
+      if (ns.id) params.set('model', ns.id);
+      if (ns.uri) params.set('ns', ns.uri);
+      navigate(`/conformance_units?${params.toString()}`);
+   };
+
    const handleDownloadModel = (ns: WorkspaceNamespaceInfo) => {
       setModelToDownload(nsToModelInfo(ns));
       setDownloadFormat('xml');
       setDownloadIncludeDeps(false);
+      setDownloadRemoveUnused(false);
       setDownloadDialogOpen(true);
    };
 
@@ -737,8 +753,11 @@ const ModelLibraryPage: React.FC = () => {
 
       try {
          const depsParam = downloadIncludeDeps ? '&includeDependencies=true' : '';
+         // Mirrors the checkbox's own enablement — the server ignores it otherwise anyway.
+         const trimParam = downloadIncludeDeps && downloadRemoveUnused && downloadFormat === 'xml'
+            ? '&removeUnusedNodes=true' : '';
          const response = await api.get(
-            `/opcua/v1/namespaces/info/${modelToDownload.id}/export?format=${downloadFormat}${depsParam}`,
+            `/opcua/v1/namespaces/info/${modelToDownload.id}/export?format=${downloadFormat}${depsParam}${trimParam}`,
             {
                responseType: 'blob',
                headers: { 'OpcUa-Server': idToUrn(selectedWorkspaceId) }
@@ -840,11 +859,16 @@ const ModelLibraryPage: React.FC = () => {
       setEditModelVersion(ns.version ?? '');
       setEditModelDescription(ns.description?.text ?? '');
       setEditModelError(null);
-      setEditModelReadOnly(!ns.isPrivate || !canWrite || isOpcFoundationModel(ns));
+      // Admins curate the standard models for everyone, so neither the private-only rule nor
+      // the read-only OPC Foundation namespace closes the dialog for them. The server applies
+      // the same exemption; this only decides what the form offers.
+      setEditModelReadOnly(!admin && (!ns.isPrivate || !canWrite || isOpcFoundationModel(ns)));
+      setEditModelIsShared(!ns.isPrivate);
       setEditModelVersionLocked(!!ns.isEditable);
       setEditModelLicense(ns.license ?? '');
       setEditModelLicenseUrl(ns.licenseUrl ?? '');
       setEditModelCopyright(ns.copyrightHolder ?? '');
+      setEditModelProfileGroup(ns.profileGroupName ?? '');
       setEditModelDialogOpen(true);
    };
 
@@ -876,6 +900,8 @@ const ModelLibraryPage: React.FC = () => {
             payload.license = editModelLicense.trim();
             payload.licenseUrl = editModelLicenseUrl.trim() || null;
             payload.copyrightHolder = editModelCopyright.trim();
+            // Always sent when editable — an empty string is how the profile group is cleared.
+            payload.profileGroupName = editModelProfileGroup.trim();
          }
          await api.put(`/opcua/v1/namespaces/info/${editModel.id}`, payload,
             { headers: { 'OpcUa-Server': idToUrn(selectedWorkspaceId) } });
@@ -1164,13 +1190,20 @@ const ModelLibraryPage: React.FC = () => {
                               },
                               {
                                  onAction: () => handleEditModel(ns),
-                                 icon: ns.isEditable ? <EditIcon /> : <VisibilityIcon />,
-                                 tooltipKey: ns.isEditable ? 'modelLibrary.editModel' : 'modelLibrary.viewModel'
+                                 // An admin gets the editable dialog on every model, so the
+                                 // action reads as Edit rather than View for them.
+                                 icon: (ns.isEditable || admin) ? <EditIcon /> : <VisibilityIcon />,
+                                 tooltipKey: (ns.isEditable || admin) ? 'modelLibrary.editModel' : 'modelLibrary.viewModel'
                               },
                               {
                                  onAction: () => handleViewTypeDefinitions(ns),
                                  icon: <AccountTreeIcon />,
                                  tooltipKey: 'modelLibrary.viewTypeDefinitions'
+                              },
+                              {
+                                 onAction: () => handleViewConformanceUnits(ns),
+                                 icon: <ChecklistIcon />,
+                                 tooltipKey: 'conformanceUnits.open'
                               },
                               {
                                  onAction: () => handleValidateModel(ns),
@@ -1354,6 +1387,26 @@ const ModelLibraryPage: React.FC = () => {
                      }
                      label={t('modelLibrary.downloadIncludeDependencies', 'Include all dependencies (ZIP)')}
                   />
+                  {/* Only meaningful alongside dependencies, and only XML has a trimmed
+                      generator — the other formats are serialized from the whole address space. */}
+                  <Tooltip title={!downloadIncludeDeps
+                     ? t('modelLibrary.removeUnusedNeedsDependencies', 'Only available when dependencies are included.')
+                     : downloadFormat !== 'xml'
+                        ? t('modelLibrary.removeUnusedXmlOnly', 'Only available for the XML format.')
+                        : t('modelLibrary.removeUnusedHelp',
+                           'Each dependency keeps only the nodes this model uses. The model itself is unchanged.')}>
+                     <FormControlLabel
+                        sx={{ ml: 6 }}
+                        control={
+                           <Checkbox
+                              checked={downloadRemoveUnused && downloadIncludeDeps && downloadFormat === 'xml'}
+                              disabled={!downloadIncludeDeps || downloadFormat !== 'xml'}
+                              onChange={(e) => setDownloadRemoveUnused(e.target.checked)}
+                           />
+                        }
+                        label={t('modelLibrary.downloadRemoveUnusedNodes', 'Remove unused nodes')}
+                     />
+                  </Tooltip>
                </Box>
             </ModelDialog>
          )}
@@ -1519,6 +1572,14 @@ const ModelLibraryPage: React.FC = () => {
             >
                {!editModelError && (
                   <Box sx={{ p: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                     {/* An admin editing a shared model changes it for every workspace linked
+                         to that model row — say so before they start typing. */}
+                     {!editModelReadOnly && editModelIsShared && (
+                        <Alert severity="warning" variant="outlined">
+                           {t('modelLibrary.adminSharedModelWarning',
+                              'This is a shared model. Changes you make here apply to every user and workspace that uses it.')}
+                        </Alert>
+                     )}
                      <TextField
                         label={t('modelLibrary.createModelName')}
                         value={editModelName}
@@ -1590,6 +1651,13 @@ const ModelLibraryPage: React.FC = () => {
                                     {editModelLicenseUrl}
                                  </Link>
                               )}
+                              <TextField
+                                 label={t('conformanceUnits.profileGroup', 'Profile Group')}
+                                 value={editModelProfileGroup || ''}
+                                 placeholder={t('common.notSet', 'Not set')}
+                                 fullWidth
+                                 slotProps={{ input: { readOnly: true } }}
+                              />
                            </>
                         ) : (
                            <>
@@ -1610,6 +1678,14 @@ const ModelLibraryPage: React.FC = () => {
                                  licenseUrl={editModelLicenseUrl}
                                  onChange={(v) => { setEditModelLicense(v.license); setEditModelLicenseUrl(v.licenseUrl); }}
                                  size="medium"
+                              />
+                              {/* Profile group the model's conformance units are assessed
+                                  against — surfaced on the Conformance Units view. */}
+                              <ProfileGroupSelect
+                                 value={editModelProfileGroup}
+                                 onChange={setEditModelProfileGroup}
+                                 workspaceId={selectedWorkspaceId ?? undefined}
+                                 enabled={editModelDialogOpen}
                               />
                            </>
                         )}

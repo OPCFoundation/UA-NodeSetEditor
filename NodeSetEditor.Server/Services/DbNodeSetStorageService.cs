@@ -533,6 +533,9 @@ namespace NodeSetEditor.Server.Services
             clone.License = source.License;
             clone.LicenseUrl = source.LicenseUrl;
             clone.CopyrightHolder = source.CopyrightHolder;
+            // The profile group is a property of the NodeSet, not of the version — a working
+            // copy is assessed against the same one the model it was checked out from used.
+            clone.SetProfileGroupName(source.GetProfileGroupName());
             await _db.SaveChangesAsync();
 
             // Refresh the working copy's NamespaceMetadata to the new version / publication date.
@@ -1204,6 +1207,7 @@ namespace NodeSetEditor.Server.Services
 
         public async Task<ModelInfo> UpdateModelInfoAsync(Guid workspaceId, Guid modelId, string? name, string? version, string? description,
             string? license = null, string? licenseUrl = null, string? copyrightHolder = null,
+            string? profileGroupName = null,
             bool enforceReadOnlyReserved = false)
         {
             // Model rows are shared across workspaces, so a caller-supplied modelId
@@ -1248,6 +1252,9 @@ namespace NodeSetEditor.Server.Services
                 model.LicenseUrl = licenseUrl;
             }
             if (copyrightHolder != null) model.CopyrightHolder = copyrightHolder;
+            // Unlike license/copyright this one stays editable for the life of the model, and an
+            // empty string is meaningful: it clears the profile group.
+            if (profileGroupName != null) model.SetProfileGroupName(profileGroupName);
 
             await _db.SaveChangesAsync();
 
@@ -1931,7 +1938,8 @@ namespace NodeSetEditor.Server.Services
                 Creator = m.Creator,
                 License = m.License,
                 LicenseUrl = m.LicenseUrl,
-                CopyrightHolder = m.CopyrightHolder
+                CopyrightHolder = m.CopyrightHolder,
+                ProfileGroupName = m.GetProfileGroupName()
             };
         }
 

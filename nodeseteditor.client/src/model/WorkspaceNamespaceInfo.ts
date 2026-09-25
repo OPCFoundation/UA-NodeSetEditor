@@ -33,6 +33,12 @@ export interface WorkspaceNamespaceInfo extends NamespaceInfo {
    licenseUrl?: string;
    /** Copyright holder (e.g. "OPC Foundation, Inc."). Set once at genesis. */
    copyrightHolder?: string;
+   /**
+    * Profile group the NodeSet's conformance units are assessed against (a profile-group
+    * fullName from profiles.opcfoundation.org); null/absent = none. Edited in the model
+    * dialog, shown on the Conformance Units view.
+    */
+   profileGroupName?: string | null;
 }
 
 export type { PaginatedResponse };

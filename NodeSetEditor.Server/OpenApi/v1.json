@@ -10,6 +10,69 @@
     "version": "v1"
   },
   "paths": {
+    "/api/opcua/v1/conformance-units": {
+      "get": {
+        "tags": [
+          "ConformanceUnits"
+        ],
+        "parameters": [
+          {
+            "name": "modelId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConformanceUnitInfo"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConformanceUnitInfo"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConformanceUnitInfo"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
     "/api/opcua/v1/discovery": {
       "get": {
         "tags": [
@@ -1154,6 +1217,14 @@
           },
           {
             "name": "includeDependencies",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "removeUnusedNodes",
             "in": "query",
             "schema": {
               "type": "boolean",
@@ -3246,6 +3317,18 @@
           }
         }
       },
+      "ConformanceUnitInfo": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "nodeCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          }
+        }
+      },
       "CreateNamespaceRequest": {
         "type": "object",
         "properties": {
@@ -3675,6 +3758,10 @@
             "nullable": true
           },
           "copyrightHolder": {
+            "type": "string",
+            "nullable": true
+          },
+          "profileGroupName": {
             "type": "string",
             "nullable": true
           }
@@ -4112,6 +4199,10 @@
           "copyrightHolder": {
             "type": "string",
             "nullable": true
+          },
+          "profileGroupName": {
+            "type": "string",
+            "nullable": true
           }
         }
       },
@@ -4279,6 +4370,10 @@
             "nullable": true
           },
           "betaTester": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "admin": {
             "type": "boolean",
             "nullable": true
           }
@@ -4606,6 +4701,10 @@
             "type": "string",
             "nullable": true
           },
+          "profileGroupName": {
+            "type": "string",
+            "nullable": true
+          },
           "errorMessage": {
             "type": "string",
             "nullable": true
@@ -4683,6 +4782,9 @@
     }
   },
   "tags": [
+    {
+      "name": "ConformanceUnits"
+    },
     {
       "name": "Editor"
     },

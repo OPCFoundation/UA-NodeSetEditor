@@ -61,6 +61,22 @@
     "severityInfo": "Info",
     "downloadCsv": "Download CSV"
   },
+  "conformanceUnits": {
+    "shortName": "Conformance Units",
+    "title": "View Conformance Units",
+    "pageTitle": "View Conformance Units",
+    "open": "View conformance units",
+    "backToModels": "Back to models",
+    "noWorkspace": "Select a workspace to view conformance units.",
+    "noSelectedModel": "No model selected — open this page from a model's Conformance Units icon.",
+    "searchHint": "Search conformance units…",
+    "nodeCount_one": "{{count}} node",
+    "nodeCount_other": "{{count}} nodes",
+    "noUnits": "This NodeSet does not declare any conformance units.",
+    "noMatchingUnits": "No conformance units match your search.",
+    "profileGroup": "Profile Group",
+    "pageTitleFor": "Conformance Units — {{model}}"
+  },
   "common": {
     "cancel": "Cancel",
     "ok": "OK",
@@ -71,7 +87,8 @@
     "reset": "Reset",
     "select": "Select",
     "uploading": "Uploading...",
-    "notSet": "Not set"
+    "notSet": "Not set",
+    "saving": "Saving…"
   },
   "nodePicker": {
     "title": "Select a Node",
@@ -333,7 +350,12 @@
     "deleteWorkspaceDisabled": "Only the owner can delete this workspace",
     "deleteWorkspaceConfirmation": "Are you sure you want to delete workspace \"{{name}}\"? This cannot be undone.",
     "workspaceAcl": "Access List (one email per line)",
-    "workspaceAclHelp": "Email addresses of users who can access this workspace"
+    "workspaceAclHelp": "Email addresses of users who can access this workspace",
+    "adminSharedModelWarning": "This is a shared model. Changes you make here apply to every user and workspace that uses it.",
+    "downloadRemoveUnusedNodes": "Remove unused nodes",
+    "removeUnusedHelp": "Each dependency keeps only the nodes this model uses. The model itself is unchanged.",
+    "removeUnusedNeedsDependencies": "Only available when dependencies are included.",
+    "removeUnusedXmlOnly": "Only available for the XML format."
   },
   "modelVersions": {
     "dialogTitle": "Model Versions",

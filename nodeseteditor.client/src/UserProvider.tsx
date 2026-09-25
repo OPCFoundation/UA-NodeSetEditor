@@ -88,6 +88,8 @@ export const UserProvider = ({ children }: UserProviderProps) => {
    const [termsAccepted, setTermsAccepted] = React.useState<boolean>(true);
    // Defaults closed: until the server says otherwise, the beta formats stay hidden.
    const [betaTester, setBetaTester] = React.useState<boolean>(false);
+   // Defaults closed too: nobody is treated as an admin until the server says so.
+   const [admin, setAdmin] = React.useState<boolean>(false);
 
    // Single setter that updates React state, mirrors to localStorage (so
    // pre-auth reloads still respect the last choice), and best-effort
@@ -156,7 +158,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
       if (!userId) return;
       if (hasFetchedPrefsForUser.current === userId) return;
       hasFetchedPrefsForUser.current = userId;
-      api.get<{ themeMode?: string, name?: string, defaultDomain?: string, defaultLicense?: string, defaultLicenseUrl?: string, defaultCopyrightHolder?: string, termsAccepted?: boolean, betaTester?: boolean }>('/opcua/v1/user/preferences')
+      api.get<{ themeMode?: string, name?: string, defaultDomain?: string, defaultLicense?: string, defaultLicenseUrl?: string, defaultCopyrightHolder?: string, termsAccepted?: boolean, betaTester?: boolean, admin?: boolean }>('/opcua/v1/user/preferences')
          .then((res) => {
             const serverTheme = res.data?.themeMode;
             if (serverTheme === ThemeModes.Light || serverTheme === ThemeModes.Dark) {
@@ -170,6 +172,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
             if (res.data?.defaultCopyrightHolder != null) setDefaultCopyrightHolderRaw(res.data.defaultCopyrightHolder);
             setTermsAccepted(res.data?.termsAccepted ?? false);
             setBetaTester(res.data?.betaTester ?? false);
+            setAdmin(res.data?.admin ?? false);
          })
          .catch(() => { /* best-effort */ });
    }, [userId]);
@@ -407,6 +410,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
       termsAccepted,
       acceptTerms,
       betaTester,
+      admin,
    } as UserContextType;
 
    return (

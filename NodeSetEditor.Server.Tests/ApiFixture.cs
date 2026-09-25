@@ -81,18 +81,9 @@ public class ApiFixture : IAsyncLifetime
 
         // Try to create the workspace; if it already exists, reuse it and clean its models
         const string workspaceName = "IntegrationTestWorkspace";
-        var createResponse = await Client.PostAsJsonAsync("/api/opcua/v1/servers", new
-        {
-            applicationName = workspaceName,
-            description = "Auto-created for tests"
-        });
+        WorkspaceUrn = await CreateWorkspaceAsync(workspaceName);
 
-        if (createResponse.IsSuccessStatusCode)
-        {
-            var body = await createResponse.Content.ReadFromJsonAsync<Dictionary<string, object>>();
-            WorkspaceUrn = body?["applicationUri"]?.ToString();
-        }
-        else
+        if (WorkspaceUrn == null)
         {
             // Workspace already exists — look it up via the server's own DbContext
             using var scope = _factory.Services.CreateScope();
@@ -101,22 +92,45 @@ public class ApiFixture : IAsyncLifetime
                 .FirstAsync(w => w.Name == workspaceName);
             WorkspaceUrn = UrnUtils.ToUrn(existing.Id);
 
-            // Delete all associated models
-            var nsListRequest = new HttpRequestMessage(HttpMethod.Get, "/api/opcua/v1/namespaces/info");
-            nsListRequest.Headers.Add("OpcUa-Server", WorkspaceUrn);
-            var nsListResponse = await Client.SendAsync(nsListRequest);
-            nsListResponse.EnsureSuccessStatusCode();
-
-            var nsBody = await nsListResponse.Content.ReadFromJsonAsync<JsonElement>();
-            if (nsBody.TryGetProperty("results", out var nsResults))
+            // The UA Core (ns=0) nodeset is linked when a workspace is CREATED and by nothing
+            // else, so a workspace that lost the link can never get it back — every run then
+            // fails at the namespace-create below with "Type node 'i=11616' not found"
+            // (NamespaceMetadataType lives in Core). Recreating the workspace is the only route
+            // back, and it also re-seeds the Core model row itself if that was deleted too
+            // (CreateWorkspaceInternalAsync falls back to the embedded Core NodeSet).
+            if (!await HasCoreModelAsync(db, existing.Id))
             {
-                foreach (var ns in nsResults.EnumerateArray())
+                var deleteWorkspace = new HttpRequestMessage(HttpMethod.Delete, $"/api/opcua/v1/servers/{WorkspaceUrn}");
+                (await Client.SendAsync(deleteWorkspace)).EnsureSuccessStatusCode();
+
+                WorkspaceUrn = await CreateWorkspaceAsync(workspaceName)
+                    ?? throw new InvalidOperationException(
+                        $"Could not recreate the '{workspaceName}' workspace after its Core nodeset link was lost.");
+            }
+            else
+            {
+                // Drop the models a previous run left behind — but only the PRIVATE ones, so
+                // the shared Core link this workspace depends on survives (see above).
+                var nsListRequest = new HttpRequestMessage(HttpMethod.Get, "/api/opcua/v1/namespaces/info");
+                nsListRequest.Headers.Add("OpcUa-Server", WorkspaceUrn);
+                var nsListResponse = await Client.SendAsync(nsListRequest);
+                nsListResponse.EnsureSuccessStatusCode();
+
+                var nsBody = await nsListResponse.Content.ReadFromJsonAsync<JsonElement>();
+                if (nsBody.TryGetProperty("results", out var nsResults))
                 {
-                    if (ns.TryGetProperty("id", out var idProp) && idProp.ValueKind != JsonValueKind.Null)
+                    foreach (var ns in nsResults.EnumerateArray())
                     {
-                        var delRequest = new HttpRequestMessage(HttpMethod.Delete, $"/api/opcua/v1/namespaces/info/{idProp.GetString()}");
-                        delRequest.Headers.Add("OpcUa-Server", WorkspaceUrn);
-                        await Client.SendAsync(delRequest);
+                        var isPrivate = ns.TryGetProperty("isPrivate", out var privateProp)
+                            && privateProp.ValueKind == JsonValueKind.True;
+                        if (!isPrivate) continue;
+
+                        if (ns.TryGetProperty("id", out var idProp) && idProp.ValueKind != JsonValueKind.Null)
+                        {
+                            var delRequest = new HttpRequestMessage(HttpMethod.Delete, $"/api/opcua/v1/namespaces/info/{idProp.GetString()}");
+                            delRequest.Headers.Add("OpcUa-Server", WorkspaceUrn);
+                            await Client.SendAsync(delRequest);
+                        }
                     }
                 }
             }
@@ -136,6 +150,28 @@ public class ApiFixture : IAsyncLifetime
         var nsResponse = await Client.SendAsync(nsRequest);
         nsResponse.EnsureSuccessStatusCode();
     }
+
+    /// <summary>
+    /// Creates the test workspace, returning its URN — or null when one of that name already
+    /// exists (the server rejects a duplicate name).
+    /// </summary>
+    private async Task<string?> CreateWorkspaceAsync(string workspaceName)
+    {
+        var response = await Client.PostAsJsonAsync("/api/opcua/v1/servers", new
+        {
+            applicationName = workspaceName,
+            description = "Auto-created for tests"
+        });
+        if (!response.IsSuccessStatusCode) return null;
+
+        var body = await response.Content.ReadFromJsonAsync<Dictionary<string, object>>();
+        return body?["applicationUri"]?.ToString();
+    }
+
+    /// <summary>Whether the workspace still has the UA Core (ns=0) nodeset linked.</summary>
+    private static Task<bool> HasCoreModelAsync(NodeSetEditorDbContext db, Guid workspaceId) =>
+        db.WorkspaceModels.AnyAsync(wm =>
+            wm.WorkspaceId == workspaceId && wm.Model!.Uri == "http://opcfoundation.org/UA/");
 
     /// <summary>
     /// A client with no DevAuth header, so requests hit the real authorization
@@ -163,6 +199,29 @@ public class ApiFixture : IAsyncLifetime
             .Build(),
             // These tests exercise the allow-list itself; the test-mode bypass is off.
             new TestModeOptions());
+
+        var client = _factory!
+            .WithWebHostBuilder(builder => builder.ConfigureTestServices(services => services.AddSingleton(policy)))
+            .CreateClient();
+
+        client.DefaultRequestHeaders.Add("X-Dev-Auth", "true");
+        return client;
+    }
+
+    /// <summary>
+    /// A client whose host has <see cref="AdminPolicy"/> built from the supplied
+    /// <c>AdminEmails</c> value instead of the ambient configuration. Swapped in the DI container
+    /// for the same reason as <see cref="CreateClientWithBetaTesters"/> — an environment variable
+    /// would hand admin rights to every test sharing the host.
+    /// </summary>
+    public HttpClient CreateClientWithAdmins(string? adminEmails)
+    {
+        var policy = new AdminPolicy(new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [AdminPolicy.ConfigurationKey] = adminEmails
+            })
+            .Build());
 
         var client = _factory!
             .WithWebHostBuilder(builder => builder.ConfigureTestServices(services => services.AddSingleton(policy)))
