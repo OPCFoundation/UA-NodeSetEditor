@@ -1100,7 +1100,8 @@ namespace NodeSetEditor.Server.Controllers
                     // Trimming is generated from the DB, which emits XML; the other formats are
                     // serialized from the address space and have no trimmed path.
                     var trim = removeUnusedNodes && fmt == OpenExportFormat;
-                    return await ExportNamespaceBundle(workspaceId, modelInfo, models, addressSpace, fmt, trim, user);
+                    return await ExportNamespaceBundle(
+                        workspaceId, modelInfo, models, addressSpace, fmt, trim, user, workspace!.Name);
                 }
 
                 var ms = SerializeModel(addressSpace, modelInfo.ModelUri!, fmt, out var contentType, out var extension,
@@ -1136,7 +1137,8 @@ namespace NodeSetEditor.Server.Controllers
             JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace,
             string fmt,
             bool removeUnusedNodes = false,
-            AuthenticatedUser? user = null)
+            AuthenticatedUser? user = null,
+            string? workspaceName = null)
         {
             var modelByUri = models
                 .Where(m => m != null && !string.IsNullOrEmpty(m!.ModelUri))
@@ -1171,7 +1173,7 @@ namespace NodeSetEditor.Server.Controllers
             }
 
             var provenance = new SubsetProvenance(
-                user?.DisplayName, user?.Email, modelInfo.ModelUri!, DateTime.UtcNow);
+                user?.DisplayName, workspaceName, modelInfo.ModelUri!, DateTime.UtcNow);
 
             var zipStream = new MemoryStream();
             using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, leaveOpen: true))
@@ -1183,8 +1185,19 @@ namespace NodeSetEditor.Server.Controllers
 
                     var isPrimary = string.Equals(uri, modelInfo.ModelUri, StringComparison.Ordinal);
 
+                    // With "remove unused nodes" on, the dependencies in this bundle are specific to
+                    // THIS workspace's model rather than interchangeable with the published
+                    // NodeSets they are named after, so every one of them is prefixed with the
+                    // workspace — not just the ones the trimmer actually rewrote. A reader cannot
+                    // tell a trimmed copy from a whole one by its filename, so the bundle marks the
+                    // whole set or none of it. The primary is never trimmed and never prefixed.
+                    var namePrefix = keep != null && !isPrimary
+                        ? WorkspaceFileNamePrefix(workspaceName)
+                        : string.Empty;
+
                     Stream modelStream;
                     string ext;
+
                     if (keep != null && !isPrimary && depInfo.Id.HasValue)
                     {
                         var trimmed = await _subsets.ExportTrimmedAsync(depInfo.Id.Value, keep, provenance);
@@ -1199,7 +1212,7 @@ namespace NodeSetEditor.Server.Controllers
                     }
 
                     using var _modelStream = modelStream;
-                    var entryName = GenerateExportFileName(depInfo, ext);
+                    var entryName = namePrefix + GenerateExportFileName(depInfo, ext);
                     if (!usedNames.Add(entryName))
                     {
                         var bareName = entryName.Substring(0, entryName.Length - ext.Length);
@@ -4876,6 +4889,23 @@ namespace NodeSetEditor.Server.Controllers
                 CopyrightHolder = m.CopyrightHolder,
                 ProfileGroupName = m.ProfileGroupName,
             };
+        }
+
+        /// <summary>
+        /// A workspace name reduced to a filename prefix: lowercased, with everything that is not
+        /// a letter or a digit removed, and a trailing "_" separator. Empty when the workspace has
+        /// no usable name — the caller then falls back to the unprefixed name rather than emitting
+        /// a bare separator.
+        ///
+        /// <para>Static and public because it is a pure function; ASP.NET only routes public
+        /// INSTANCE methods, so this is not reachable as an action.</para>
+        /// </summary>
+        public static string WorkspaceFileNamePrefix(string? workspaceName)
+        {
+            if (string.IsNullOrWhiteSpace(workspaceName)) return string.Empty;
+
+            var slug = new string(workspaceName.Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
+            return slug.Length > 0 ? slug + "_" : string.Empty;
         }
 
         private static string GenerateExportFileName(ModelInfo modelInfo, string extension = ".xml")

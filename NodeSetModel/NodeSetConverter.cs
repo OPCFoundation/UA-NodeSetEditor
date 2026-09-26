@@ -120,12 +120,11 @@ namespace NodeSetEditor.Model
                 model = existing;
             }
 
-            // Build metadata (Aliases stored in URI form for round-trip). This REPLACES the
-            // whole Metadata object, so any curated key that isn't derived from the NodeSet
-            // has to be carried across explicitly — the profile group is user-chosen and a
-            // re-import of the same version must not silently drop it.
+            // Build metadata. This REPLACES the whole Metadata object, so any curated key that
+            // isn't derived from the NodeSet has to be carried across explicitly — the profile
+            // group is user-chosen and a re-import of the same version must not silently drop it.
             var profileGroupName = model.GetProfileGroupName();
-            var metadata = BuildMetadata(nodeSet, modelTable, nsTable, aliases);
+            var metadata = BuildMetadata(nodeSet, modelTable, nsTable);
             model.Metadata = metadata.Count > 0 ? metadata : null;
             model.SetProfileGroupName(profileGroupName);
 
@@ -146,7 +145,7 @@ namespace NodeSetEditor.Model
                 {
                     var rawNodeId = ResolveAlias(item.NodeId, aliases);
                     int nodeClass = GetNodeClass(item);
-                    var attrs = BuildAttributes(item, aliases, nsTable);
+                    var attrs = BuildAttributes(item, aliases, nsTable, nodeSet.NamespaceUris);
                     var isNamespaceMetadataNode = false;
 
                     string? parentNodeId = null;
@@ -487,8 +486,8 @@ namespace NodeSetEditor.Model
                 NamespaceUris = namespaceUris.Count > 0 ? namespaceUris.ToArray() : null,
             };
 
-            // Restore non-namespace metadata (Aliases with restored indices, Extensions, etc.)
-            RestoreMetadata(nodeSet, model.Metadata, uriToIdx);
+            // Restore non-namespace metadata (ServerUris, LastModified, Extensions)
+            RestoreMetadata(nodeSet, model.Metadata);
 
             // Build model entry
             DateTime modelPd = DateTime.MinValue;
@@ -1046,21 +1045,14 @@ namespace NodeSetEditor.Model
 
         private static JsonObject BuildMetadata(
             Opc.Ua.Export.UANodeSet nodeSet, Opc.Ua.Export.ModelTableEntry modelTable,
-            string[] nsTable, Dictionary<string, string> aliases)
+            string[] nsTable)
         {
             var metadata = new JsonObject();
 
-            // Store Aliases in URI-resolved form so round-trip works regardless of namespace ordering
-            if (nodeSet.Aliases != null && nodeSet.Aliases.Length > 0)
-            {
-                var aliasObj = new JsonObject();
-                foreach (var alias in nodeSet.Aliases)
-                {
-                    // Resolve the alias value's namespace to URI form
-                    aliasObj[alias.Alias] = FormatAttrNodeId(alias.Value, nsTable);
-                }
-                metadata["Aliases"] = aliasObj;
-            }
+            // Aliases are NOT stored. They are expanded on the way in (see ResolveAlias) and never
+            // re-applied on the way out (see RestoreMetadata), so keeping the table would be dead
+            // data: nothing reads it, and an alias is derivable from a DataType's BrowseName if the
+            // exporter ever wants to emit one again.
 
             // Store RequiredModels as fallback for version info
             if (modelTable.RequiredModel != null && modelTable.RequiredModel.Length > 0)
@@ -1118,25 +1110,17 @@ namespace NodeSetEditor.Model
         }
 
         private static void RestoreMetadata(
-            Opc.Ua.Export.UANodeSet nodeSet, JsonObject? metadata, Dictionary<string, int> uriToIdx)
+            Opc.Ua.Export.UANodeSet nodeSet, JsonObject? metadata)
         {
             if (metadata == null) return;
 
-            // Restore Aliases with namespace indices updated to match reconstructed NamespaceUris
-            if (metadata.TryGetPropertyValue("Aliases", out var aliasNode) && aliasNode is JsonObject aliasObj)
-            {
-                var aliasList = new List<Opc.Ua.Export.NodeIdAlias>();
-                foreach (var kvp in aliasObj)
-                {
-                    var restoredValue = RestoreAttrNodeId(kvp.Value?.ToString(), uriToIdx);
-                    aliasList.Add(new Opc.Ua.Export.NodeIdAlias
-                    {
-                        Alias = kvp.Key,
-                        Value = restoredValue ?? ""
-                    });
-                }
-                nodeSet.Aliases = aliasList.ToArray();
-            }
+            // Aliases are deliberately NOT restored, so nodeSet.Aliases stays null and the element
+            // is omitted entirely. An alias is only ever a shorthand for a NodeId at the point of
+            // use, and the writers here emit every NodeId in full (RestoreColumnNodeId /
+            // RestoreAttrNodeId) — nothing is written that an alias could stand in for. Replaying
+            // the source document's table would therefore emit a block in which every entry is
+            // unused: ~48 of them for an OPC Foundation NodeSet, several naming DataTypes that a
+            // subset export has already trimmed away.
 
             if (metadata.TryGetPropertyValue("ServerUris", out var suNode))
                 nodeSet.ServerUris = suNode.Deserialize<string[]>(JsonOptions);
@@ -1260,8 +1244,16 @@ namespace NodeSetEditor.Model
             _ => throw new NotSupportedException($"Unknown UANode type: {node.GetType().Name}")
         };
 
+        /// <summary>
+        /// <paramref name="nsTable"/> is indexed by the document's own ns index (index 0 = Core);
+        /// <paramref name="valueNamespaceUris"/> is the same table in the shape the Part 6 value
+        /// converter wants — the raw <c>NamespaceUris</c> element, Core implicit. Values need it
+        /// for the same reason every other NodeId here needs <paramref name="nsTable"/>: a stored
+        /// <c>ns=N</c> is meaningless outside the document it came from.
+        /// </summary>
         private static NodeAttributesBase BuildAttributes(
-            Opc.Ua.Export.UANode node, Dictionary<string, string> aliases, string[] nsTable)
+            Opc.Ua.Export.UANode node, Dictionary<string, string> aliases, string[] nsTable,
+            IReadOnlyList<string>? valueNamespaceUris)
         {
             NodeAttributesBase attrs = node switch
             {
@@ -1272,7 +1264,7 @@ namespace NodeSetEditor.Model
                 Opc.Ua.Export.UAVariableType vt => new VariableTypeAttributes
                 {
                     IsAbstract = vt.IsAbstract ? true : null,
-                    Value = XmlElementToJson(vt.Value),
+                    Value = XmlElementToJson(vt.Value, valueNamespaceUris),
                     DataType = vt.DataType != null ? FormatAttrNodeId(ResolveAlias(vt.DataType, aliases), nsTable) : null,
                     ValueRank = vt.ValueRank != -1 ? vt.ValueRank : null,
                     ArrayDimensions = vt.ArrayDimensions,
@@ -1300,7 +1292,7 @@ namespace NodeSetEditor.Model
                 },
                 Opc.Ua.Export.UAVariable v => new VariableAttributes
                 {
-                    Value = XmlElementToJson(v.Value),
+                    Value = XmlElementToJson(v.Value, valueNamespaceUris),
                     DataType = v.DataType != null ? FormatAttrNodeId(ResolveAlias(v.DataType, aliases), nsTable) : null,
                     ValueRank = v.ValueRank != -1 ? v.ValueRank : null,
                     ArrayDimensions = v.ArrayDimensions,
@@ -1400,11 +1392,19 @@ namespace NodeSetEditor.Model
         /// arrays as JSON arrays, etc. Routed through <c>Opc.Ua.NodeSetSerializer.Part6Variant</c>
         /// so the same converter implementation drives both the standalone NodeSetTool
         /// path and the DB-persisted path.
+        ///
+        /// <para><paramref name="namespaceUris"/> is the source NodeSet's <c>NamespaceUris</c>
+        /// table (Core implicit at index 0). It is what lets a <c>ns=N</c> inside the value —
+        /// most commonly an ExtensionObject's TypeId — be stored as <c>nsu=URI</c> like every
+        /// other NodeId. Omitting it stores the document-local index, which silently means a
+        /// different namespace as soon as the value is written into a NodeSet whose
+        /// <c>NamespaceUris</c> is ordered differently.</para>
         /// </summary>
-        private static JsonNode? XmlElementToJson(XmlElement? element)
+        private static JsonNode? XmlElementToJson(
+            XmlElement? element, IReadOnlyList<string>? namespaceUris = null)
         {
             if (element == null) return null;
-            var jsonText = Part6Variant.ReadXmlValueAsJsonText(element);
+            var jsonText = Part6Variant.ReadXmlValueAsJsonText(element, null, namespaceUris);
             if (string.IsNullOrEmpty(jsonText)) return null;
             try { return JsonNode.Parse(jsonText); }
             catch { return null; }

@@ -30,16 +30,36 @@ public class NodeSetSubsetTests : IAsyncLifetime
     private const string HasEffect = "i=54";
     private const string GeneratesEvent = "i=41";
     private const string HasInterface = "i=17603";
+    private const string HasEncoding = "i=38";
     private const string Organizes = "i=35";
+
+    // Core's Server object, its Namespaces folder, and ServerType. A NamespaceMetadata object is
+    // conventionally hung under Namespaces; following that link reaches Server and everything
+    // ServerType owns, which is what the trim must refuse to do.
+    private const string ServerNamespacesId = "i=11715";
+    private const string ServerId = "i=2253";
+    private const string ServerTypeId = "i=2004";
+    private const string ServerStatusId = "i=2256";
+    private const string ServerTypeChildId = "i=2138";
+    private const string CoreNamespaceMetadataId = "i=15957";
+
+    // The type-dictionary machinery: a DataType's encodings point by HasDescription at entries in
+    // a dictionary that holds one per type in the namespace, plus the whole schema as a Value.
+    private const string HasDescription = "i=39";
+    private const string DataTypeEncodingType = "i=76";
+    private const string DataTypeDictionaryType = "i=72";
+    private const string DataTypeDescriptionType = "i=69";
 
     private static readonly XNamespace UaNs = "http://opcfoundation.org/UA/2011/03/UANodeSet.xsd";
 
     private readonly ApiFixture _fixture;
     private readonly string _dependencyUri = $"urn:test:subset:dep:{Guid.NewGuid():N}";
     private readonly string _primaryUri = $"urn:test:subset:main:{Guid.NewGuid():N}";
+    private readonly string _coreUri = $"urn:test:subset:core:{Guid.NewGuid():N}";
 
     private Guid _dependencyId;
     private Guid _primaryId;
+    private Guid _coreId;
     private readonly Dictionary<string, string> _ids = new();
 
     public NodeSetSubsetTests(ApiFixture fixture) => _fixture = fixture;
@@ -53,10 +73,13 @@ public class NodeSetSubsetTests : IAsyncLifetime
 
         var dependency = NewModel(_dependencyUri, "SubsetDependency");
         var primary = NewModel(_primaryUri, "SubsetPrimary");
+        var core = NewModel(_coreUri, "SubsetCore");
         db.Models.Add(dependency);
         db.Models.Add(primary);
+        db.Models.Add(core);
         _dependencyId = dependency.Id;
         _primaryId = primary.Id;
+        _coreId = core.Id;
 
         var ordinal = 0;
         var refOrdinal = 0;
@@ -84,6 +107,25 @@ public class NodeSetSubsetTests : IAsyncLifetime
             return node;
         }
 
+        // Core nodes are stored with bare NodeIds, so the stand-in below uses the real ones.
+        Node AddCore(string nodeId, string name, int nodeClass,
+            string? parent = null, string? typeDefinition = null)
+        {
+            var node = new Node
+            {
+                ModelId = core.Id,
+                NodeId = nodeId,
+                BrowseName = name,
+                DisplayName = name,
+                NodeClass = nodeClass,
+                ParentNodeId = parent,
+                TypeDefinitionId = typeDefinition,
+                Ordinal = ordinal += 100,
+            };
+            db.Nodes.Add(node);
+            return node;
+        }
+
         void Ref(Guid modelId, string source, string referenceType, string target, bool isForward = true) =>
             db.References.Add(new Reference
             {
@@ -94,6 +136,29 @@ public class NodeSetSubsetTests : IAsyncLifetime
                 TargetNodeId = target,
                 Ordinal = refOrdinal += 100,
             });
+
+        // ---- Core's Server corner ----
+        AddCore(ServerTypeId, "ServerType", UaNodeClass.ObjectType);
+        // ServerType's own instance declarations. Keeping ServerType so the Server stub has a
+        // TypeDefinition must not bring these with it — that tree is what made Core unusable.
+        AddCore(ServerTypeChildId, "ServerStatus", UaNodeClass.Variable, parent: ServerTypeId);
+        Ref(_coreId, ServerTypeChildId, HasComponent, ServerTypeId, isForward: false);
+        AddCore(ServerId, "Server", UaNodeClass.Object, typeDefinition: ServerTypeId);
+        AddCore(ServerNamespacesId, "Namespaces", UaNodeClass.Object, parent: ServerId);
+        // A sibling of Namespaces. Nothing reaches it, so keeping Server must not bring it along —
+        // in real Core this is the other 16 children of the Server object.
+        AddCore(ServerStatusId, "ServerStatus", UaNodeClass.Variable, parent: ServerId);
+        Ref(_coreId, ServerNamespacesId, HasComponent, ServerId, isForward: false);
+        Ref(_coreId, ServerStatusId, HasComponent, ServerId, isForward: false);
+        Ref(_coreId, ServerId, HasTypeDefinition, ServerTypeId);
+
+        // Core's OWN NamespaceMetadata object, hung under Server's Namespaces folder. The seed
+        // loop takes every NamespaceMetadata object in every model, so this one is always walked —
+        // and because it and the folder are BOTH in Core, a same-model climb reaches Server.
+        AddCore(CoreNamespaceMetadataId, "http://opcfoundation.org/UA/", UaNodeClass.Object,
+            typeDefinition: NamespaceMetadataTypeId);
+        Ref(_coreId, CoreNamespaceMetadataId, HasTypeDefinition, NamespaceMetadataTypeId);
+        Ref(_coreId, CoreNamespaceMetadataId, HasComponent, ServerNamespacesId, isForward: false);
 
         // ---- The dependency ----
         Add("DepBaseType", dependency, _dependencyUri, UaNodeClass.ObjectType);
@@ -131,6 +196,33 @@ public class NodeSetSubsetTests : IAsyncLifetime
         // Reachable ONLY across Organizes — hierarchical but not HasChild, so also not walked.
         Add("DepOrganizedOnly", dependency, _dependencyUri, UaNodeClass.ObjectType);
 
+        // DepDataType's encodings and the dictionary behind them. DepUsedDataType is never reached,
+        // but its description sits in the same dictionary — so if the dictionary came along, its
+        // entry would too, which is exactly the blow-up being prevented.
+        Add("DepDictionary", dependency, _dependencyUri, UaNodeClass.Variable,
+            typeDefinition: DataTypeDictionaryType, browseName: "Opc.Ua");
+        Add("DepDescription", dependency, _dependencyUri, UaNodeClass.Variable,
+            parent: Id("DepDictionary"), typeDefinition: DataTypeDescriptionType,
+            browseName: "DepDataType");
+        Add("DepOtherDescription", dependency, _dependencyUri, UaNodeClass.Variable,
+            parent: Id("DepDictionary"), typeDefinition: DataTypeDescriptionType,
+            browseName: "DepUnusedDataType");
+        Add("DepBinaryEncoding", dependency, _dependencyUri, UaNodeClass.Object,
+            parent: Id("DepDataType"), typeDefinition: DataTypeEncodingType,
+            browseName: "Default Binary");
+        Add("DepJsonEncoding", dependency, _dependencyUri, UaNodeClass.Object,
+            parent: Id("DepDataType"), typeDefinition: DataTypeEncodingType,
+            browseName: "Default JSON");
+        // HasEncoding is stored on the encoding object as an inverse, the way Core writes it.
+        Ref(_dependencyId, Id("DepBinaryEncoding"), HasEncoding, Id("DepDataType"), isForward: false);
+        Ref(_dependencyId, Id("DepJsonEncoding"), HasEncoding, Id("DepDataType"), isForward: false);
+        // The column alone is not emitted as a reference; a real import writes both.
+        Ref(_dependencyId, Id("DepBinaryEncoding"), HasTypeDefinition, DataTypeEncodingType);
+        Ref(_dependencyId, Id("DepJsonEncoding"), HasTypeDefinition, DataTypeEncodingType);
+        Ref(_dependencyId, Id("DepBinaryEncoding"), HasDescription, Id("DepDescription"));
+        Ref(_dependencyId, Id("DepDictionary"), HasComponent, Id("DepDescription"));
+        Ref(_dependencyId, Id("DepDictionary"), HasComponent, Id("DepOtherDescription"));
+
         Ref(_dependencyId, Id("DepUsedType"), HasSubtype, Id("DepBaseType"), isForward: false);
         Ref(_dependencyId, Id("DepUsedType"), HasComponent, Id("DepTransition"));
         Ref(_dependencyId, Id("DepUsedType"), HasInterface, Id("DepInterface"));
@@ -144,6 +236,9 @@ public class NodeSetSubsetTests : IAsyncLifetime
         Ref(_dependencyId, Id("DepTransition"), HasEffect, Id("DepEffectEvent"));
         Ref(_dependencyId, Id("DepNamespaceMetadata"), HasTypeDefinition, NamespaceMetadataTypeId);
         Ref(_dependencyId, Id("DepNamespaceMetadata"), HasProperty, Id("IsNamespaceSubset"));
+        // Hung under Server's Namespaces folder with an inverse HasComponent and NO ParentNodeId —
+        // how an imported vendor NodeSet spells it.
+        Ref(_dependencyId, Id("DepNamespaceMetadata"), HasComponent, ServerNamespacesId, isForward: false);
 
         // ---- The model being downloaded ----
         Add("MainType", primary, _primaryUri, UaNodeClass.ObjectType, superType: Id("DepUsedType"));
@@ -155,8 +250,23 @@ public class NodeSetSubsetTests : IAsyncLifetime
         // way a vendor object hangs off Core's Objects folder: no ParentNodeId, just an inverse
         // Organizes. The folder has to survive the trim or this object has nowhere to sit.
         Add("DepAnchorFolder", dependency, _dependencyUri, UaNodeClass.Object);
+        // Something else already in that folder. The primary never names it, so keeping the folder
+        // must not bring it along — the folder is a mounting point, not a request for its contents.
+        Add("DepAnchorFolderChild", dependency, _dependencyUri, UaNodeClass.Object,
+            parent: Id("DepAnchorFolder"));
+        Ref(_dependencyId, Id("DepAnchorFolder"), HasComponent, Id("DepAnchorFolderChild"));
         Add("MainTopLevelObject", primary, _primaryUri, UaNodeClass.Object);
         Ref(_primaryId, Id("MainTopLevelObject"), Organizes, Id("DepAnchorFolder"), isForward: false);
+
+        // The downloaded model's own NamespaceMetadata object, spelling the Server link the OTHER
+        // way — as a ParentNodeId as well as an inverse HasComponent, which is what the editor
+        // writes. The primary is never trimmed, so this node is always walked: if the closure
+        // followed it, Server would come in no matter what the dependencies look like.
+        Add("MainNamespaceMetadata", primary, _primaryUri, UaNodeClass.Object,
+            typeDefinition: NamespaceMetadataTypeId, parent: ServerNamespacesId,
+            browseName: _primaryUri);
+        Ref(_primaryId, Id("MainNamespaceMetadata"), HasTypeDefinition, NamespaceMetadataTypeId);
+        Ref(_primaryId, Id("MainNamespaceMetadata"), HasComponent, ServerNamespacesId, isForward: false);
 
         Ref(_primaryId, Id("MainType"), HasSubtype, Id("DepUsedType"), isForward: false);
         Ref(_primaryId, Id("MainType"), HasComponent, Id("MainVar"));
@@ -181,7 +291,7 @@ public class NodeSetSubsetTests : IAsyncLifetime
     {
         using var scope = _fixture.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NodeSetEditorDbContext>();
-        var ids = new[] { _dependencyId, _primaryId };
+        var ids = new[] { _dependencyId, _primaryId, _coreId };
         await db.References.Where(r => ids.Contains(r.ModelId)).ExecuteDeleteAsync();
         await db.Nodes.Where(n => ids.Contains(n.ModelId)).ExecuteDeleteAsync();
         await db.Models.Where(m => ids.Contains(m.Id)).ExecuteDeleteAsync();
@@ -191,7 +301,7 @@ public class NodeSetSubsetTests : IAsyncLifetime
     {
         using var scope = _fixture.Services.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<INodeSetSubsetService>();
-        return await service.ComputeDependencyClosureAsync(_primaryId, [_dependencyId]);
+        return await service.ComputeDependencyClosureAsync(_primaryId, [_dependencyId, _coreId]);
     }
 
     private async Task<XElement> TrimmedDependencyAsync(SubsetProvenance? provenance = null)
@@ -199,9 +309,9 @@ public class NodeSetSubsetTests : IAsyncLifetime
         using var scope = _fixture.Services.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<INodeSetSubsetService>();
 
-        var keep = await service.ComputeDependencyClosureAsync(_primaryId, [_dependencyId]);
+        var keep = await service.ComputeDependencyClosureAsync(_primaryId, [_dependencyId, _coreId]);
         var content = await service.ExportTrimmedAsync(_dependencyId, keep,
-            provenance ?? new SubsetProvenance("Test User", "test@example.com", _primaryUri, DateTime.UtcNow));
+            provenance ?? new SubsetProvenance("Test User", "Test Workspace", _primaryUri, DateTime.UtcNow));
 
         Assert.NotNull(content);
         using var stream = new MemoryStream(content!);
@@ -333,12 +443,135 @@ public class NodeSetSubsetTests : IAsyncLifetime
             ?? flag.Descendants().FirstOrDefault(d => d.Name.LocalName == "Boolean")?.Value.Trim());
     }
 
+    /// <summary>
+    /// A container is kept so the reference naming it resolves, and its own container chain comes
+    /// with it — all as placeholders, none of them expanded. Three models here hang a
+    /// NamespaceMetadata object under Server's Namespaces folder: the primary by ParentNodeId, the
+    /// dependency by an inverse HasComponent, and Core's own one within Core itself. So the folder
+    /// and the Server object above it survive as bare nodes, while ServerStatus beside them and
+    /// ServerType behind them stay out.
+    /// </summary>
+    [Fact]
+    public async Task AContainerIsKeptWithoutItsContents()
+    {
+        var closure = await ClosureAsync();
+
+        // The chain the metadata objects hang from, kept so nothing dangles — including the
+        // TypeDefinition every Object shall have (OPC 10000-3, 7.13).
+        Assert.Contains(ServerNamespacesId, closure);
+        Assert.Contains(ServerId, closure);
+        Assert.Contains(ServerTypeId, closure);
+
+        // All of it as stubs: neither the Server object's other children nor ServerType's
+        // instance declarations come along.
+        Assert.DoesNotContain(ServerStatusId, closure);
+        Assert.DoesNotContain(ServerTypeChildId, closure);
+
+        // The trim still works for everything else — this is not a closure that stopped early.
+        Assert.Contains(Id("DepUsedType"), closure);
+        Assert.Contains(Id("DepNamespaceMetadata"), closure);
+    }
+
+    /// <summary>
+    /// The same rule, reached the other way round: DepAnchorFolder is the dependency's folder that
+    /// a top-level object in the PRIMARY is organised under. It is kept — and its own unrelated
+    /// contents are not dragged in with it.
+    /// </summary>
+    [Fact]
+    public async Task AMountingPointDoesNotDragInItsSiblingsFromTheOtherModel()
+    {
+        var closure = await ClosureAsync();
+
+        Assert.Contains(Id("DepAnchorFolder"), closure);
+        Assert.DoesNotContain(Id("DepAnchorFolderChild"), closure);
+    }
+
+    /// <summary>
+    /// A DataType keeps the encodings a reader resolves an ExtensionObject TypeId against, and
+    /// nothing else of the Part 3 dictionary machinery: no DataTypeDictionary, no
+    /// DataTypeDescription entries, and no Default JSON encoding.
+    /// </summary>
+    [Fact]
+    public async Task TypeDictionariesAndJsonEncodingsAreNotInTheClosure()
+    {
+        var closure = await ClosureAsync();
+
+        Assert.Contains(Id("DepDataType"), closure);
+        Assert.Contains(Id("DepBinaryEncoding"), closure);
+
+        Assert.DoesNotContain(Id("DepJsonEncoding"), closure);
+        Assert.DoesNotContain(Id("DepDictionary"), closure);
+        Assert.DoesNotContain(Id("DepDescription"), closure);
+        // The one that would have ridden in on the dictionary's coat-tails.
+        Assert.DoesNotContain(Id("DepOtherDescription"), closure);
+    }
+
+    /// <summary>
+    /// The HasDescription reference goes with the entry it named. The export keeps a reference
+    /// whose target was dropped — right for a cross-model link, wrong for a link into a dictionary
+    /// that was deliberately removed.
+    /// </summary>
+    [Fact]
+    public async Task TrimmedDependencyHasNoHasDescriptionReferencesLeft()
+    {
+        var root = await TrimmedDependencyAsync();
+
+        var references = root.Elements()
+            .Elements(UaNs + "References")
+            .Elements(UaNs + "Reference")
+            .ToArray();
+
+        Assert.DoesNotContain(HasDescription, references.Select(r => (string?)r.Attribute("ReferenceType")));
+
+        // The encoding object itself survives — it is the thing worth keeping.
+        var encodings = root.Elements()
+            .Where(e => e.Elements(UaNs + "References").Elements(UaNs + "Reference")
+                .Any(r => (string?)r.Attribute("ReferenceType") == HasTypeDefinition
+                          && r.Value == DataTypeEncodingType))
+            .Select(e => (string?)e.Attribute("BrowseName"))
+            .ToArray();
+
+        Assert.Contains("Default Binary", encodings);
+        Assert.DoesNotContain("Default JSON", encodings);
+    }
+
+    /// <summary>
+    /// A container kept as a placeholder still holds a forward reference to every child it owns,
+    /// and those children are exactly what the trim removed. A reference to a node in the file's
+    /// OWN namespace that the file does not define is broken, so it goes — unlike a reference
+    /// into another namespace, which is a legitimate cross-model link.
+    /// </summary>
+    [Fact]
+    public async Task TrimmedDependencyDoesNotNameItsOwnMissingNodes()
+    {
+        var root = await TrimmedDependencyAsync();
+
+        var present = root.Elements()
+            .Select(e => (string?)e.Attribute("NodeId"))
+            .Where(id => id != null)
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var node in root.Elements().Where(e => e.Attribute("NodeId") != null))
+        {
+            var parent = (string?)node.Attribute("ParentNodeId");
+            if (parent != null && parent.StartsWith("ns=1;", StringComparison.Ordinal))
+                Assert.Contains(parent, present);
+
+            foreach (var reference in node.Elements(UaNs + "References").Elements(UaNs + "Reference"))
+            {
+                // Bare ids are Core's, and Core is a different file — those may point outward.
+                if (!reference.Value.StartsWith("ns=1;", StringComparison.Ordinal)) continue;
+                Assert.Contains(reference.Value, present);
+            }
+        }
+    }
+
     [Fact]
     public async Task TrimmedDependencyRecordsWhoExportedItAndWhatFor()
     {
-        var exportedUtc = new DateTime(2026, 9, 25, 10, 30, 0, DateTimeKind.Utc);
+        var exportTime = new DateTime(2026, 9, 25, 10, 30, 0, DateTimeKind.Utc);
         var root = await TrimmedDependencyAsync(
-            new SubsetProvenance("Randy", "randy@sparhawksoftware.com", _primaryUri, exportedUtc));
+            new SubsetProvenance("Randy", "Dosing Review", _primaryUri, exportTime));
 
         var extension = root.Element(UaNs + "Extensions")?.Elements()
             .SelectMany(e => e.DescendantsAndSelf())
@@ -346,9 +579,15 @@ public class NodeSetSubsetTests : IAsyncLifetime
 
         Assert.NotNull(extension);
         Assert.Equal(_primaryUri, extension!.Attribute("TargetModelUri")?.Value);
-        Assert.Equal("Randy", extension.Attribute("ExportedByName")?.Value);
-        Assert.Equal("randy@sparhawksoftware.com", extension.Attribute("ExportedByEmail")?.Value);
-        Assert.Equal(exportedUtc, DateTime.Parse(extension.Attribute("ExportedUtc")!.Value).ToUniversalTime());
+        Assert.Equal("Randy", extension.Attribute("ExportedBy")?.Value);
+        Assert.Equal("Dosing Review", extension.Attribute("Workspace")?.Value);
+        Assert.Equal(exportTime, DateTime.Parse(extension.Attribute("ExportTime")!.Value).ToUniversalTime());
+
+        // ExportedBy is the account name. The old attributes are gone, and no email is recorded.
+        Assert.Null(extension.Attribute("ExportedByName"));
+        Assert.Null(extension.Attribute("ExportedByEmail"));
+        Assert.Null(extension.Attribute("ExportedUtc"));
+        Assert.All(extension.Attributes(), a => Assert.DoesNotContain("@", a.Value));
     }
 
     [Fact]

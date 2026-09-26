@@ -44,7 +44,11 @@ namespace NodeSetEditor.Model.Tests
             Assert.True(refCount > 0, $"Expected references, got {refCount}");
 
             Assert.NotNull(model.Metadata);
-            Assert.True(model.Metadata!.ContainsKey("Aliases"));
+            Assert.True(model.Metadata!.ContainsKey("RequiredModels"));
+
+            // Aliases are expanded into full NodeIds on import and never written back, so the
+            // source document's table is not carried into metadata.
+            Assert.False(model.Metadata!.ContainsKey("Aliases"));
         }
 
         [Fact]
@@ -416,25 +420,41 @@ namespace NodeSetEditor.Model.Tests
             Assert.Equal(originalNodeSet.NamespaceUris!.Length, reconstructed.NamespaceUris.Length);
         }
 
+        /// <summary>
+        /// An alias is shorthand for a NodeId at the point of use, and this exporter writes every
+        /// NodeId in full — so an emitted Aliases table could only ever be entirely unused. DI
+        /// ships one, and it is dropped rather than replayed.
+        /// </summary>
         [Fact]
-        public async Task CreateNodeSet_RoundTrip_PreservesAliases()
+        public async Task CreateNodeSet_RoundTrip_DropsAliases()
         {
             await using var db = _fixture.CreateNewContext();
             var originalNodeSet = LoadNodeSet("Opc.Ua.Di.NodeSet2.xml");
+
+            // The premise: the source really does declare aliases, and really does use them.
+            Assert.NotEmpty(originalNodeSet.Aliases!);
 
             await NodeSetConverter.StoreNodeSetAsync(db, originalNodeSet);
 
             var reconstructed = await NodeSetConverter.CreateNodeSetAsync(db, "http://opcfoundation.org/UA/DI/");
 
-            Assert.NotNull(reconstructed.Aliases);
-            Assert.Equal(originalNodeSet.Aliases!.Length, reconstructed.Aliases.Length);
+            // Null rather than an empty array, so the element is omitted instead of emitting
+            // an empty <Aliases />.
+            Assert.Null(reconstructed.Aliases);
 
-            // Verify alias values round-trip correctly
-            var origAliasMap = originalNodeSet.Aliases.ToDictionary(a => a.Alias, a => a.Value);
-            foreach (var alias in reconstructed.Aliases)
+            // And nothing in the output leans on one: every NodeId-valued attribute and reference
+            // is a real NodeId, not an alias name.
+            var aliasNames = originalNodeSet.Aliases!.Select(a => a.Alias).ToHashSet();
+            foreach (var item in reconstructed.Items ?? [])
             {
-                Assert.True(origAliasMap.ContainsKey(alias.Alias), $"Missing alias: {alias.Alias}");
-                Assert.Equal(origAliasMap[alias.Alias], alias.Value);
+                Assert.DoesNotContain(item.NodeId, aliasNames);
+                foreach (var reference in item.References ?? [])
+                {
+                    Assert.DoesNotContain(reference.ReferenceType, aliasNames);
+                    Assert.DoesNotContain(reference.Value, aliasNames);
+                }
+                if (item is Opc.Ua.Export.UAVariable v)
+                    Assert.DoesNotContain(v.DataType, aliasNames);
             }
         }
 
