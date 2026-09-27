@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 
@@ -14,6 +16,7 @@ import type { WorkspaceDescription, PaginatedResponse } from '../model/Workspace
 import type { WorkspaceNamespaceInfo } from '../model/WorkspaceNamespaceInfo';
 
 import LoginDialog from './LoginDialog';
+import { ModelDialog } from './ModelDialog';
 import { CreateModelDialog } from './CreateModelDialog';
 import { ImportCsvTypeDialog } from './ImportCsvTypeDialog';
 import type { CsvImportedTypeInfo } from './ImportCsvTypeDialog';
@@ -24,10 +27,16 @@ import type { CsvImportedTypeInfo } from './ImportCsvTypeDialog';
  *
  *   idle ──▶ login        not signed in: sign in, then stop (the user starts again)
  *        ──▶ createModel  signed in with no editable model
- *        ──▶ (file picker) the native dialog; not a React step, it has no UI of its own
+ *        ──▶ chooseFile   prerequisites met; a prompt whose button opens the OS picker
  *        ──▶ wizard       a file is chosen
+ *
+ * `chooseFile` looks like an unnecessary click, and it is not: a browser only opens a file
+ * picker during a user activation, and every route here reaches that point after an awaited
+ * request — the workspace and model checks, or the create-model POST. Calling
+ * <c>input.click()</c> then is silently ignored, which looked exactly like the button doing
+ * nothing. The prompt gives the picker a real click of its own to open from.
  */
-type FlowStep = 'idle' | 'login' | 'createModel' | 'wizard';
+type FlowStep = 'idle' | 'login' | 'createModel' | 'chooseFile' | 'wizard';
 
 export interface ImportCsvFlowHandle {
    /** Begins the flow. Safe to call repeatedly; ignored while a step is already showing. */
@@ -109,6 +118,11 @@ export const ImportCsvFlow: React.FC<ImportCsvFlowProps> = ({ children }) => {
     * clicked through a ref: `start` is handed to the child as a render prop, and a ref read
     * reachable from a value passed during render is exactly what the refs lint rule forbids.
     *
+    * <b>Must be called straight from a click handler.</b> A browser only opens a file picker
+    * while a user activation is live, and an <c>await</c> in between spends it — the call then
+    * does nothing at all, with no error. Anything that needs to reach the picker after async
+    * work goes through the `chooseFile` step instead.
+    *
     * Nothing fires when the dialog is dismissed, which is the behaviour we want — the flow
     * simply stays where it was, so cancelling "Change file" keeps the current file rather
     * than dropping out of the wizard.
@@ -148,8 +162,9 @@ export const ImportCsvFlow: React.FC<ImportCsvFlowProps> = ({ children }) => {
          }
          setWorkspaceId(id);
 
-         if (await hasEditableModel(id)) openFilePicker();
-         else setStep('createModel');
+         // Both branches end in a dialog rather than the picker: the awaits above have already
+         // spent this click's activation, so the picker has to be opened by a later one.
+         setStep(await hasEditableModel(id) ? 'chooseFile' : 'createModel');
       } catch (e) {
          setError(extractErrorMessage(e, t('csvImport.startFailed', 'Could not start the import')));
       } finally {
@@ -204,8 +219,29 @@ export const ImportCsvFlow: React.FC<ImportCsvFlowProps> = ({ children }) => {
                // Only a model that actually got created moves the flow on. Carrying on after
                // a cancel would open a wizard with no model to write to, whose Create button
                // could never be enabled.
-               onCreated={openFilePicker}
+               onCreated={() => setStep('chooseFile')}
             />
+         )}
+
+         {step === 'chooseFile' && (
+            <ModelDialog
+               open
+               onClose={reset}
+               title={t('csvImport.title', 'Import CSV')}
+               maxWidth="sm"
+               actions={[{
+                  label: t('csvImport.pickFile', 'Choose file...'),
+                  onClick: openFilePicker,
+               }]}
+            >
+               <Box sx={{ p: 20 }}>
+                  <Typography variant="body2" color="text.secondary">
+                     {t('csvImport.chooseFilePrompt',
+                        'Choose the CSV file to import. The next step shows how its columns will '
+                        + 'be mapped, before anything is created.')}
+                  </Typography>
+               </Box>
+            </ModelDialog>
          )}
 
          {step === 'wizard' && workspaceId && file && (

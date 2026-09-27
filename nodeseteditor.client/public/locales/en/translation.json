@@ -185,7 +185,7 @@
   },
   "aboutCsvImportWizard": {
     "title": "Create Models from CSV",
-    "action": "Import CSV"
+    "action": "Import Tags from CSV"
   },
   "aboutModelValidationWizard": {
     "title": "Validating Models",
@@ -238,6 +238,8 @@
     "backToFile": "Change file",
     "noWorkspace": "No workspace is available to import into. Create one from Manage Workspaces.",
     "startFailed": "Could not start the import",
+    "pickFile": "Choose file...",
+    "chooseFilePrompt": "Choose the CSV file to import. The next step shows how its columns will be mapped, before anything is created.",
     "pickHint": "Many configurations for existing factories are stored in CSVs for similar files. This wizard allows you to quickly create an OPC UA Information Model from CSV files. The column names are used to create the model and you will be prompted to refine the mapping after the file is loaded.",
     "fileSummary": "{{fileName}} — {{rowCount}} rows, {{columnCount}} columns, delimiter \"{{delimiter}}\"",
     "detailsSummary": "{{rowCount}} rows from {{fileName}} will become {{rowCount}} Variables, using {{mappedColumnCount}} of {{columnCount}} columns.",
