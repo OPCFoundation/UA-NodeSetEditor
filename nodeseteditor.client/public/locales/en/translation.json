@@ -63,6 +63,7 @@
   },
   "common": {
     "cancel": "Cancel",
+    "back": "Back",
     "ok": "OK",
     "deleting": "Deleting...",
     "save": "Save",
@@ -182,6 +183,10 @@
     "intro": "A Model is a collection of Nodes created by a single authority and is identified by a globally unique URI assigned by that authority. Models can be exported in various file formats, with any file containing a Model referred to as a NodeSet. Models can be imported into a Workspace via the UACloudLibrary or by uploading a NodeSet. Additionally, new Types and Instances can be created within private Models and Models can be shared so they can be used by other Workspaces.",
     "action": "Start Managing Models"
   },
+  "aboutCsvImportWizard": {
+    "title": "Create Models from CSV",
+    "action": "Import CSV"
+  },
   "aboutModelValidationWizard": {
     "title": "Validating Models",
     "intro": "Authors of OPC UA Companion Specifications can use the tool to check that the document matches the NodeSet. Each private model has a 'validate' button which brings up a page used to upload Word documents and start a test to compare it to the Model. The Word documents must follow the CS guidelines published by the OPC Foundation.",
@@ -226,6 +231,48 @@
     "nodeClass": "Node Class",
     "createType": "Create type",
     "createTypeTooltip": "Create a new {{nodeClass}} in this namespace"
+  },
+  "csvImport": {
+    "title": "Import CSV",
+    "next": "Next",
+    "backToFile": "Change file",
+    "noWorkspace": "No workspace is available to import into. Create one from Manage Workspaces.",
+    "startFailed": "Could not start the import",
+    "pickHint": "Many configurations for existing factories are stored in CSVs for similar files. This wizard allows you to quickly create an OPC UA Information Model from CSV files. The column names are used to create the model and you will be prompted to refine the mapping after the file is loaded.",
+    "fileSummary": "{{fileName}} — {{rowCount}} rows, {{columnCount}} columns, delimiter \"{{delimiter}}\"",
+    "detailsSummary": "{{rowCount}} rows from {{fileName}} will become {{rowCount}} Variables, using {{mappedColumnCount}} of {{columnCount}} columns.",
+    "noRows": "The file has a header row but no data rows.",
+    "objectName": "Object Name",
+    "parent": "Parent",
+    "noParent": "(none — top level)",
+    "newFolder": "New Folder",
+    "folderName": "Folder Name",
+    "createTypeToo": "Create Type",
+    "typeName": "Type Name",
+    "columnHeader": "Column",
+    "columnRole": "Maps to",
+    "columnPropertyName": "Property Name",
+    "dataTypePerRow": "per row",
+    "needsNameColumn": "Set one column to BrowseName — every row needs a name.",
+    "unresolvedDataTypes": "These values are not known DataTypes and will use the default: {{values}}",
+    "createAction": "Create",
+    "creating": "Creating...",
+    "analyzeFailed": "Could not read the file",
+    "createFailed": "Nothing was created",
+    "role": {
+      "Ignore": "(ignore)",
+      "BrowseName": "BrowseName",
+      "DisplayName": "DisplayName",
+      "Description": "Description",
+      "DataType": "DataType",
+      "Value": "Value",
+      "EngineeringUnits": "EngineeringUnits",
+      "EuRangeLow": "EURange.Low",
+      "EuRangeHigh": "EURange.High",
+      "InstrumentRangeLow": "InstrumentRange.Low",
+      "InstrumentRangeHigh": "InstrumentRange.High",
+      "Property": "Property"
+    }
   },
   "modelLibrary": {
     "shortName": "Manage Workspaces",

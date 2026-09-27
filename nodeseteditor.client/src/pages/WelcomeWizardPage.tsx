@@ -8,6 +8,7 @@ import Alert from '@mui/material/Alert';
 import Typography from '@mui/material/Typography';
 
 import { WizardActionCard, type ContentBlock } from '../components/WizardActionCard';
+import { ImportCsvFlow } from '../components/ImportCsvFlow';
 
 const aboutModelLibraryContent: ContentBlock[] = [
     { type: 'paragraph', textKey: 'aboutModelLibraryWizard.intro' },
@@ -23,6 +24,13 @@ const aboutTypeLibraryContent: ContentBlock[] = [
 
 const aboutModelValidationContent: ContentBlock[] = [
    { type: 'paragraph', textKey: 'aboutModelValidationWizard.intro' }
+];
+
+// What used to be the CSV wizard's opening page. The wizard now starts at the column
+// mapping, so the explanation of what an import does belongs here, where the decision to
+// start one is made.
+const aboutCsvImportContent: ContentBlock[] = [
+   { type: 'paragraph', textKey: 'csvImport.pickHint' }
 ];
 
 const WelcomeWizardPage: React.FC = () => {
@@ -46,7 +54,7 @@ const WelcomeWizardPage: React.FC = () => {
          </Alert>
 
            <Grid container spacing={6} sx={{ mt: 4 }}>
-               <Grid size={{ xs: 12, md: 4 }}>
+               <Grid size={{ xs: 12, md: 6 }}>
                    <WizardActionCard
                        titleKey="aboutTypeLibraryWizard.title"
                        content={aboutTypeLibraryContent}
@@ -55,7 +63,7 @@ const WelcomeWizardPage: React.FC = () => {
                        buttonColor="primary.dark"
                    />
                </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid size={{ xs: 12, md: 6 }}>
                <WizardActionCard
                   titleKey="aboutModelLibraryWizard.title"
                   content={aboutModelLibraryContent}
@@ -64,7 +72,7 @@ const WelcomeWizardPage: React.FC = () => {
                   buttonColor="primary.dark"
                />
             </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid size={{ xs: 12, md: 6 }}>
                <WizardActionCard
                   titleKey="aboutModelValidationWizard.title"
                   content={aboutModelValidationContent}
@@ -72,6 +80,22 @@ const WelcomeWizardPage: React.FC = () => {
                   onButtonClick={() => navigate('/model_library')}
                   buttonColor="primary.dark"
                />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+               {/* The flow owns the sign-in / create-model / file-picker steps that have to
+                   happen before the wizard can open, and hands the card a start(). */}
+               <ImportCsvFlow>
+                  {({ start, busy }) => (
+                     <WizardActionCard
+                        titleKey="aboutCsvImportWizard.title"
+                        content={aboutCsvImportContent}
+                        buttonKey="aboutCsvImportWizard.action"
+                        onButtonClick={start}
+                        buttonDisabled={busy}
+                        buttonColor="primary.dark"
+                     />
+                  )}
+               </ImportCsvFlow>
             </Grid>
          </Grid>
       </Box>

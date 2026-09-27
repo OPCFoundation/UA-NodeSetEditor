@@ -64,6 +64,7 @@ import type { WorkspaceNamespaceInfo } from '../model/WorkspaceNamespaceInfo';
 import { useTheme } from '@mui/material/styles';
 import { ImportModelDialog } from '../components/ImportModelDialog';
 import { ImportSharedModelDialog } from '../components/ImportSharedModelDialog';
+import { CreateModelDialog } from '../components/CreateModelDialog';
 import Link from '@mui/material/Link';
 import { useLicenseOptions } from '../hooks/useLicenseOptions';
 import { LicenseFields, isLicenseValid, type LicenseValue } from '../components/LicenseFields';
@@ -78,104 +79,13 @@ function formatPublicationDate(dateString: string | null | undefined): string | 
    return date.toISOString().split('T')[0];
 }
 
-// Strip characters that can't appear unescaped in a URN namespace-specific
-// string. We keep alphanumerics plus a small set of safe punctuation
-// (- . _ ~) and replace runs of whitespace/other chars with a single dash so
-// "My Model 1.0!" becomes "My-Model-1.0".
-function sanitizeUriSegment(value: string): string {
-   if (!value) return '';
-   return value
-      .trim()
-      .replace(/[^A-Za-z0-9._~-]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-}
-
-
-// Validate a model namespace URI for the create dialog. Mirrors the server's
-// import-time rule (CanonicalUri.IsValid): absolute, ASCII-only, scheme
-// restricted to http/https/urn, well-formed percent-encoding (valid %HH accepted,
-// bare/truncated "%" rejected), and no ";" — then adds the URN Namespace
-// Identifier (NID) check that import intentionally omits. The editor never adds
-// percent-encoding; URIs are expected to arrive already correctly encoded, and we
-// only reject under-encoding. Returns an error message, or null if valid.
-function validateModelUri(uri: string): string | null {
-   const value = uri.trim();
-   if (!value) return 'A namespace URI is required.';
-   if (/\s/.test(value)) return 'Namespace URI must not contain whitespace.';
-   // A "%" must be followed by two hex digits; a bare or truncated escape is under-encoded.
-   if (/%(?![0-9A-Fa-f]{2})/.test(value)) return 'Namespace URI has malformed percent-encoding (use %HH).';
-   if (value.includes(';')) return 'Namespace URI must not contain ";".';
-   for (const ch of value) {
-      const c = ch.codePointAt(0)!;
-      if (c < 0x20 || c === 0x7f) return 'Namespace URI must not contain control characters.';
-      if (c > 0x7e) return 'Namespace URI must contain ASCII characters only.';
-   }
-
-   const schemeMatch = value.match(/^([a-zA-Z][a-zA-Z0-9+.-]*):/);
-   if (!schemeMatch) {
-      return 'Namespace URI must be absolute (start with http://, https://, or urn:).';
-   }
-   const scheme = schemeMatch[1].toLowerCase();
-   if (scheme !== 'http' && scheme !== 'https' && scheme !== 'urn') {
-      return 'Namespace URI must use the http, https, or urn scheme.';
-   }
-
-   if (scheme === 'http' || scheme === 'https') {
-      try {
-         const url = new URL(value);
-         if (!url.hostname) return 'Namespace URI must include a host name.';
-      } catch {
-         return 'Namespace URI is not a valid URL.';
-      }
-      return null;
-   }
-
-   // urn:<NID>:<NSS>
-   const urnMatch = value.match(/^urn:([^:]*):(.*)$/i);
-   if (!urnMatch || !urnMatch[1]) {
-      return 'A URN must have the form urn:<identifier>:<value>.';
-   }
-   const nid = urnMatch[1];
-   const nss = urnMatch[2];
-   if (!/^[A-Za-z0-9][A-Za-z0-9-]{0,30}[A-Za-z0-9]$/.test(nid)) {
-      return `Invalid URN identifier "${nid}": use 2–32 letters, digits, or hyphens ` +
-         `with no dots or underscores (e.g. "shaleriver-com").`;
-   }
-   if (!nss) {
-      return 'A URN must include text after the identifier (urn:<identifier>:<value>).';
-   }
-   return null;
-}
-
-// Build everything before the final "<model name>" part, of the form
-// "urn:opcua:<domain>:<YYYY-MM>:". The fixed "opcua" is the URN Namespace
-// Identifier (NID); the domain lives in the namespace-specific string where dots
-// are allowed, so it is kept verbatim (only stripped of characters that would
-// need encoding). The domain is the user's DefaultDomain preference when set,
-// otherwise the email domain. If neither yields a usable domain we return null
-// so the caller can fall back to a blank URI rather than emit "urn:opcua::2026-04:".
-function computeModelUriPrefix(email: string, now: Date, defaultDomain?: string): string | null {
-   let domainSource = defaultDomain?.trim();
-   if (!domainSource) {
-      const at = email.indexOf('@');
-      if (at <= 0 || at === email.length - 1) return null;
-      domainSource = email.slice(at + 1);
-   }
-   const domain = sanitizeUriSegment(domainSource);
-   if (!domain) return null;
-   const yyyy = now.getFullYear().toString().padStart(4, '0');
-   const mm = (now.getMonth() + 1).toString().padStart(2, '0');
-   return `urn:opcua:${domain}:${yyyy}-${mm}:`;
-}
-
 const ModelLibraryPage: React.FC = () => {
    const { t } = useTranslation();
    const navigate = useNavigate();
    const theme = useTheme();
    const queryClient = useQueryClient();
    const { selectedWorkspaceId, setSelectedWorkspaceId, highlightModelUri, selectedModelUri, setSelectedModelUri, modelLibraryCategories, setModelLibraryCategories, setSelectedType } = React.useContext(WorkspaceContext);
-   const { email: userEmail, defaultDomain: userDefaultDomain,
-      defaultLicense: userDefaultLicense, defaultLicenseUrl: userDefaultLicenseUrl,
+   const { defaultLicense: userDefaultLicense, defaultLicenseUrl: userDefaultLicenseUrl,
       defaultCopyrightHolder: userDefaultCopyright, betaTester, admin } = React.useContext(UserContext);
    const { data: licenseOptions } = useLicenseOptions();
    const [filter, setFilter] = React.useState<string>('');
@@ -220,26 +130,8 @@ const ModelLibraryPage: React.FC = () => {
    const [isDeletingWorkspace, setIsDeletingWorkspace] = React.useState(false);
    const [deleteWorkspaceError, setDeleteWorkspaceError] = React.useState<string | null>(null);
 
-   // Create model dialog state
+   // The create-model dialog owns its own fields; this only decides whether it is mounted.
    const [createModelDialogOpen, setCreateModelDialogOpen] = React.useState(false);
-   const [newModelName, setNewModelName] = React.useState('');
-   const [newModelUri, setNewModelUri] = React.useState('');
-   const [newModelVersion, setNewModelVersion] = React.useState('');
-   const [newModelDescription, setNewModelDescription] = React.useState('');
-   const [isCreatingModel, setIsCreatingModel] = React.useState(false);
-   const [createModelError, setCreateModelError] = React.useState<string | null>(null);
-   // License & copyright for a new model. Default to the user's preferences via the
-   // "use my defaults" checkbox; unchecking enables a per-model override.
-   const [newModelUseDefaults, setNewModelUseDefaults] = React.useState(true);
-   const [newModelLicense, setNewModelLicense] = React.useState<LicenseValue>({ license: '', licenseUrl: '' });
-   const [newModelCopyright, setNewModelCopyright] = React.useState('');
-   // Captures the urn:<domain>:YYYY-MM:<localpart>: prefix for the *current*
-   // dialog session. Frozen when the dialog opens so the YYYY-MM doesn't tick
-   // forward mid-edit and the email lookup happens only once.
-   const [newModelUriPrefix, setNewModelUriPrefix] = React.useState<string | null>(null);
-   // Whether the user has manually edited the URI field. Once true, Name
-   // changes no longer overwrite the URI for the rest of the session.
-   const [newModelUriManuallyEdited, setNewModelUriManuallyEdited] = React.useState(false);
 
    // Edit model dialog state
    const [editModelDialogOpen, setEditModelDialogOpen] = React.useState(false);
@@ -324,7 +216,9 @@ const ModelLibraryPage: React.FC = () => {
       enabled: !!selectedWorkspaceId
    });
 
-   const namespaces = namespacesData?.results ?? [];
+   // Memoized because the memo below takes it as a dependency: the `?? []` fallback would
+   // otherwise be a new array on every render and re-run it.
+   const namespaces = React.useMemo(() => namespacesData?.results ?? [], [namespacesData]);
 
    const filteredModels = React.useMemo(() => {
       const showPrivate = visibleCategories.includes('private');
@@ -468,56 +362,6 @@ const ModelLibraryPage: React.FC = () => {
       }
    };
 
-   const handleCreateModel = () => {
-      setCreateMenuAnchor(null);
-      setNewModelName('');
-      const prefix = computeModelUriPrefix(userEmail, new Date(), userDefaultDomain);
-      setNewModelUriPrefix(prefix);
-      setNewModelUri(prefix ?? '');
-      setNewModelUriManuallyEdited(false);
-      // New models start as an editable working copy — default to the -alpha pre-release.
-      setNewModelVersion('1.0.0-alpha');
-      setNewModelDescription('');
-      setNewModelUseDefaults(true);
-      setNewModelLicense({ license: userDefaultLicense ?? '', licenseUrl: userDefaultLicenseUrl ?? '' });
-      setNewModelCopyright(userDefaultCopyright ?? '');
-      setCreateModelError(null);
-      setCreateModelDialogOpen(true);
-   };
-
-   // The effective license/copyright submitted for a new model: the user's defaults when
-   // "use my defaults" is checked, otherwise the per-model override fields.
-   const effectiveNewLicense = newModelUseDefaults
-      ? { license: userDefaultLicense ?? '', licenseUrl: userDefaultLicenseUrl ?? '' }
-      : newModelLicense;
-   const effectiveNewCopyright = newModelUseDefaults ? (userDefaultCopyright ?? '') : newModelCopyright;
-   const newModelLicenseOk = isLicenseValid(
-      effectiveNewLicense.license, effectiveNewLicense.licenseUrl, licenseOptions ?? []);
-   const newModelCopyrightOk = !!effectiveNewCopyright.trim();
-   // Name is mandatory and must be at least 2 characters.
-   const newModelNameOk = newModelName.trim().length >= 2;
-
-   const handleNewModelNameChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      const next = e.target.value;
-      setNewModelName(next);
-      // Mirror the (sanitized) name into the URI's last segment until the
-      // user takes manual control. We rebuild from the frozen prefix rather
-      // than mutating the existing URI to avoid drifting if the user has
-      // already partially typed something.
-      if (!newModelUriManuallyEdited && newModelUriPrefix) {
-         setNewModelUri(newModelUriPrefix + sanitizeUriSegment(next));
-      }
-   };
-
-   const handleNewModelUriChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      setNewModelUri(e.target.value);
-      // Any keystroke in the URI field locks it from further name-driven
-      // updates. We don't try to detect "the user typed exactly what we
-      // would have generated" — once they touch it, they own it.
-      setNewModelUriManuallyEdited(true);
-   };
-
-   // Adding, removing, checking out/in, or editing a model changes the whole address
    // space, so refresh EVERY workspace-scoped query (the namespaces list plus the tree
    // and type queries: subtypes, nodeChildren, queryTypes, workspaceTypes, nextNodeId, …),
    // not just the model list. Each of those keys carries the workspace id, so match on it.
@@ -530,40 +374,6 @@ const ModelLibraryPage: React.FC = () => {
       });
    }, [queryClient, selectedWorkspaceId]);
 
-   const handleCreateModelDialogClose = () => {
-      setCreateModelDialogOpen(false);
-      setCreateModelError(null);
-   };
-
-   const handleCreateModelConfirm = async () => {
-      if (!newModelUri.trim() || validateModelUri(newModelUri) || !selectedWorkspaceId) return;
-      if (!newModelNameOk || !newModelLicenseOk || !newModelCopyrightOk) return;
-
-      setIsCreatingModel(true);
-      setCreateModelError(null);
-
-      try {
-         await api.post('/opcua/v1/namespaces/info', {
-            uri: newModelUri.trim(),
-            name: newModelName.trim(),
-            version: newModelVersion.trim() || null,
-            description: newModelDescription.trim() || null,
-            license: effectiveNewLicense.license.trim(),
-            licenseUrl: effectiveNewLicense.licenseUrl.trim() || null,
-            copyrightHolder: effectiveNewCopyright.trim()
-         }, { headers: { 'OpcUa-Server': idToUrn(selectedWorkspaceId) } });
-
-         setCreateModelDialogOpen(false);
-         await invalidateWorkspaceData();
-      } catch (e) {
-         const errorMessage = e instanceof ApiError
-            ? e.message
-            : (e instanceof Error ? e.message : 'Failed to create model');
-         setCreateModelError(errorMessage);
-      } finally {
-         setIsCreatingModel(false);
-      }
-   };
 
    const handleCreateWorkspace = () => {
       setCreateMenuAnchor(null);
@@ -1051,7 +861,10 @@ const ModelLibraryPage: React.FC = () => {
                   <MenuItem onClick={handleCreateWorkspace}>
                      {t('modelLibrary.createWorkspace')}
                   </MenuItem>
-                  <MenuItem onClick={handleCreateModel} disabled={!canWrite}>
+                  <MenuItem
+                     onClick={() => { setCreateMenuAnchor(null); setCreateModelDialogOpen(true); }}
+                     disabled={!canWrite}
+                  >
                      {t('modelLibrary.createModel')}
                   </MenuItem>
                </Menu>
@@ -1237,6 +1050,15 @@ const ModelLibraryPage: React.FC = () => {
             workspaceId={selectedWorkspaceId}
             existingUris={namespaces.map(n => n.uri ?? '').filter(Boolean)}
          />
+
+         {/* Create a new private model. Mounted on demand so its fields reset each time. */}
+         {createModelDialogOpen && selectedWorkspaceId && (
+            <CreateModelDialog
+               open
+               onClose={() => setCreateModelDialogOpen(false)}
+               workspaceId={selectedWorkspaceId}
+            />
+         )}
 
          {/* Hidden file input for NodeSet file import */}
          <input
@@ -1435,104 +1257,6 @@ const ModelLibraryPage: React.FC = () => {
             </ModelDialog>
          )}
 
-         {/* Create Model Dialog */}
-         {createModelDialogOpen && (
-            <ModelDialog
-               open
-               onClose={handleCreateModelDialogClose}
-               title={t('modelLibrary.createModelDialogTitle')}
-               isLoading={isCreatingModel}
-               isError={!!createModelError}
-               error={createModelError ? new Error(createModelError) : null}
-               actions={createModelError ? [] : [
-                  {
-                     label: isCreatingModel ? t('modelLibrary.creating') : t('common.ok'),
-                     onClick: handleCreateModelConfirm,
-                     disabled: isCreatingModel || !newModelNameOk || !newModelUri.trim() || !!validateModelUri(newModelUri)
-                        || !newModelLicenseOk || !newModelCopyrightOk
-                  }
-               ]}
-            >
-               {!createModelError && (
-                  <Box sx={{ p: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                     <TextField
-                        label={t('modelLibrary.createModelName')}
-                        value={newModelName}
-                        onChange={handleNewModelNameChange}
-                        fullWidth
-                        required
-                        autoFocus
-                        error={!!newModelName && !newModelNameOk}
-                        helperText={!!newModelName && !newModelNameOk
-                           ? t('modelLibrary.createModelNameTooShort', 'Name must be at least 2 characters.')
-                           : undefined}
-                     />
-                     <TextField
-                        label={t('modelLibrary.createModelUri')}
-                        value={newModelUri}
-                        onChange={handleNewModelUriChange}
-                        fullWidth
-                        required
-                        error={!!newModelUri.trim() && !!validateModelUri(newModelUri)}
-                        helperText={newModelUri.trim() ? (validateModelUri(newModelUri) ?? undefined) : undefined}
-                     />
-                     <TextField
-                        label={t('modelLibrary.createModelVersion')}
-                        value={newModelVersion}
-                        onChange={(e) => setNewModelVersion(e.target.value)}
-                        fullWidth
-                     />
-                     <TextField
-                        label={t('modelLibrary.createModelDescription')}
-                        value={newModelDescription}
-                        onChange={(e) => setNewModelDescription(e.target.value)}
-                        fullWidth
-                        multiline
-                        rows={3}
-                     />
-
-                     {/* License & copyright — locked once the model is created. */}
-                     <Box sx={{ p: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <FormControlLabel
-                           control={
-                              <Checkbox
-                                 checked={newModelUseDefaults}
-                                 onChange={(e) => setNewModelUseDefaults(e.target.checked)}
-                              />
-                           }
-                           label={t('modelLibrary.useDefaultLicense', 'Use my default license & copyright')}
-                        />
-                        <TextField
-                           label={t('modelLibrary.copyrightHolder', 'Copyright holder')}
-                           value={effectiveNewCopyright}
-                           onChange={(e) => setNewModelCopyright(e.target.value)}
-                           fullWidth
-                           required
-                           disabled={newModelUseDefaults}
-                           error={!newModelCopyrightOk}
-                           helperText={!newModelCopyrightOk
-                              ? t('modelLibrary.copyrightRequired', 'A copyright holder is required.')
-                              : undefined}
-                        />
-                        <LicenseFields
-                           options={licenseOptions ?? []}
-                           license={effectiveNewLicense.license}
-                           licenseUrl={effectiveNewLicense.licenseUrl}
-                           onChange={setNewModelLicense}
-                           disabled={newModelUseDefaults}
-                           size="medium"
-                        />
-                        {newModelUseDefaults && !newModelLicenseOk && (
-                           <Typography variant="caption" color="error">
-                              {t('modelLibrary.defaultLicenseMissing',
-                                 'Set a default license and copyright holder in your account settings.')}
-                           </Typography>
-                        )}
-                     </Box>
-                  </Box>
-               )}
-            </ModelDialog>
-         )}
 
          {/* Edit / View Model Dialog */}
          {editModelDialogOpen && editModel && (

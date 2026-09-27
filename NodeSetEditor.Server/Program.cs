@@ -57,6 +57,8 @@ builder.Services.AddDbContext<NodeSetEditorDbContext>(options =>
 builder.Services.AddScoped<INodeSetStorageService, DbNodeSetStorageService>();
 builder.Services.AddScoped<IValidationService, ValidationService>();
 builder.Services.AddScoped<INodeSetSubsetService, NodeSetSubsetService>();
+// Stateless (the CSV is re-uploaded with the confirmed mapping), so a singleton is enough.
+builder.Services.AddSingleton<ICsvTypeImportService, CsvTypeImportService>();
 Console.WriteLine("[Startup] Using DbNodeSetStorageService (PostgreSQL)");
 
 // Register workspace address space service

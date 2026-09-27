@@ -106,6 +106,7 @@ namespace NodeSetEditor.Server.Controllers
         private readonly BetaTesterPolicy _betaTesters;
         private readonly AdminPolicy _admins;
         private readonly INodeSetSubsetService _subsets;
+        private readonly ICsvTypeImportService _csvImport;
         private readonly ILogger<UaRestApiController> _logger;
 
         public UaRestApiController(
@@ -114,6 +115,7 @@ namespace NodeSetEditor.Server.Controllers
             BetaTesterPolicy betaTesters,
             AdminPolicy admins,
             INodeSetSubsetService subsets,
+            ICsvTypeImportService csvImport,
             ILogger<UaRestApiController> logger)
         {
             _storage = storage;
@@ -121,6 +123,7 @@ namespace NodeSetEditor.Server.Controllers
             _betaTesters = betaTesters;
             _admins = admins;
             _subsets = subsets;
+            _csvImport = csvImport;
             _logger = logger;
         }
 
@@ -2017,6 +2020,227 @@ namespace NodeSetEditor.Server.Controllers
                 return InternalError(e);
             }
         }
+
+        #region CSV type import
+
+        /// <summary>
+        /// Inspects an uploaded CSV and proposes how its columns map onto OPC UA: one row
+        /// becomes one Variable under a new ObjectType, and each column becomes that
+        /// Variable's BrowseName, DataType, EngineeringUnits, EURange bound, or a Property.
+        ///
+        /// Creates nothing. The caller shows the proposal, lets the user adjust it, and posts
+        /// the confirmed mapping back to <see cref="CreateTypeFromCsv"/> with the same file.
+        /// </summary>
+        [HttpPost("csv/analyze")]
+        [RequestSizeLimit(20_000_000)]
+        [RequestFormLimits(MultipartBodyLengthLimit = 20_000_000)]
+        public async Task<ActionResult<CsvAnalysisResult>> AnalyzeCsv(
+            [FromHeader(Name = "OpcUa-Server")] string? opcUaServer,
+            [FromForm] IFormFile file)
+        {
+            try
+            {
+                // requireWrite even though nothing is written: analyzing is only useful as a
+                // precursor to creating the type, and it reads the workspace's DataTypes.
+                var (user, workspace, error) = await ResolveServer(opcUaServer, requireWrite: true);
+                if (error != null) return error;
+
+                var addressSpace = await _addressSpace.GetAddressSpaceAsync(workspace!.Id!.Value);
+
+                using var stream = file.OpenReadStream();
+                var table = _csvImport.Parse(stream);
+
+                if (table.Headers.Count == 0)
+                    return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument,
+                        nameof(Opc.Ua.StatusCodes.BadInvalidArgument), "The file has no header row."));
+
+                return Ok(_csvImport.Analyze(table, file.FileName, addressSpace));
+            }
+            catch (InvalidOperationException e)
+            {
+                return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument,
+                    nameof(Opc.Ua.StatusCodes.BadInvalidArgument), e.Message));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error analyzing uploaded CSV");
+                return InternalError(e);
+            }
+        }
+
+        /// <summary>
+        /// Creates an ObjectType from a CSV and a confirmed column mapping: one Mandatory
+        /// Variable instance declaration per row, plus the EngineeringUnits / EURange /
+        /// Property children the mapping calls for.
+        ///
+        /// The whole type lands in a single changeset, so a long tag list is one write rather
+        /// than one per node. The file is re-uploaded alongside the mapping instead of being
+        /// cached from the analyze call, so there is no server-side state to expire.
+        /// </summary>
+        /// <param name="mapping">A <see cref="CsvCreateTypeRequest"/> as JSON.</param>
+        [HttpPost("csv/create-type")]
+        [RequestSizeLimit(20_000_000)]
+        [RequestFormLimits(MultipartBodyLengthLimit = 20_000_000)]
+        public async Task<ActionResult<CsvCreateTypeResult>> CreateTypeFromCsv(
+            [FromHeader(Name = "OpcUa-Server")] string? opcUaServer,
+            [FromForm] IFormFile file,
+            [FromForm] string mapping)
+        {
+            try
+            {
+                var (user, workspace, error) = await ResolveServer(opcUaServer, requireWrite: true);
+                if (error != null) return error;
+
+                var workspaceId = workspace!.Id!.Value;
+
+                CsvCreateTypeRequest? request;
+                try
+                {
+                    request = System.Text.Json.JsonSerializer.Deserialize<CsvCreateTypeRequest>(
+                        mapping, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                }
+                catch (System.Text.Json.JsonException e)
+                {
+                    return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument,
+                        nameof(Opc.Ua.StatusCodes.BadInvalidArgument), $"mapping is not valid JSON: {e.Message}"));
+                }
+
+                if (request == null)
+                    return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument,
+                        nameof(Opc.Ua.StatusCodes.BadInvalidArgument), "mapping is required."));
+
+                var addressSpace = await _addressSpace.GetAddressSpaceAsync(workspaceId);
+
+                using var stream = file.OpenReadStream();
+                var table = _csvImport.Parse(stream);
+                if (table.Headers.Count == 0)
+                    return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument,
+                        nameof(Opc.Ua.StatusCodes.BadInvalidArgument), "The file has no header row."));
+
+                // NodeIds come from a counter seeded once per model rather than from a
+                // GetNextNodeIdAsync call per node: that call rescans every node in the
+                // workspace, and an import allocates thousands of ids in a row.
+                var counters = new Dictionary<string, long>(StringComparer.Ordinal);
+                string AllocateNodeId(string modelUri)
+                {
+                    if (!counters.TryGetValue(modelUri, out var next))
+                        next = long.Parse(_addressSpace.GetNextNodeIdAsync(workspaceId, modelUri).Result);
+                    counters[modelUri] = next + 1;
+                    return next.ToString();
+                }
+
+                var build = _csvImport.Build(table, request, addressSpace, AllocateNodeId,
+                    (value, dataType) => JsonElementToVariant(value, dataType, null, addressSpace));
+
+                if (build.InstanceNode?.NodeId == null)
+                    return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument,
+                        nameof(Opc.Ua.StatusCodes.BadInvalidArgument), "The mapping produced no object."));
+
+                var changeset = new ModelChangeset();
+                foreach (var node in build.Nodes)
+                {
+                    // Nodes come back parent-first, so a child's parent is already in the
+                    // address space by the time we get here.
+                    addressSpace.AddNode(node, node.ParentId);
+                    AttachToParentChildren(addressSpace, node);
+
+                    changeset.Nodes.Add(BuildNodeChange(node, ChangeKind.Upsert));
+                    foreach (var r in node.References ?? new List<JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.Reference>())
+                    {
+                        changeset.References.Add(new ReferenceChange
+                        {
+                            Kind = ChangeKind.Upsert,
+                            SourceNodeId = node.NodeId!,
+                            ReferenceTypeId = r.ReferenceTypeId!,
+                            TargetNodeId = r.TargetId!,
+                            IsForward = r.IsForward ?? true
+                        });
+                    }
+                }
+
+                await PersistModelAsync(addressSpace, workspaceId, build.InstanceNode.NodeId!, changeset);
+                _addressSpace.Invalidate(workspaceId);
+
+                var result = new CsvCreateTypeResult
+                {
+                    Instance = ToImportedNode(build.InstanceNode, addressSpace),
+                    Type = build.TypeNode == null ? null : ToImportedNode(build.TypeNode, addressSpace),
+                    Folder = build.FolderNode == null ? null : ToImportedNode(build.FolderNode, addressSpace),
+                    VariablesCreated = build.VariablesCreated,
+                    PropertiesCreated = build.PropertiesCreated,
+                    RowsSkipped = build.RowsSkipped,
+                    Warnings = build.Warnings,
+                };
+
+                return CreatedAtAction(nameof(GetNode), new { nodeId = build.InstanceNode.NodeId }, result);
+            }
+            catch (InvalidOperationException e)
+            {
+                return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument,
+                    nameof(Opc.Ua.StatusCodes.BadInvalidArgument), e.Message));
+            }
+            catch (ModelReadOnlyException e)
+            {
+                return Forbidden(MakeError(Opc.Ua.StatusCodes.BadNotWritable,
+                    nameof(Opc.Ua.StatusCodes.BadNotWritable), e.Message));
+            }
+            catch (KeyNotFoundException e)
+            {
+                return NotFound(MakeError(Opc.Ua.StatusCodes.BadNotFound,
+                    nameof(Opc.Ua.StatusCodes.BadNotFound), e.Message));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error creating a type from an uploaded CSV");
+                return InternalError(e);
+            }
+        }
+
+        /// <summary>
+        /// Maps a node the CSV import created into the REST shape, with its supertype chain
+        /// filled in. The client re-roots its tree on the node, and a type is navigated along
+        /// SuperTypeIds rather than ParentNodeId, so the chain has to travel with it.
+        /// </summary>
+        private static Opc.Ua.RestfulApi.Node ToImportedNode(
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UANode node,
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace)
+        {
+            var restNode = UaNodeToRestNode(node, addressSpace);
+            restNode.ParentNodeId = node.ParentId;
+            restNode.SuperTypeIds = GetSuperTypeIds(addressSpace, node.NodeId!);
+            if (restNode.SuperTypeIds.Count > 0) restNode.SuperTypeId = restNode.SuperTypeIds[^1];
+            return restNode;
+        }
+
+        /// <summary>
+        /// Adds a freshly created instance node to its parent's Children collection, which is
+        /// what the NodeSet serializer walks when it writes the parent out. A top-level node
+        /// (no ParentId) has nowhere to attach. Mirrors CreateChildNode's wiring.
+        /// </summary>
+        private static void AttachToParentChildren(
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace,
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UANode node)
+        {
+            if (node.ParentId == null) return;
+            var parent = addressSpace.Read(node.ParentId);
+            if (parent == null) return;
+
+            parent.Children ??= new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.ChildList();
+            switch (node)
+            {
+                case JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariable v:
+                    (parent.Children.Variables ??= new()).Add(v);
+                    break;
+                case JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAMethod m:
+                    (parent.Children.Methods ??= new()).Add(m);
+                    break;
+                case JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAObject o:
+                    (parent.Children.Objects ??= new()).Add(o);
+                    break;
+            }
+        }
+
+        #endregion
 
         /// <summary>
         /// Update a node's attributes.
