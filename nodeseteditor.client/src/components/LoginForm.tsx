@@ -269,7 +269,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
                </Stack>
             </DialogContent>
             <DialogActions>
-               <Button onClick={() => setHelpOpen(false)}>{t('common.close')}</Button>
+               <Button variant="contained" onClick={() => setHelpOpen(false)}>{t('common.close')}</Button>
             </DialogActions>
          </Dialog>
       </Stack>

@@ -1,4 +1,4 @@
-﻿{
+{
   "validation": {
     "shortName": "Validate Specification",
     "title": "Validate Specification",
@@ -8,7 +8,7 @@
     "open": "Validate against specification",
     "backToModels": "Back to models",
     "backToDocuments": "Back to documents",
-    "noWorkspace": "Select a workspace to manage validation documents.",
+    "noWorkspace": "Select an OPC UA server to manage validation documents.",
     "selectedModel": "New validations run against: {{model}}",
     "noSelectedModel": "No model selected — open this page from a model's Validate icon to run a validation.",
     "uploadDocument": "Upload document",
@@ -71,7 +71,10 @@
     "reset": "Reset",
     "select": "Select",
     "uploading": "Uploading...",
-    "notSet": "Not set"
+    "notSet": "Not set",
+    "more": "More",
+    "learnMore": "Learn more",
+    "betaNotice": "This site is in public beta. Back up your models with Download, and send feedback to webmaster@opcfoundation.org."
   },
   "nodePicker": {
     "title": "Select a Node",
@@ -165,48 +168,56 @@
   "welcomeWizard": {
     "shortName": "Welcome Wizard",
     "title": "Welcome to the OPC UA NodeSet Editor",
+    "tagline": "Describe your machines and processes in a common language that any OPC UA system understands.",
     "summary": "The editor allows users to create an information model (a.k.a. a NodeSet) for a manufacturing asset or process, with the goal of arriving at common, reusable interfaces for accessing data. As a key design principle, all NodeSets should derive from (extend or reuse) other NodeSets. You can start with core and standardized building blocks provided by the OPC Foundation, or import a starting point created by another designer, standards group, or organization."
   },
   "aboutModelLibraryWizard": {
-    "title": "Managing Workspaces",
-    "intro": "Workspaces are collections of Models that can be viewed and modified.",
-    "line1": "A Workspace corresponds to an OPC UA Server's AddressSpace.",
-    "line2": "A Workspace should include all Models needed to resolve any references.",
-    "line3": "A Shared Models can be used by multiple Workspaces and are always read-only.",
-    "line4": "A Private Models are local to a specific Workspace and can be edited.",
-    "action": "Start Managing Workspaces"
+    "title": "Servers",
+    "summary": "Set up an OPC UA server and choose the models it exposes.",
+    "intro": "Each OPC UA server here is a collection of models that together form its address space.",
+    "line1": "Add every model the server needs, so all references can be resolved.",
+    "line2": "You can download the combined NodeSet and load it into a real OPC UA server.",
+    "line3": "Shared models can be used by many OPC UA servers and are always read-only.",
+    "line4": "Private models belong to a single OPC UA server and can be edited.",
+    "action": "Open Servers"
   },
   "aboutTypeLibraryWizard": {
-    "title": "Managing Models",
-    "intro": "A Model is a collection of Nodes created by a single authority and is identified by a globally unique URI assigned by that authority. Models can be exported in various file formats, with any file containing a Model referred to as a NodeSet. Models can be imported into a Workspace via the UACloudLibrary or by uploading a NodeSet. Additionally, new Types and Instances can be created within private Models and Models can be shared so they can be used by other Workspaces.",
-    "action": "Start Managing Models"
+    "title": "Models",
+    "summary": "Browse and build the types and objects that describe your equipment.",
+    "intro": "A Model is a collection of Nodes created by a single authority and is identified by a globally unique URI assigned by that authority. Models can be exported in various file formats, with any file containing a Model referred to as a NodeSet. Models can be imported into a Server via the UACloudLibrary or by uploading a NodeSet. Additionally, new Types and Instances can be created within private Models and Models can be shared so they can be used by other Servers.",
+    "action": "Open Models"
   },
   "aboutModelValidationWizard": {
-    "title": "Validating Models",
+    "title": "Validation",
+    "summary": "Check that a specification document matches its model.",
     "intro": "Authors of OPC UA Companion Specifications can use the tool to check that the document matches the NodeSet. Each private model has a 'validate' button which brings up a page used to upload Word documents and start a test to compare it to the Model. The Word documents must follow the CS guidelines published by the OPC Foundation.",
-    "action": "Start Validating Models"
+    "action": "Start Validating"
   },
   "addressSpaceTree": {
     "title": "Address Space",
-    "selectWorkspace": "Select a workspace to browse.",
+    "selectWorkspace": "Select an OPC UA server to browse.",
     "loading": "Loading...",
     "objects": "Objects",
     "focusedOn": "Focused on: {{name}}"
   },
   "sidebarToolbar": {
     "modelTooltip": "Active model",
-    "workspaceTooltip": "Active workspace",
-    "workspaceHeader": "Workspace: {{name}}",
+    "modelLabel": "Model",
+    "projectLabel": "OPC UA Server",
+    "focusLabel": "Focus",
+    "syncLabel": "Locate",
+    "workspaceTooltip": "Active OPC UA server",
+    "workspaceHeader": "Server: {{name}}",
     "allModels": "All Models",
     "noModels": "No models",
-    "noWorkspace": "Workspace",
+    "noWorkspace": "OPC UA Server",
     "focusOn": "Focus on selected node",
     "focusOff": "Show complete address space",
-    "workspaceView": "Manage models in the current workspace",
-    "editorView": "Edit nodes in the current workspace",
+    "workspaceView": "Manage models in the current OPC UA server",
+    "editorView": "Edit nodes in the current OPC UA server",
     "syncTree": "Sync tree with displayed node",
     "readOnly": "Read-only",
-    "readOnlyTooltip": "This workspace is shared with you and is read-only. Only the owner can make changes."
+    "readOnlyTooltip": "This OPC UA server is shared with you and is read-only. Only the owner can make changes."
   },
   "focusedTree": {
     "instances": "Instances",
@@ -215,11 +226,14 @@
   "topMenu": {
     "openSidebar": "Open sidebar",
     "homeTooltip": "Home",
-    "helpTooltip": "Help"
+    "helpTooltip": "Help",
+    "home": "Home",
+    "projects": "Servers",
+    "models": "Models"
   },
   "typeLibrary": {
-    "shortName": "Manage Models",
-    "title": "Manage Models",
+    "shortName": "Models",
+    "title": "Models",
     "namespace": "Namespace",
     "allNamespaces": "All Namespaces",
     "nodeClass": "Node Class",
@@ -227,8 +241,8 @@
     "createTypeTooltip": "Create a new {{nodeClass}} in this namespace"
   },
   "modelLibrary": {
-    "shortName": "Manage Workspaces",
-    "title": "Manage Workspaces",
+    "shortName": "Servers",
+    "title": "Servers",
     "importAction": "Import..",
     "createAction": "Create..",
     "importDialogTitle": "Import Models",
@@ -257,11 +271,14 @@
     "authorityAll": "All authorities",
     "markedForRemoval": "marked for removal",
     "viewTypeDefinitions": "View Type Definitions",
+    "editShort": "Edit",
+    "viewShort": "View",
+    "typesShort": "Types",
     "download": "Download NodeSet",
     "delete": "Delete Model",
     "deleteDialogTitle": "Delete Model",
-    "deletePrivateConfirmation": "Are you sure you want to delete \"{{name}}\"? This will permanently remove the model and its files from this workspace.",
-    "deleteSharedConfirmation": "Are you sure you want to remove \"{{name}}\" from this workspace? The shared model will remain available for re-import.",
+    "deletePrivateConfirmation": "Are you sure you want to delete \"{{name}}\"? This will permanently remove the model and its files from this OPC UA server.",
+    "deleteSharedConfirmation": "Are you sure you want to remove \"{{name}}\" from this OPC UA server? The shared model will remain available for re-import.",
     "importFromCloud": "Import from Cloud Library",
     "importFromShared": "Import Shared Model",
     "importFromFile": "Import from NodeSet file",
@@ -281,9 +298,9 @@
     "downloadFormatJsonLd": "RDF (JSON-LD)",
     "downloadFormatLabel": "Select format",
     "downloadIncludeDependencies": "Include all dependencies (ZIP)",
-    "createWorkspace": "Workspace",
+    "createWorkspace": "OPC UA Server",
     "createModel": "Model",
-    "createWorkspaceDialogTitle": "Create Workspace",
+    "createWorkspaceDialogTitle": "Create Server",
     "createWorkspaceName": "Name",
     "createWorkspaceDescription": "Description",
     "createWorkspaceAcl": "Access List",
@@ -324,16 +341,16 @@
     "checkingIn": "Saving...",
     "versionLockedWhileCheckedOut": "The version is managed automatically while the model is checked out.",
     "showVersions": "Show all versions",
-    "editWorkspace": "Edit Workspace",
-    "editWorkspaceDialogTitle": "Edit Workspace",
-    "editWorkspaceDisabled": "Only the owner can edit this workspace",
-    "readOnlyWorkspace": "This workspace is read-only — shared with you by its owner",
-    "deleteWorkspace": "Delete Workspace",
-    "deleteWorkspaceDialogTitle": "Delete Workspace",
-    "deleteWorkspaceDisabled": "Only the owner can delete this workspace",
-    "deleteWorkspaceConfirmation": "Are you sure you want to delete workspace \"{{name}}\"? This cannot be undone.",
+    "editWorkspace": "Edit Server",
+    "editWorkspaceDialogTitle": "Edit Server",
+    "editWorkspaceDisabled": "Only the owner can edit this OPC UA server",
+    "readOnlyWorkspace": "This OPC UA server is read-only — shared with you by its owner",
+    "deleteWorkspace": "Delete Server",
+    "deleteWorkspaceDialogTitle": "Delete Server",
+    "deleteWorkspaceDisabled": "Only the owner can delete this OPC UA server",
+    "deleteWorkspaceConfirmation": "Are you sure you want to delete OPC UA server \"{{name}}\"? This cannot be undone.",
     "workspaceAcl": "Access List (one email per line)",
-    "workspaceAclHelp": "Email addresses of users who can access this workspace"
+    "workspaceAclHelp": "Email addresses of users who can access this OPC UA server"
   },
   "modelVersions": {
     "dialogTitle": "Model Versions",
@@ -354,7 +371,7 @@
     "deleteVersion": "Delete this version",
     "confirmDelete": "Click again to delete this version permanently.",
     "cannotDelete": "This version cannot be deleted.",
-    "readOnlyWorkspace": "You do not have write access to this workspace.",
+    "readOnlyWorkspace": "You do not have write access to this OPC UA server.",
     "noVersions": "No stored versions found."
   },
   "typeDetail": {
@@ -381,7 +398,7 @@
     "addReference": "Add Reference",
     "forward": "Forward",
     "target": "Target",
-    "targetNotFound": "No node with this NodeId exists in this workspace.",
+    "targetNotFound": "No node with this NodeId exists in this OPC UA server.",
     "editDataType": "Edit DataType",
     "createDataType": "Create DataType",
     "editObjectType": "Edit ObjectType",

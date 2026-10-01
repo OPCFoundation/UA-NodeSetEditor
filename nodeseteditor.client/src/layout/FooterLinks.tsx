@@ -39,7 +39,7 @@ export const FooterLinks = ({ links = defaultFooterLinks }: FooterLinksProps) =>
    return (
       <>
          {links.map((link) => (
-            <Button key={link.href} sx={{ my: 2 }}>
+            <Button key={link.href} sx={{ my: 2, backgroundColor: 'transparent', '&:hover': { backgroundColor: 'action.hover' } }}>
                <Link href={link.href} target='_blank' rel='noopener noreferrer'>
                   <Typography variant='body2'>{link.label}</Typography>
                </Link>

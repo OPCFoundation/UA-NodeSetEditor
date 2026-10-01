@@ -30,6 +30,7 @@ import FormControl from '@mui/material/FormControl';
 import type { SelectChangeEvent } from '@mui/material/Select';
 
 import { SearchBar } from '../components/SearchBar';
+import { PageHeader } from '../components/PageHeader';
 import { ContentLoader } from '../components/ContentLoader';
 import { ActionBar } from '../components/ActionBar';
 import { TypeDetailView } from '../components/TypeDetailView';
@@ -312,23 +313,13 @@ const TypeLibraryPage: React.FC = () => {
       return (
          <Box sx={{ p: 8, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
             {/* Row 1: Title */}
-            <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8, mb: 4 }}>
-               <Box
-                  onClick={handleTitleClick}
-                  sx={{
-                     display: 'flex',
-                     flexDirection: 'row',
-                     alignItems: 'center',
-                     gap: 8,
-                     flexGrow: 1,
-                     cursor: 'pointer',
-                     '&:hover': { color: 'primary.main' },
-                  }}
-               >
-                  <WidgetsIcon />
-                  <Typography variant='h5' sx={{ fontWeight: 'bolder' }}>{t('typeLibrary.title')}</Typography>
-               </Box>
-            </Box>
+            <PageHeader
+               icon={<WidgetsIcon />}
+               title={t('typeLibrary.title')}
+               onTitleClick={handleTitleClick}
+               infoLabel={t('common.learnMore', 'Learn more')}
+               info={[t('aboutTypeLibraryWizard.intro')]}
+            />
             <TypeDetailView
                nodeId={selectedType.nodeId}
                displayName={selectedType.displayName}
@@ -346,12 +337,12 @@ const TypeLibraryPage: React.FC = () => {
    return (
       <Box p={8}>
          {/* Row 1: Title */}
-         <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8, mb: 4 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8, flexGrow: 1 }}>
-               <WidgetsIcon />
-               <Typography variant='h5' sx={{ fontWeight: 'bolder' }}>{t('typeLibrary.title')}</Typography>
-            </Box>
-         </Box>
+         <PageHeader
+            icon={<WidgetsIcon />}
+            title={t('typeLibrary.title')}
+            infoLabel={t('common.learnMore', 'Learn more')}
+            info={[t('aboutTypeLibraryWizard.intro')]}
+         />
 
          <SearchBar
             value={filter}
@@ -486,6 +477,7 @@ const TypeLibraryPage: React.FC = () => {
                                        icon: <DeleteIcon />,
                                        tooltipKey: 'typeDetail.deleteType',
                                        disabled: !editable,
+                                       destructive: true,
                                     },
                                     {
                                        onAction: () => setCreateInstanceType(item),

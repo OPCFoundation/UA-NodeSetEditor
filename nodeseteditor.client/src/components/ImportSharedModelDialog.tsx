@@ -239,10 +239,10 @@ export const ImportSharedModelDialog: React.FC<ImportSharedModelDialogProps> = (
                   onChange={(_, v) => handleViewModeChange(v as ViewMode | null)}
                   sx={{ height: 40, mx: 2 }}
                >
-                  <ToggleButton value="all" sx={{ textTransform: 'none', whiteSpace: 'nowrap' }}>
+                  <ToggleButton value="all">
                      {t('modelLibrary.viewAll', 'All')}
                   </ToggleButton>
-                  <ToggleButton value="selected" sx={{ textTransform: 'none', whiteSpace: 'nowrap' }}>
+                  <ToggleButton value="selected">
                      {t('modelLibrary.viewSelected', 'Selected')} ({selectedModels.length})
                   </ToggleButton>
                </ToggleButtonGroup>
@@ -278,10 +278,10 @@ export const ImportSharedModelDialog: React.FC<ImportSharedModelDialogProps> = (
                      onChange={(_, v) => v && setSortMode(v as SortMode)}
                      sx={{ bgcolor: theme.palette.background.paper }}
                   >
-                     <ToggleButton value="newest" sx={{ textTransform: 'none' }}>
+                     <ToggleButton value="newest">
                         {t('modelLibrary.sortNewest', 'Newest')}
                      </ToggleButton>
-                     <ToggleButton value="alpha" sx={{ textTransform: 'none' }}>
+                     <ToggleButton value="alpha">
                         {t('modelLibrary.sortAlpha', 'A–Z')}
                      </ToggleButton>
                   </ToggleButtonGroup>

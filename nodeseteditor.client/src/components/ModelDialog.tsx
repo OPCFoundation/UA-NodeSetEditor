@@ -6,10 +6,8 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
-import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
-import { useTheme } from '@mui/material/styles';
 
 import { ContentLoader } from './ContentLoader';
 
@@ -47,72 +45,50 @@ export const ModelDialog: React.FC<ModelDialogProps> = ({
    fullWidth = true
 }) => {
    const { t } = useTranslation();
-   const theme = useTheme();
 
    return (
-      <Dialog
-         open={open}
-         onClose={onClose}
-         maxWidth={maxWidth}
-         fullWidth={fullWidth}
-         slotProps={{
-            paper: {
-               sx: {
-                  border: `4px solid ${theme.palette.primary.main}`,
-                  borderTop: 'none',
-                  borderRadius: 2
-               }
-            }
-         }}
-      >
-         <DialogTitle
-            sx={{
-               display: 'flex',
-               alignItems: 'center',
-               justifyContent: 'space-between',
-               backgroundColor: theme.palette.primary.main,
-               color: theme.palette.primary.contrastText,
-               py: 1,
-               minHeight: '52px'
-            }}
-         >
-            {title}
-            <IconButton
-               aria-label="close"
-               onClick={onClose}
-               size="small"
-               sx={{ color: theme.palette.primary.contrastText }}
-            >
-               <CloseIcon />
-            </IconButton>
-         </DialogTitle>
-         <DialogContent sx={{ p: 0, m: 0 }}>
-            <ContentLoader isLoading={isLoading} isError={isError} error={error}>
-               {children}
-            </ContentLoader>
-         </DialogContent>
-         <DialogActions sx={{ justifyContent: 'flex-start', px: 3, py: 2 }}>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-               {actions.map((action, index) => (
-                  <Button
-                     key={index}
-                     variant={action.variant ?? 'contained'}
-                     color={action.color ?? 'primary'}
-                     onClick={action.onClick}
-                     disabled={action.disabled || isLoading}
-                  >
-                     {action.label}
-                  </Button>
-               ))}
-               <Button
-                  variant="text"
-                  onClick={onClose}
-                  disabled={isLoading}
-               >
-                  {t('common.cancel', 'Cancel')}
-               </Button>
-            </Box>
-         </DialogActions>
-      </Dialog>
+	  <Dialog
+		 open={open}
+		 onClose={onClose}
+		 maxWidth={maxWidth}
+		 fullWidth={fullWidth}
+	  >
+		 <DialogTitle
+			sx={{
+			   display: 'flex',
+			   alignItems: 'center',
+			   justifyContent: 'space-between',
+			   gap: 8,
+			   pr: 12,
+			}}
+		 >
+			{title}
+			<IconButton aria-label={t('common.close', 'Close')} onClick={onClose} size="small">
+			   <CloseIcon fontSize="small" />
+			</IconButton>
+		 </DialogTitle>
+		 <DialogContent dividers sx={{ p: 0, m: 0 }}>
+			<ContentLoader isLoading={isLoading} isError={isError} error={error}>
+			   {children}
+			</ContentLoader>
+		 </DialogContent>
+		 <DialogActions>
+			{/* Secondary (Cancel) on the left, primary action(s) on the right. */}
+			<Button variant="outlined" onClick={onClose} disabled={isLoading}>
+			   {t('common.cancel', 'Cancel')}
+			</Button>
+			{actions.map((action, index) => (
+			   <Button
+				  key={index}
+				  variant={action.variant ?? 'contained'}
+				  color={action.color ?? 'primary'}
+				  onClick={action.onClick}
+				  disabled={action.disabled || isLoading}
+			   >
+				  {action.label}
+			   </Button>
+			))}
+		 </DialogActions>
+	  </Dialog>
    );
 };

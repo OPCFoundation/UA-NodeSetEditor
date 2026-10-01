@@ -1,23 +1,20 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
 import Box from '@mui/material/Box';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
-import IconButton from '@mui/material/IconButton';
+import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import Divider from '@mui/material/Divider';
 import Chip from '@mui/material/Chip';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 
-import WorkspacesIcon from '@mui/icons-material/Workspaces';
+import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import MyLocationIcon from '@mui/icons-material/MyLocation';
 import FilterCenterFocusIcon from '@mui/icons-material/FilterCenterFocus';
-import RotateRightIcon from '@mui/icons-material/RotateRight';
-import VerticalAlignBottomIcon from '@mui/icons-material/VerticalAlignBottom';
-import VerticalAlignTopIcon from '@mui/icons-material/VerticalAlignTop';
 
 import api from '../api/axios.api';
 import { WorkspaceContext } from '../WorkspaceContext';
@@ -51,8 +48,6 @@ export const SidebarToolbar: React.FC<SidebarToolbarProps> = ({
    syncDisabled,
 }) => {
    const { t } = useTranslation();
-   const navigate = useNavigate();
-   const location = useLocation();
    const {
       selectedWorkspaceId,
       setSelectedWorkspaceId,
@@ -62,14 +57,6 @@ export const SidebarToolbar: React.FC<SidebarToolbarProps> = ({
    } = React.useContext(WorkspaceContext);
 
    const [wsAnchor, setWsAnchor] = React.useState<HTMLElement | null>(null);
-
-   // Workspace view = the model-library page. Editor view = type_library.
-   // Toggle bounces between them so the user can manage the workspace's
-   // models without leaving the sidebar surface.
-   const isWorkspaceView = location.pathname === '/model_library';
-   const handleToggleWorkspaceView = () => {
-      navigate(isWorkspaceView ? '/type_library' : '/model_library');
-   };
 
    // queryFn shape must match the other ['discovery'] consumers
    // (ModelLibraryPage, WorkspaceSelector) — they all return the full
@@ -105,7 +92,7 @@ export const SidebarToolbar: React.FC<SidebarToolbarProps> = ({
       (w) => urnToId(w.applicationUri) === selectedWorkspaceId,
    );
    const currentWorkspaceLabel =
-      currentWorkspace?.applicationName?.text ?? t('sidebarToolbar.noWorkspace', 'Workspace');
+      currentWorkspace?.applicationName?.text ?? t('sidebarToolbar.noWorkspace', 'OPC UA Server');
 
    const handleSelectWorkspace = (id: string) => {
       setSelectedWorkspaceId(id);
@@ -127,131 +114,124 @@ export const SidebarToolbar: React.FC<SidebarToolbarProps> = ({
    };
 
    return (
-      <Box
-         sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 0.5,
-            px: 1,
-            py: 0.5,
-            borderBottom: 1,
-            borderColor: 'divider',
-            minHeight: 40,
-         }}
-      >
-         <ModelSelect
-            workspaceId={selectedWorkspaceId}
-            value={selectedModelUri}
-            onChange={setSelectedModelUri}
-         />
+	  <Box
+		 sx={{
+			display: 'flex',
+			flexDirection: 'column',
+			gap: 8,
+			px: 12,
+			py: 12,
+			borderBottom: 1,
+			borderColor: 'divider',
+		 }}
+	  >
+		 {/* Server picker — labelled so it's obvious what is being switched. */}
+		 <Box sx={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+			<Tooltip title={t('sidebarToolbar.workspaceTooltip', 'Active OPC UA server')}>
+			   <Button
+				  onClick={(e) => setWsAnchor(e.currentTarget)}
+				  startIcon={<FolderOutlinedIcon />}
+				  endIcon={<ExpandMoreIcon />}
+				  sx={{
+					 flexGrow: 1,
+					 minWidth: 0,
+					 justifyContent: 'flex-start',
+					 borderRadius: 10,
+					 py: 6,
+					 px: 10,
+					 color: 'text.primary',
+					 bgcolor: 'background.paper',
+					 border: 1,
+					 borderColor: 'divider',
+					 '& .MuiButton-endIcon': { ml: 'auto' },
+				  }}
+			   >
+				  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0 }}>
+					 <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2 }}>
+						{t('sidebarToolbar.projectLabel', 'OPC UA Server')}
+					 </Typography>
+					 <Typography variant="body1" noWrap sx={{ fontWeight: 600, lineHeight: 1.3, maxWidth: '100%' }}>
+						{currentWorkspaceLabel}
+					 </Typography>
+				  </Box>
+			   </Button>
+			</Tooltip>
+			{currentWorkspace && currentWorkspace.canWrite === false && (
+			   <Tooltip title={t('sidebarToolbar.readOnlyTooltip', 'This OPC UA server is shared with you and is read-only. Only the owner can make changes.')}>
+				  <Chip
+					 size="small"
+					 variant="outlined"
+					 icon={<VisibilityIcon fontSize="small" />}
+					 label={t('sidebarToolbar.readOnly', 'Read-only')}
+					 sx={{ flexShrink: 0 }}
+				  />
+			   </Tooltip>
+			)}
+		 </Box>
+		 <Menu
+			anchorEl={wsAnchor}
+			open={Boolean(wsAnchor)}
+			onClose={() => setWsAnchor(null)}
+		 >
+			{(workspaces ?? []).map((ws) => {
+			   const id = urnToId(ws.applicationUri);
+			   return (
+				  <MenuItem
+					 key={ws.applicationUri}
+					 selected={id === selectedWorkspaceId}
+					 onClick={() => handleSelectWorkspace(id)}
+				  >
+					 {ws.applicationName?.text ?? ws.applicationUri}
+				  </MenuItem>
+			   );
+			})}
+		 </Menu>
 
-         <Tooltip title={t('sidebarToolbar.workspaceTooltip', 'Active workspace')}>
-            <IconButton
-               size="small"
-               color="primary"
-               onClick={(e) => setWsAnchor(e.currentTarget)}
-               sx={{ flexShrink: 0 }}
-            >
-               <WorkspacesIcon fontSize="small" />
-            </IconButton>
-         </Tooltip>
-         <Menu
-            anchorEl={wsAnchor}
-            open={Boolean(wsAnchor)}
-            onClose={() => setWsAnchor(null)}
-         >
-            <MenuItem disabled sx={{ opacity: '1 !important' }}>
-               <Typography variant="caption" color="text.secondary">
-                  {t('sidebarToolbar.workspaceHeader', 'Workspace: {{name}}', { name: currentWorkspaceLabel })}
-               </Typography>
-            </MenuItem>
-            <Divider />
-            {(workspaces ?? []).map((ws) => {
-               const id = urnToId(ws.applicationUri);
-               return (
-                  <MenuItem
-                     key={ws.applicationUri}
-                     selected={id === selectedWorkspaceId}
-                     onClick={() => handleSelectWorkspace(id)}
-                  >
-                     {ws.applicationName?.text ?? ws.applicationUri}
-                  </MenuItem>
-               );
-            })}
-         </Menu>
+		 {/* Model filter */}
+		 <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+			<ModelSelect
+			   workspaceId={selectedWorkspaceId}
+			   value={selectedModelUri}
+			   onChange={setSelectedModelUri}
+			/>
+		 </Box>
 
-         {currentWorkspace && currentWorkspace.canWrite === false && (
-            <Tooltip title={t('sidebarToolbar.readOnlyTooltip', 'This workspace is shared with you and is read-only. Only the owner can make changes.')}>
-               <Chip
-                  size="small"
-                  variant="outlined"
-                  color="default"
-                  icon={<VisibilityIcon fontSize="small" />}
-                  label={t('sidebarToolbar.readOnly', 'Read-only')}
-                  sx={{ flexShrink: 0, height: 22 }}
-               />
-            </Tooltip>
-         )}
-
-         <Tooltip
-            title={isWorkspaceView
-               ? t('sidebarToolbar.editorView', 'Edit models in workspace')
-               : t('sidebarToolbar.workspaceView', 'Manage models in this workspace')}
-         >
-            <IconButton
-               size="small"
-               color="primary"
-               onClick={handleToggleWorkspaceView}
-               sx={{ flexShrink: 0 }}
-            >
-               {/* "Up" icon when the click takes you to the workspace
-                   (a level above any single model); "down" icon when the
-                   click drops back into the model editor. */}
-               {isWorkspaceView
-                  ? <VerticalAlignBottomIcon fontSize="small" />
-                  : <VerticalAlignTopIcon fontSize="small" />}
-            </IconButton>
-         </Tooltip>
-
-         <Tooltip
-            title={focused
-               ? t('sidebarToolbar.focusOff', 'Show complete address space')
-               : t('sidebarToolbar.focusOn', 'Focus on selected node')}
-         >
-            <span>
-               <IconButton
-                  size="small"
-                  onClick={onToggleFocused}
-                  disabled={focusDisabled}
-                  color="primary"
-                  sx={{
-                     flexShrink: 0,
-                     // Pressed state shown via tinted background rather than a
-                     // colour swap, since the icon itself stays the same.
-                     backgroundColor: focused ? 'action.selected' : undefined,
-                  }}
-               >
-                  <FilterCenterFocusIcon fontSize="small" />
-               </IconButton>
-            </span>
-         </Tooltip>
-
-         <Tooltip
-            title={t('sidebarToolbar.syncTree', 'Sync tree with displayed node')}
-         >
-            <span>
-               <IconButton
-                  size="small"
-                  onClick={onSyncTree}
-                  disabled={syncDisabled}
-                  color="primary"
-                  sx={{ flexShrink: 0 }}
-               >
-                  <RotateRightIcon fontSize="small" />
-               </IconButton>
-            </span>
-         </Tooltip>
-      </Box>
+		 {/* Tree actions — icon plus a word, so their purpose is clear. */}
+		 <Box sx={{ display: 'flex', gap: 6 }}>
+			<Tooltip
+			   title={focused
+				  ? t('sidebarToolbar.focusOff', 'Show complete address space')
+				  : t('sidebarToolbar.focusOn', 'Focus on selected node')}
+			>
+			   <span style={{ flex: 1, display: 'flex' }}>
+				  <Button
+					 fullWidth
+					 size="small"
+					 variant={focused ? 'contained' : 'outlined'}
+					 startIcon={<FilterCenterFocusIcon />}
+					 onClick={onToggleFocused}
+					 disabled={focusDisabled}
+				  >
+					 {t('sidebarToolbar.focusLabel', 'Focus')}
+				  </Button>
+			   </span>
+			</Tooltip>
+			<Tooltip title={t('sidebarToolbar.syncTree', 'Sync tree with displayed node')}>
+			   <span style={{ flex: 1, display: 'flex' }}>
+				  <Button
+					 fullWidth
+					 size="small"
+					 variant="outlined"
+					 startIcon={<MyLocationIcon />}
+					 onClick={onSyncTree}
+					 disabled={syncDisabled}
+				  >
+					 {t('sidebarToolbar.syncLabel', 'Locate')}
+				  </Button>
+			   </span>
+			</Tooltip>
+		 </Box>
+	  </Box>
    );
 };
 

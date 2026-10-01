@@ -9,16 +9,15 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import EditDocumentIcon from '@mui/icons-material/EditDocument';
 import DescriptionIcon from '@mui/icons-material/Description';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
-import AccountTreeIcon from '@mui/icons-material/AccountTree';
-import DownloadIcon from '@mui/icons-material/Download';
-import DeleteIcon from '@mui/icons-material/Delete';
-import FactCheckIcon from '@mui/icons-material/FactCheck';
-import EditIcon from '@mui/icons-material/Edit';
-import VisibilityIcon from '@mui/icons-material/Visibility';
+import AccountTreeIcon from '@mui/icons-material/AccountTreeOutlined';
+import DownloadIcon from '@mui/icons-material/FileDownloadOutlined';
+import DeleteIcon from '@mui/icons-material/DeleteOutline';
+import FactCheckIcon from '@mui/icons-material/FactCheckOutlined';
+import EditIcon from '@mui/icons-material/EditOutlined';
+import VisibilityIcon from '@mui/icons-material/VisibilityOutlined';
 import HistoryIcon from '@mui/icons-material/History';
-import LockIcon from '@mui/icons-material/Lock';
-import LockOpenIcon from '@mui/icons-material/LockOpen';
-import Alert from '@mui/material/Alert';
+import LockIcon from '@mui/icons-material/LockOutlined';
+import LockOpenIcon from '@mui/icons-material/LockOpenOutlined';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -41,6 +40,7 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 
 import { SearchBar } from '../components/SearchBar';
+import { PageHeader } from '../components/PageHeader';
 import { ContentLoader } from '../components/ContentLoader';
 import { ModelDialog } from '../components/ModelDialog';
 import { ActionBar } from '../components/ActionBar';
@@ -604,7 +604,7 @@ const ModelLibraryPage: React.FC = () => {
       } catch (e) {
          const errorMessage = e instanceof ApiError
             ? e.message
-            : (e instanceof Error ? e.message : 'Failed to create workspace');
+            : (e instanceof Error ? e.message : 'Failed to create server');
          setCreateWorkspaceError(errorMessage);
       } finally {
          setIsCreatingWorkspace(false);
@@ -644,7 +644,7 @@ const ModelLibraryPage: React.FC = () => {
       } catch (e) {
          const errorMessage = e instanceof ApiError
             ? e.message
-            : (e instanceof Error ? e.message : 'Failed to update workspace');
+            : (e instanceof Error ? e.message : 'Failed to update server');
          setEditWorkspaceError(errorMessage);
       } finally {
          setIsSavingWorkspace(false);
@@ -672,7 +672,7 @@ const ModelLibraryPage: React.FC = () => {
       } catch (e) {
          const errorMessage = e instanceof ApiError
             ? e.message
-            : (e instanceof Error ? e.message : 'Failed to delete workspace');
+            : (e instanceof Error ? e.message : 'Failed to delete server');
          setDeleteWorkspaceError(errorMessage);
       } finally {
          setIsDeletingWorkspace(false);
@@ -980,23 +980,27 @@ const ModelLibraryPage: React.FC = () => {
    return (
       <Box p={8}>
          {/* Row 1: Title and actions */}
-         <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8, mb: 4 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8, flexGrow: 1 }}>
-               <EditDocumentIcon />
-               <Typography variant='h5' sx={{ fontWeight: 'bolder' }}>{t('modelLibrary.title')}</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+         <PageHeader
+            icon={<EditDocumentIcon />}
+            title={t('modelLibrary.title')}
+            infoLabel={t('common.learnMore', 'Learn more')}
+            info={[
+               t('aboutModelLibraryWizard.intro'),
+               t('aboutModelLibraryWizard.line1'),
+               t('aboutModelLibraryWizard.line2'),
+               t('aboutModelLibraryWizard.line3'),
+               t('aboutModelLibraryWizard.line4'),
+               t('common.betaNotice')
+            ]}
+         >
                <WorkspaceSelector />
-               <Tooltip title={canWrite ? '' : t('modelLibrary.readOnlyWorkspace', 'This workspace is read-only — shared with you by its owner')}>
+               <Tooltip title={canWrite ? '' : t('modelLibrary.readOnlyWorkspace', 'This OPC UA server is read-only — shared with you by its owner')}>
                   <span>
                      <Button
                         variant="contained"
                         disabled={!canWrite}
+                        size="small"
                         onClick={(e) => setImportMenuAnchor(e.currentTarget)}
-                        sx={{
-                           px: '30px',
-                           borderRadius: '50px'
-                        }}
                      >
                         {isUploading ? t("common.uploading") : t("modelLibrary.importAction")}
                      </Button>
@@ -1019,11 +1023,8 @@ const ModelLibraryPage: React.FC = () => {
                </Menu>
                <Button
                   variant="contained"
+                  size="small"
                   onClick={(e) => setCreateMenuAnchor(e.currentTarget)}
-                  sx={{
-                     px: '30px',
-                     borderRadius: '50px'
-                  }}
                >
                   {t("modelLibrary.createAction")}
                </Button>
@@ -1039,15 +1040,7 @@ const ModelLibraryPage: React.FC = () => {
                      {t('modelLibrary.createModel')}
                   </MenuItem>
                </Menu>
-            </Box>
-         </Box>
-
-         {/* Beta disclaimer */}
-         <Alert severity="warning" sx={{ mb: 4 }}>
-            This site is currently in a public beta. Any models created should be backed up using the download feature.
-            Please help us make this site better by reporting any bugs, feature requests, or other feedback to{' '}
-            <a href="mailto:webmaster@opcfoundation.org?subject=OPC%20UA%20NodeSetEditor%20Feedback">webmaster@opcfoundation.org</a>.
-         </Alert>
+         </PageHeader>
 
          {/* Row 4: SearchBar with filter toggles and workspace actions */}
          <SearchBar
@@ -1056,21 +1049,21 @@ const ModelLibraryPage: React.FC = () => {
             rightActions={selectedWorkspaceId ? (
                <>
                   <Tooltip title={isWorkspaceOwner
-                     ? t('modelLibrary.editWorkspace', 'Edit Workspace')
-                     : t('modelLibrary.editWorkspaceDisabled', 'Only the owner can edit this workspace')}>
+                     ? t('modelLibrary.editWorkspace', 'Edit Server')
+                     : t('modelLibrary.editWorkspaceDisabled', 'Only the owner can edit this server')}>
                      <span>
-                        <IconButton size="small" onClick={handleEditWorkspace} disabled={!isWorkspaceOwner}>
-                           <EditIcon fontSize="small" />
-                        </IconButton>
+                        <Button size="small" startIcon={<EditIcon />} onClick={handleEditWorkspace} disabled={!isWorkspaceOwner}>
+                           {t('modelLibrary.editWorkspace', 'Edit Server')}
+                        </Button>
                      </span>
                   </Tooltip>
                   <Tooltip title={isWorkspaceOwner
-                     ? t('modelLibrary.deleteWorkspace', 'Delete Workspace')
-                     : t('modelLibrary.deleteWorkspaceDisabled', 'Only the owner can delete this workspace')}>
+                     ? t('modelLibrary.deleteWorkspace', 'Delete Server')
+                     : t('modelLibrary.deleteWorkspaceDisabled', 'Only the owner can delete this server')}>
                      <span>
-                        <IconButton size="small" onClick={handleDeleteWorkspace} disabled={!isWorkspaceOwner}>
-                           <DeleteIcon fontSize="small" />
-                        </IconButton>
+                        <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={handleDeleteWorkspace} disabled={!isWorkspaceOwner}>
+                           {t('modelLibrary.deleteWorkspace', 'Delete Server')}
+                        </Button>
                      </span>
                   </Tooltip>
                </>
@@ -1084,8 +1077,8 @@ const ModelLibraryPage: React.FC = () => {
                size="small"
                sx={{ ml: 2 }}
             >
-               <ToggleButton value="private" sx={{ px: 4, py: 0.5, textTransform: 'none' }}>{t('modelLibrary.private')}</ToggleButton>
-               <ToggleButton value="shared" sx={{ px: 4, py: 0.5, textTransform: 'none' }}>{t('modelLibrary.shared')}</ToggleButton>
+               <ToggleButton value="private">{t('modelLibrary.private')}</ToggleButton>
+               <ToggleButton value="shared">{t('modelLibrary.shared')}</ToggleButton>
             </ToggleButtonGroup>
          </SearchBar>
 
@@ -1165,12 +1158,16 @@ const ModelLibraryPage: React.FC = () => {
                               {
                                  onAction: () => handleEditModel(ns),
                                  icon: ns.isEditable ? <EditIcon /> : <VisibilityIcon />,
-                                 tooltipKey: ns.isEditable ? 'modelLibrary.editModel' : 'modelLibrary.viewModel'
+                                 tooltipKey: ns.isEditable ? 'modelLibrary.editModel' : 'modelLibrary.viewModel',
+                                 labelKey: ns.isEditable ? 'modelLibrary.editShort' : 'modelLibrary.viewShort',
+                                 primary: true
                               },
                               {
                                  onAction: () => handleViewTypeDefinitions(ns),
                                  icon: <AccountTreeIcon />,
-                                 tooltipKey: 'modelLibrary.viewTypeDefinitions'
+                                 tooltipKey: 'modelLibrary.viewTypeDefinitions',
+                                 labelKey: 'modelLibrary.typesShort',
+                                 primary: true
                               },
                               {
                                  onAction: () => handleValidateModel(ns),
@@ -1188,7 +1185,8 @@ const ModelLibraryPage: React.FC = () => {
                                  onAction: () => handleDeleteModel(ns),
                                  icon: <DeleteIcon />,
                                  tooltipKey: 'modelLibrary.delete',
-                                 disabled: isCoreModel(ns) || !canWrite
+                                 disabled: isCoreModel(ns) || !canWrite,
+                                 destructive: true
                               }
                            ]}
                         />
@@ -1197,7 +1195,7 @@ const ModelLibraryPage: React.FC = () => {
                   {filteredModels.length === 0 && !isLoading && (
                      <ListItem>
                         <Typography variant="body2" color="text.secondary">
-                           No models found in this workspace.
+                           No models found in this OPC UA server.
                         </Typography>
                      </ListItem>
                   )}
@@ -1786,7 +1784,7 @@ const ModelLibraryPage: React.FC = () => {
             <ModelDialog
                open
                onClose={() => { setEditWorkspaceDialogOpen(false); setEditWorkspaceError(null); }}
-               title={t('modelLibrary.editWorkspaceDialogTitle', 'Edit Workspace')}
+               title={t('modelLibrary.editWorkspaceDialogTitle', 'Edit Server')}
                isLoading={isSavingWorkspace}
                isError={!!editWorkspaceError}
                error={editWorkspaceError ? new Error(editWorkspaceError) : null}
@@ -1822,7 +1820,7 @@ const ModelLibraryPage: React.FC = () => {
                         fullWidth
                         multiline
                         rows={4}
-                        helperText={t('modelLibrary.workspaceAclHelp', 'Email addresses of users who can access this workspace')}
+                        helperText={t('modelLibrary.workspaceAclHelp', 'Email addresses of users who can access this OPC UA server')}
                      />
                   </Box>
                )}
@@ -1834,7 +1832,7 @@ const ModelLibraryPage: React.FC = () => {
             <ModelDialog
                open
                onClose={() => { setDeleteWorkspaceDialogOpen(false); setDeleteWorkspaceError(null); }}
-               title={t('modelLibrary.deleteWorkspaceDialogTitle', 'Delete Workspace')}
+               title={t('modelLibrary.deleteWorkspaceDialogTitle', 'Delete Server')}
                isLoading={isDeletingWorkspace}
                isError={!!deleteWorkspaceError}
                error={deleteWorkspaceError ? new Error(deleteWorkspaceError) : null}
@@ -1851,7 +1849,7 @@ const ModelLibraryPage: React.FC = () => {
                      <Typography variant="body1">
                         {t('modelLibrary.deleteWorkspaceConfirmation',
                            { name: currentWorkspace?.applicationName?.text ?? selectedWorkspaceId,
-                             defaultValue: 'Are you sure you want to delete workspace "{{name}}"? This cannot be undone.' })}
+                             defaultValue: 'Are you sure you want to delete server "{{name}}"? This cannot be undone.' })}
                      </Typography>
                   </Box>
                )}

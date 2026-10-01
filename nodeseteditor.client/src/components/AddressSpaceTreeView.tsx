@@ -2,10 +2,14 @@ import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 
+import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import { alpha } from '@mui/material/styles';
 import { SimpleTreeView } from '@mui/x-tree-view/SimpleTreeView';
+import { getNodeClassIcon } from './nodeClassIcon';
+import { nodeClassToNum } from '../model/NodeFormatting';
+import { treeLabelSx, treeSlots, treeSx } from './treeStyles';
 import { TreeItem } from '@mui/x-tree-view/TreeItem';
 
 import api from '../api/axios.api';
@@ -150,34 +154,10 @@ const TypeTreeItem: React.FC<TypeTreeItemProps> = ({ node, category, workspaceId
    };
 
    const label = (
-      <Typography
-         ref={targetRef}
-         variant="body2"
-         onClick={handleLabelClick}
-         sx={{
-            fontWeight: isTarget || isHighlighted ? 900 : 'normal',
-            // isTarget = the just-navigated-to row → primary highlight
-            //   (OPC blue in light mode, amber in dark mode via the dark
-            //   palette override).
-            // isHighlighted = belongs to active model → same primary tint
-            //   but at lower alpha so the selection still reads as the
-            //   stronger of the two states.
-            color: (isTarget || isHighlighted) ? 'primary.main' : isDimmed ? 'text.disabled' : 'text.primary',
-            backgroundColor: isTarget
-               ? (theme) => alpha(theme.palette.primary.main, 0.16)
-               : isHighlighted
-                  ? (theme) => alpha(theme.palette.primary.main, 0.08)
-                  : undefined,
-            borderRadius: isTarget || isHighlighted ? '4px' : undefined,
-            px: isTarget || isHighlighted ? 0.5 : 0,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            cursor: 'pointer',
-         }}
-      >
-         {getNodePlainName(node)}
-      </Typography>
+	  <Box ref={targetRef} onClick={handleLabelClick} sx={treeLabelSx(isTarget, isHighlighted, isDimmed)}>
+		 {getNodeClassIcon(nodeClassToNum(node.nodeClass), isDimmed ? { sx: { opacity: 0.5 } } : undefined)}
+		 <span className="tree-label-text">{getNodePlainName(node)}</span>
+	  </Box>
    );
 
    if (isLeaf) {
@@ -529,7 +509,7 @@ export const AddressSpaceTreeView: React.FC<AddressSpaceTreeViewProps> = ({
 
    if (rootType) {
       return (
-         <SimpleTreeView
+         <SimpleTreeView slots={treeSlots} sx={treeSx}
             expandedItems={expandedItems}
             onExpandedItemsChange={onExpandedItemsChange}
          >
@@ -547,7 +527,7 @@ export const AddressSpaceTreeView: React.FC<AddressSpaceTreeViewProps> = ({
    }
 
    return (
-      <SimpleTreeView
+      <SimpleTreeView slots={treeSlots} sx={treeSx}
          expandedItems={expandedItems}
          onExpandedItemsChange={onExpandedItemsChange}
       >

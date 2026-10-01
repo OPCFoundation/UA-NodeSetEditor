@@ -153,7 +153,7 @@ export const AddReferenceDialog: React.FC<AddReferenceDialogProps> = ({
       && (checkedTargetId !== canonicalTargetId || isCheckingTarget);
    const targetError = parseError
       ?? (targetExists === false && !targetPending
-         ? t('typeDetail.targetNotFound', 'No node with this NodeId exists in this workspace.')
+         ? t('typeDetail.targetNotFound', 'No node with this NodeId exists in this OPC UA server.')
          : null);
 
    // Show what a "[Model]:" / "ns=<index>;" input was rewritten to, so the user

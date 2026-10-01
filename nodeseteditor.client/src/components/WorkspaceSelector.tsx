@@ -55,19 +55,19 @@ export const WorkspaceSelector: React.FC = () => {
    if (servers.length === 0) {
       return (
          <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 200 }}>
-            <Typography variant="body2" color="error">No workspaces defined.</Typography>
+            <Typography variant="body2" color="error">No OPC UA servers defined.</Typography>
          </Box>
       );
    }
 
    return (
       <FormControl size="small" sx={{ minWidth: 200 }}>
-         <InputLabel id="workspace-select-label">Workspace</InputLabel>
+         <InputLabel id="workspace-select-label">OPC UA Server</InputLabel>
          <Select
             labelId="workspace-select-label"
             id="workspace-select"
             value={selectedWorkspaceId}
-            label="Workspace"
+            label="OPC UA Server"
             onChange={handleChange}
          >
             {servers.map((ws: WorkspaceDescription) => {

@@ -229,7 +229,7 @@ export default function SettingsMenu() {
                sx={{
                   // Theme-aware primary instead of hardcoded lightBlue,
                   // so dark mode's amber primary takes over the hover colour.
-                  my: 2, display: 'flex', borderRightWidth: '0px', minWidth: '0px',
+                  my: 2, display: 'flex', borderRightWidth: '0px', minWidth: '0px', backgroundColor: 'transparent', '&:hover': { backgroundColor: 'transparent' },
                   '&:hover .MuiAvatar-root': { bgcolor: 'primary.dark' },
                   '& .MuiSvgIcon-root': { color: 'primary.dark' },
                   '&:hover .MuiSvgIcon-root': { color: 'primary.light' },
@@ -249,7 +249,7 @@ export default function SettingsMenu() {
             <Button
                onClick={() => setLoginOpen(true)}
                sx={{
-                  my: 2, display: 'flex', borderRightWidth: '0px', minWidth: '0px',
+                  my: 2, display: 'flex', borderRightWidth: '0px', minWidth: '0px', backgroundColor: 'transparent', '&:hover': { backgroundColor: 'transparent' },
                   '& .MuiAvatar-root': { bgcolor: 'primary.light', transition: 'background-color 0.2s' },
                   '&:hover .MuiAvatar-root': { bgcolor: 'primary.dark' },
                   '& .MuiSvgIcon-root': { color: 'primary.dark' },

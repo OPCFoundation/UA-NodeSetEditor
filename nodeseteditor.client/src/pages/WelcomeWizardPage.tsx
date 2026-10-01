@@ -6,8 +6,12 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Alert from '@mui/material/Alert';
 import Typography from '@mui/material/Typography';
+import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
+import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
+import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
 
 import { WizardActionCard, type ContentBlock } from '../components/WizardActionCard';
+import { InfoPopover } from '../components/InfoPopover';
 
 const aboutModelLibraryContent: ContentBlock[] = [
     { type: 'paragraph', textKey: 'aboutModelLibraryWizard.intro' },
@@ -30,47 +34,54 @@ const WelcomeWizardPage: React.FC = () => {
    const navigate = useNavigate();
 
    return (
-      <Box p={4}>
-         <Typography variant='h5' sx={{ fontWeight: 'bolder' }}>
-            {t('welcomeWizard.title')}
-         </Typography>
-           <Typography variant='body1' my={2} pb={4} sx={{ fontSize: 'smaller', fontWeight: 'lighter' }}>
-            {t('welcomeWizard.summary')}
+      <Box sx={{ maxWidth: 1100, mx: 'auto', py: { xs: 16, md: 48 } }}>
+         <Box sx={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Typography variant='h3' component='h1'>
+               {t('welcomeWizard.title')}
+            </Typography>
+            <InfoPopover title={t('welcomeWizard.title')} label={t('common.learnMore', 'Learn more')}>
+               {t('welcomeWizard.summary')}
+            </InfoPopover>
+         </Box>
+         <Typography variant='h6' component='p' color='text.secondary' sx={{ mt: 8, fontWeight: 400 }}>
+            {t('welcomeWizard.tagline')}
          </Typography>
 
          {/* Beta disclaimer */}
-         <Alert severity="warning" sx={{ mb: 10 }}>
-            This site is currently in a public beta. Any models created should be backed up using the download feature.
-            Please help us make this site better by reporting any bugs, feature requests, or other feedback to{' '}
-            <a href="mailto:webmaster@opcfoundation.org?subject=OPC%20UA%20NodeSetEditor%20Feedback">webmaster@opcfoundation.org</a>.
+         <Alert severity="info" variant="outlined" sx={{ mt: 24, borderColor: 'divider' }}>
+            Public beta — please back up your models with Download. Feedback:{' '}
+            <a href="mailto:webmaster@opcfoundation.org?subject=OPC%20UA%20NodeSetEditor%20Feedback">webmaster@opcfoundation.org</a>
          </Alert>
 
-           <Grid container spacing={6} sx={{ mt: 4 }}>
-               <Grid size={{ xs: 12, md: 4 }}>
-                   <WizardActionCard
-                       titleKey="aboutTypeLibraryWizard.title"
-                       content={aboutTypeLibraryContent}
-                       buttonKey="aboutTypeLibraryWizard.action"
-                       onButtonClick={() => navigate('/type_library')}
-                       buttonColor="primary.dark"
-                   />
-               </Grid>
+         <Grid container spacing={20} sx={{ mt: 32 }}>
             <Grid size={{ xs: 12, md: 4 }}>
                <WizardActionCard
-                  titleKey="aboutModelLibraryWizard.title"
-                  content={aboutModelLibraryContent}
-                  buttonKey="aboutModelLibraryWizard.action"
-                  onButtonClick={() => navigate('/model_library')}
-                  buttonColor="primary.dark"
+                  icon={<CategoryOutlinedIcon />}
+                  titleKey="aboutTypeLibraryWizard.title"
+                  summaryKey="aboutTypeLibraryWizard.summary"
+                  content={aboutTypeLibraryContent}
+                  buttonKey="aboutTypeLibraryWizard.action"
+                  onButtonClick={() => navigate('/type_library')}
                />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
                <WizardActionCard
+                  icon={<FolderOutlinedIcon />}
+                  titleKey="aboutModelLibraryWizard.title"
+                  summaryKey="aboutModelLibraryWizard.summary"
+                  content={aboutModelLibraryContent}
+                  buttonKey="aboutModelLibraryWizard.action"
+                  onButtonClick={() => navigate('/model_library')}
+               />
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+               <WizardActionCard
+                  icon={<TaskAltOutlinedIcon />}
                   titleKey="aboutModelValidationWizard.title"
+                  summaryKey="aboutModelValidationWizard.summary"
                   content={aboutModelValidationContent}
                   buttonKey="aboutModelValidationWizard.action"
                   onButtonClick={() => navigate('/model_library')}
-                  buttonColor="primary.dark"
                />
             </Grid>
          </Grid>

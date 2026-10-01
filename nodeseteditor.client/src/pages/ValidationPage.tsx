@@ -38,6 +38,7 @@ import type { PaginatedResponse } from '../model/WorkspaceDescription';
 import type { WorkspaceNamespaceInfo } from '../model/WorkspaceNamespaceInfo';
 import { ModelDialog } from '../components/ModelDialog';
 import { SearchBar } from '../components/SearchBar';
+import { PageHeader } from '../components/PageHeader';
 import { ActionBar, type ActionBarItem } from '../components/ActionBar';
 import { ValidationResultsView } from '../components/ValidationResultsView';
 import { EditValidationOptionsDialog } from '../components/EditValidationOptionsDialog';
@@ -281,23 +282,30 @@ const ValidationPage: React.FC = () => {
    return (
       <Box sx={{ px: 8, pt: 14 }}>
          {/* pt:14 above + mb:14 below (SearchBar pt zeroed) => equal whitespace around the Upload button. */}
-         <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8, mb: 14 }}>
-            <Tooltip title={t('validation.backToModels')}>
-               <IconButton onClick={() => navigate('/model_library')} size="small"><ArrowBackIcon /></IconButton>
-            </Tooltip>
-            <Typography variant="h5" sx={{ fontWeight: 'bolder' }}>{t('validation.pageTitle', 'Validate Model')}</Typography>
-            <Box sx={{ flexGrow: 1 }} />
+         <PageHeader
+            title={t('validation.pageTitle', 'Validate Model')}
+            infoLabel={t('common.learnMore', 'Learn more')}
+            info={[
+               t('aboutModelValidationWizard.intro'),
+               t('validation.noSelectedModel')
+            ]}
+            leading={(
+               <Tooltip title={t('validation.backToModels')}>
+                  <IconButton onClick={() => navigate('/model_library')} size="small"><ArrowBackIcon /></IconButton>
+               </Tooltip>
+            )}
+         >
             <Button
                variant="contained"
                startIcon={<UploadFileIcon />}
                onClick={handlePickFile}
                disabled={isUploading}
-               sx={{ px: '24px', borderRadius: '50px', flexShrink: 0 }}
+               sx={{ flexShrink: 0 }}
             >
                {t('validation.uploadDocument')}
             </Button>
             <input ref={fileInputRef} type="file" accept=".docx" hidden onChange={handleFileSelected} />
-         </Box>
+         </PageHeader>
 
          <SearchBar
             hint={t('validation.searchHintDocuments', 'Search documents…')}
@@ -327,12 +335,6 @@ const ValidationPage: React.FC = () => {
             </FormControl>
          </SearchBar>
 
-         {!selectedModelId && (
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-               {t('validation.noSelectedModel')}
-            </Typography>
-         )}
-
          {isUploading && (
             <Box sx={{ mb: 2 }}>
                <Typography variant="body2" color="text.secondary">
@@ -359,6 +361,7 @@ const ValidationPage: React.FC = () => {
                      tooltipKey: selectedModelId ? 'validation.start' : 'validation.noSelectedModel',
                      hidden: !isReady,
                      disabled: busy || !selectedModelId,
+                     primary: true,
                   },
                   {
                      onAction: () => handleCancel(doc),
@@ -366,6 +369,7 @@ const ValidationPage: React.FC = () => {
                      tooltipKey: 'validation.cancelJob',
                      hidden: !(isQueued || isRunning),
                      disabled: busy,
+                     primary: true,
                   },
                   {
                      onAction: () => openResults(doc),
@@ -373,6 +377,7 @@ const ValidationPage: React.FC = () => {
                      tooltipKey: 'validation.viewResults',
                      hidden: !isCompleted,
                      disabled: !doc.jobId,
+                     primary: true,
                   },
                   {
                      onAction: () => handleReset(doc),
@@ -392,6 +397,7 @@ const ValidationPage: React.FC = () => {
                      icon: <DeleteIcon />,
                      tooltipKey: 'validation.delete',
                      disabled: isRunning || isQueued,
+                     destructive: true,
                   },
                ];
 

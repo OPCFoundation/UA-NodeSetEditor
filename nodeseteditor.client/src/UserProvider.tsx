@@ -303,7 +303,14 @@ export const UserProvider = ({ children }: UserProviderProps) => {
    const requestEmailCode = React.useCallback(async (emailAddr: string) => {
       clearLoginError();
       try {
-         await api.post('/auth/request-code', { email: emailAddr.trim() });
+         const res = await api.post<{ devCode?: string }>('/auth/request-code', { email: emailAddr.trim() });
+         if (res.data?.devCode) {
+            // Development only: the server has no mail provider and returned the code directly.
+            console.info(`[DEV] Sign-in code for ${emailAddr.trim()}: ${res.data.devCode}`);
+            // Copy to the clipboard and show it pre-selected in a prompt so it can be copied manually too.
+            navigator.clipboard?.writeText(res.data.devCode).catch(() => { });
+            window.prompt('Development mode (no email provider configured). Your sign-in code (already copied to the clipboard):', res.data.devCode);
+         }
       } catch (err) {
          throw new Error(extractAuthMessage(err, 'Could not send the code. Please try again.'));
       }

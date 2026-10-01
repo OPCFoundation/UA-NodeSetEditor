@@ -131,7 +131,7 @@ export const ModelVersionsDialog: React.FC<ModelVersionsDialogProps> = ({
       const deleteDisabled = !canWrite || !v.canDelete || deletingId != null;
       const armed = confirmingId === v.id;
       const tooltip = !canWrite
-         ? t('modelVersions.readOnlyWorkspace', 'You do not have write access to this workspace.')
+         ? t('modelVersions.readOnlyWorkspace', 'You do not have write access to this OPC UA server.')
          : v.canDelete
             ? (armed
                ? t('modelVersions.confirmDelete', 'Click again to delete this version permanently.')

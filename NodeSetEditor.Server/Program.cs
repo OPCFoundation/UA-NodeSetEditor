@@ -246,6 +246,14 @@ builder.Services.AddOpenApi(options =>
 
 var app = builder.Build();
 
+// Local development: create the database and schema if missing (there are no EF migrations;
+// deployed databases are provisioned separately). Never runs outside Development.
+if (app.Environment.IsDevelopment() && !isOpenApiBuild)
+{
+    using var scope = app.Services.CreateScope();
+    scope.ServiceProvider.GetRequiredService<NodeSetEditorDbContext>().Database.EnsureCreated();
+}
+
 // Security response headers on every response (API and SPA assets alike).
 // Only frame-ancestors is ENFORCED via CSP for now (clickjacking — browsers
 // ignore frame-ancestors in report-only policies, hence the split). The full
