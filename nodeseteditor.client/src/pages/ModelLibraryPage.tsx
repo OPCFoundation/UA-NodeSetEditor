@@ -35,6 +35,7 @@ import Checkbox from '@mui/material/Checkbox';
 import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
+import CircularProgress from '@mui/material/CircularProgress';
 
 
 import ToggleButton from '@mui/material/ToggleButton';
@@ -172,15 +173,20 @@ const ModelLibraryPage: React.FC = () => {
    // Import menu and file upload state
    const [importMenuAnchor, setImportMenuAnchor] = React.useState<HTMLElement | null>(null);
    const [uploadError, setUploadError] = React.useState<string | null>(null);
-   const [isUploading, setIsUploading] = React.useState(false);
-   // File-import license confirmation: after a file is picked we detect any embedded
-   // license/copyright, then prompt the user to confirm or set them before importing.
+   // File-import flow. After a file is picked we detect any embedded license/copyright
+   // ('detecting'). A file that carries both needs no confirmation and goes straight to
+   // 'uploading'; otherwise we'd be proposing the user's defaults, so 'confirm' asks first.
+   // 'detecting' and 'uploading' are both waits — the server resolves and fetches the whole
+   // dependency closure inside the import request.
+   const [importPhase, setImportPhase] = React.useState<'idle' | 'detecting' | 'confirm' | 'uploading'>('idle');
+   const isUploading = importPhase === 'uploading';
    const [pendingImportFile, setPendingImportFile] = React.useState<File | null>(null);
-   const [importLicenseDialogOpen, setImportLicenseDialogOpen] = React.useState(false);
-   const [importDetecting, setImportDetecting] = React.useState(false);
    const [importLicense, setImportLicense] = React.useState<LicenseValue>({ license: '', licenseUrl: '' });
    const [importCopyright, setImportCopyright] = React.useState('');
    const fileInputRef = React.useRef<HTMLInputElement>(null);
+   // Bumped whenever a file-import run is abandoned or superseded, so a detection
+   // response that lands after the user cancelled cannot start an import.
+   const importRunRef = React.useRef(0);
 
    // Fetch discovery data to get ownership info for the selected workspace
    const { data: discoveryData } = useQuery({
@@ -261,22 +267,31 @@ const ModelLibraryPage: React.FC = () => {
 
    const CHUNK_SIZE = 4 * 1024 * 1024; // 4MB
 
-   // Picking a file no longer uploads immediately: detect any embedded license/copyright, then
-   // open a dialog for the user to confirm or set them before the import proceeds.
+   // Picking a file no longer uploads immediately: detect any embedded license/copyright
+   // first. A file that carries both is imported straight away — there is nothing for the
+   // user to confirm. Only when something has to be taken from the user's defaults do we
+   // stop at the confirmation dialog.
    const handleFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
       const selectedFile = event.target.files?.[0];
       // Reset the input so re-picking the same file fires onChange again.
       if (fileInputRef.current) fileInputRef.current.value = '';
       if (!selectedFile || !selectedWorkspaceId) return;
 
+      const run = ++importRunRef.current;
+
       setUploadError(null);
       setPendingImportFile(selectedFile);
       // Seed from the user's defaults; auto-detection below may overwrite.
-      setImportLicense({ license: userDefaultLicense ?? '', licenseUrl: userDefaultLicenseUrl ?? '' });
-      setImportCopyright(userDefaultCopyright ?? '');
-      setImportLicenseDialogOpen(true);
+      let license: LicenseValue = { license: userDefaultLicense ?? '', licenseUrl: userDefaultLicenseUrl ?? '' };
+      let copyright = userDefaultCopyright ?? '';
+      setImportLicense(license);
+      setImportCopyright(copyright);
+      setImportPhase('detecting');
 
-      setImportDetecting(true);
+      // The server resolves an import's license with the same detector used here, so when
+      // the file states both values — and they satisfy the same rule the dialog enforces,
+      // so the import cannot be rejected for them — there is nothing left to confirm.
+      let selfDescribed = false;
       try {
          const form = new FormData();
          form.append('file', selectedFile, selectedFile.name);
@@ -284,33 +299,58 @@ const ModelLibraryPage: React.FC = () => {
             '/opcua/v1/namespaces/info/detect-license', form,
             { headers: { 'Content-Type': 'multipart/form-data', 'OpcUa-Server': idToUrn(selectedWorkspaceId) } });
          const d = res.data;
-         if (d?.license) setImportLicense({ license: d.license, licenseUrl: d.licenseUrl ?? '' });
-         if (d?.copyrightHolder) setImportCopyright(d.copyrightHolder);
+         if (d?.license) license = { license: d.license, licenseUrl: d.licenseUrl ?? '' };
+         if (d?.copyrightHolder) copyright = d.copyrightHolder;
+         // Both must come from the FILE: a value taken from the user's defaults is a
+         // proposal, and proposals are exactly what the confirmation dialog is for.
+         selfDescribed = !!d?.license?.trim() && !!d?.copyrightHolder?.trim()
+            && isLicenseValid(d.license, d.licenseUrl ?? '', licenseOptions ?? []);
       } catch {
          // Detection is best-effort; keep the seeded defaults.
-      } finally {
-         setImportDetecting(false);
+      }
+
+      // The user cancelled (or picked another file) while detection was in flight.
+      if (importRunRef.current !== run) return;
+
+      setImportLicense(license);
+      setImportCopyright(copyright);
+
+      if (selfDescribed) {
+         await uploadImportFile(selectedFile, license.license.trim(), license.licenseUrl.trim(), copyright.trim());
+      } else {
+         setImportPhase('confirm');
       }
    };
 
-   const handleImportLicenseDialogClose = () => {
-      setImportLicenseDialogOpen(false);
+   const handleImportDialogClose = () => {
+      // The import itself cannot be cancelled — ignore close attempts so the progress
+      // indicator stays on screen until the request returns. Detection can be abandoned:
+      // the bumped run id keeps its late response from starting an import.
+      if (importPhase === 'uploading') return;
+      importRunRef.current++;
+      setImportPhase('idle');
       setPendingImportFile(null);
    };
 
    const handleConfirmImport = async () => {
       const file = pendingImportFile;
-      setImportLicenseDialogOpen(false);
-      setPendingImportFile(null);
-      if (file) {
-         await uploadImportFile(file, importLicense.license.trim(), importLicense.licenseUrl.trim(), importCopyright.trim());
+      if (!file) {
+         setImportPhase('idle');
+         return;
       }
+      await uploadImportFile(file, importLicense.license.trim(), importLicense.licenseUrl.trim(), importCopyright.trim());
    };
 
+   // Holds the dialog open in its 'uploading' wait state for the whole import: the server
+   // resolves and fetches the NodeSet's entire dependency closure inside that one request,
+   // which can take minutes, and the wait indicator is the only sign it is still working.
    const uploadImportFile = async (file: File, license: string, licenseUrl: string, copyright: string) => {
-      if (!selectedWorkspaceId) return;
+      if (!selectedWorkspaceId) {
+         setImportPhase('idle');
+         return;
+      }
 
-      setIsUploading(true);
+      setImportPhase('uploading');
       setUploadError(null);
 
       try {
@@ -358,7 +398,9 @@ const ModelLibraryPage: React.FC = () => {
             : (e instanceof Error ? e.message : t('modelLibrary.uploadFailed'));
          setUploadError(errorMessage);
       } finally {
-         setIsUploading(false);
+         // Done either way: the dialog closes and any error surfaces on the page.
+         setImportPhase('idle');
+         setPendingImportFile(null);
       }
    };
 
@@ -817,8 +859,9 @@ const ModelLibraryPage: React.FC = () => {
                   <span>
                      <Button
                         variant="contained"
-                        disabled={!canWrite}
+                        disabled={!canWrite || isUploading}
                         onClick={(e) => setImportMenuAnchor(e.currentTarget)}
+                        startIcon={isUploading ? <CircularProgress size={16} color="inherit" /> : undefined}
                         sx={{
                            px: '30px',
                            borderRadius: '50px'
@@ -1069,48 +1112,72 @@ const ModelLibraryPage: React.FC = () => {
             onChange={handleFileSelected}
          />
 
-         {/* Confirm license & copyright before importing a picked NodeSet file */}
-         {importLicenseDialogOpen && (
+         {/* One dialog for the whole file import: a wait indicator while the file is checked
+             and imported, and — only when the file carried no license/copyright of its own —
+             a stop to confirm the values proposed from the user's defaults. */}
+         {importPhase !== 'idle' && (
             <ModelDialog
                open
-               onClose={handleImportLicenseDialogClose}
-               title={t('modelLibrary.importLicenseTitle', 'Confirm License & Copyright')}
-               actions={[
-                  {
-                     label: isUploading ? t('common.uploading') : t('common.ok'),
-                     onClick: handleConfirmImport,
-                     disabled: importDetecting || isUploading
-                        || !importCopyright.trim()
-                        || !isLicenseValid(importLicense.license, importLicense.licenseUrl, licenseOptions ?? []),
-                  }
-               ]}
+               onClose={handleImportDialogClose}
+               disableClose={isUploading}
+               title={importPhase === 'confirm'
+                  ? t('modelLibrary.importLicenseTitle', 'Confirm License & Copyright')
+                  : t('modelLibrary.importingTitle', 'Importing NodeSet')}
+               actions={importPhase === 'confirm'
+                  ? [
+                     {
+                        label: t('common.ok'),
+                        onClick: handleConfirmImport,
+                        disabled: !importCopyright.trim()
+                           || !isLicenseValid(importLicense.license, importLicense.licenseUrl, licenseOptions ?? []),
+                     }
+                  ]
+                  : []}
             >
-               <Box sx={{ p: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <Typography variant="body2" color="text.secondary">
-                     {importDetecting
-                        ? t('modelLibrary.importLicenseDetecting', 'Checking the file for license information…')
-                        : t('modelLibrary.importLicenseHelp',
-                           'Confirm the license and copyright holder for this NodeSet. Anything detected in the file is pre-filled; set them if none were found. These cannot be changed after import.')}
-                  </Typography>
-                  <TextField
-                     label={t('modelLibrary.copyrightHolder', 'Copyright holder')}
-                     value={importCopyright}
-                     onChange={(e) => setImportCopyright(e.target.value)}
-                     fullWidth
-                     required
-                     error={!importCopyright.trim()}
-                     helperText={!importCopyright.trim()
-                        ? t('modelLibrary.copyrightRequired', 'A copyright holder is required.')
-                        : undefined}
-                  />
-                  <LicenseFields
-                     options={licenseOptions ?? []}
-                     license={importLicense.license}
-                     licenseUrl={importLicense.licenseUrl}
-                     onChange={setImportLicense}
-                     size="medium"
-                  />
-               </Box>
+               {importPhase !== 'confirm' ? (
+                  <Box sx={{
+                     p: 6,
+                     minHeight: 200,
+                     display: 'flex',
+                     flexDirection: 'column',
+                     alignItems: 'center',
+                     justifyContent: 'center',
+                     gap: 12
+                  }}>
+                     <CircularProgress />
+                     <Typography variant="body2" color="text.secondary" align="center">
+                        {importPhase === 'detecting'
+                           ? t('modelLibrary.importLicenseDetecting', 'Checking the file for license information…')
+                           : t('modelLibrary.importInProgress',
+                              'Importing the NodeSet and fetching its dependencies. A model with many dependencies can take several minutes — please leave this dialog open.')}
+                     </Typography>
+                  </Box>
+               ) : (
+                  <Box sx={{ p: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                     <Typography variant="body2" color="text.secondary">
+                        {t('modelLibrary.importLicenseHelp',
+                           'This NodeSet does not state its own license and copyright holder. Confirm the values to record for it — anything found in the file is pre-filled, the rest comes from your defaults. These cannot be changed after import.')}
+                     </Typography>
+                     <TextField
+                        label={t('modelLibrary.copyrightHolder', 'Copyright holder')}
+                        value={importCopyright}
+                        onChange={(e) => setImportCopyright(e.target.value)}
+                        fullWidth
+                        required
+                        error={!importCopyright.trim()}
+                        helperText={!importCopyright.trim()
+                           ? t('modelLibrary.copyrightRequired', 'A copyright holder is required.')
+                           : undefined}
+                     />
+                     <LicenseFields
+                        options={licenseOptions ?? []}
+                        license={importLicense.license}
+                        licenseUrl={importLicense.licenseUrl}
+                        onChange={setImportLicense}
+                        size="medium"
+                     />
+                  </Box>
+               )}
             </ModelDialog>
          )}
 

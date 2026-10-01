@@ -8,7 +8,7 @@ import Alert from '@mui/material/Alert';
 import Typography from '@mui/material/Typography';
 
 import { WizardActionCard, type ContentBlock } from '../components/WizardActionCard';
-import { ImportCsvFlow } from '../components/ImportCsvFlow';
+// import { ImportCsvFlow } from '../components/ImportCsvFlow';
 
 const aboutModelLibraryContent: ContentBlock[] = [
     { type: 'paragraph', textKey: 'aboutModelLibraryWizard.intro' },
@@ -29,9 +29,9 @@ const aboutModelValidationContent: ContentBlock[] = [
 // What used to be the CSV wizard's opening page. The wizard now starts at the column
 // mapping, so the explanation of what an import does belongs here, where the decision to
 // start one is made.
-const aboutCsvImportContent: ContentBlock[] = [
-   { type: 'paragraph', textKey: 'csvImport.pickHint' }
-];
+//const aboutCsvImportContent: ContentBlock[] = [
+//   { type: 'paragraph', textKey: 'csvImport.pickHint' }
+//];
 
 const WelcomeWizardPage: React.FC = () => {
    const { t } = useTranslation();
@@ -81,9 +81,8 @@ const WelcomeWizardPage: React.FC = () => {
                   buttonColor="primary.dark"
                />
             </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
                {/* The flow owns the sign-in / create-model / file-picker steps that have to
-                   happen before the wizard can open, and hands the card a start(). */}
+            <Grid size={{ xs: 12, md: 6 }}>
                <ImportCsvFlow>
                   {({ start, busy }) => (
                      <WizardActionCard
@@ -97,6 +96,7 @@ const WelcomeWizardPage: React.FC = () => {
                   )}
                </ImportCsvFlow>
             </Grid>
+                   happen before the wizard can open, and hands the card a start(). */}
          </Grid>
       </Box>
    );

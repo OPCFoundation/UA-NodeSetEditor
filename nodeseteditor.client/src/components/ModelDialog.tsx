@@ -32,6 +32,12 @@ interface ModelDialogProps {
    error?: Error | null;
    maxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | false;
    fullWidth?: boolean;
+   /**
+    * Blocks every route out of the dialog (backdrop, Escape, the title's X and
+    * Cancel). For an operation in flight that cannot be cancelled — closing would
+    * only hide the progress while the request keeps running.
+    */
+   disableClose?: boolean;
 }
 
 export const ModelDialog: React.FC<ModelDialogProps> = ({
@@ -44,7 +50,8 @@ export const ModelDialog: React.FC<ModelDialogProps> = ({
    isError = false,
    error = null,
    maxWidth = 'sm',
-   fullWidth = true
+   fullWidth = true,
+   disableClose = false
 }) => {
    const { t } = useTranslation();
    const theme = useTheme();
@@ -52,7 +59,7 @@ export const ModelDialog: React.FC<ModelDialogProps> = ({
    return (
       <Dialog
          open={open}
-         onClose={onClose}
+         onClose={disableClose ? undefined : onClose}
          maxWidth={maxWidth}
          fullWidth={fullWidth}
          slotProps={{
@@ -80,6 +87,7 @@ export const ModelDialog: React.FC<ModelDialogProps> = ({
             <IconButton
                aria-label="close"
                onClick={onClose}
+               disabled={disableClose}
                size="small"
                sx={{ color: theme.palette.primary.contrastText }}
             >
@@ -107,7 +115,7 @@ export const ModelDialog: React.FC<ModelDialogProps> = ({
                <Button
                   variant="text"
                   onClick={onClose}
-                  disabled={isLoading}
+                  disabled={isLoading || disableClose}
                >
                   {t('common.cancel', 'Cancel')}
                </Button>
