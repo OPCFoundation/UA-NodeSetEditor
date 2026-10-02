@@ -5,7 +5,7 @@ import IconButton from '@mui/material/IconButton';
 import Popover from '@mui/material/Popover';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import { InfoOutlinedIcon } from '../icons';
 
 export interface InfoPopoverProps {
    /** Optional heading shown at the top of the popover. */

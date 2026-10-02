@@ -13,7 +13,8 @@ import { getNodePlainName } from '../model/Node';
 import type { Node, TreeNode } from '../model/Node';
 import { nodeClassToNum } from '../model/NodeFormatting';
 import { extractNamespaceUri } from '../utils/formatNodeId';
-import { getNodeClassIcon } from './nodeClassIcon';
+import { NodeIcon } from '../icons';
+import { IconSize } from '../icons/spec';
 import { treeLabelSx } from './treeStyles';
 
 export interface HierarchicalTreeItemProps {
@@ -84,7 +85,15 @@ export const HierarchicalTreeItem: React.FC<HierarchicalTreeItemProps> = ({
       ? (children?.length ?? 0) === 0
       : (node.hasNoChildren || (isFetched && (children?.length ?? 0) === 0));
 
-   const icon = getNodeClassIcon(nodeClassToNum(node.nodeClass), isDimmed ? { sx: { opacity: 0.5 } } : undefined);
+   const icon = (
+      <NodeIcon
+         nodeClass={nodeClassToNum(node.nodeClass)}
+         nodeId={node.nodeId}
+         typeDefinition={node.typeDefinition}
+         size={IconSize.tree}
+         dimmed={!!isDimmed}
+      />
+   );
 
    const label = (
 	  <Box

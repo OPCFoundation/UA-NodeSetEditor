@@ -1,5 +1,4 @@
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { ChevronRightIcon, ExpandMoreIcon } from '../icons';
 import type { SxProps, Theme } from '@mui/material/styles';
 
 /** Chevron that points right when collapsed and down when expanded (UA Edge Translator style). */
@@ -42,7 +41,9 @@ export const treeLabelSx = (selected: boolean, emphasized: boolean, dimmed: bool
 	  overflow: 'hidden',
 	  textOverflow: 'ellipsis',
 	  fontWeight: emphasized ? 700 : 400,
-	  color: selected ? '#fff' : dimmed ? 'text.disabled' : 'text.primary',
+	  // contrastText, not white: the selected fill is the accent, which is amber
+	  // (dark text) in dark mode and brand blue (white text) in light mode.
+	  color: selected ? 'primary.contrastText' : dimmed ? 'text.disabled' : 'text.primary',
 	  backgroundColor: selected ? 'primary.main' : 'transparent',
    },
    '&:hover .tree-label-text': selected ? {} : { backgroundColor: 'action.hover' },

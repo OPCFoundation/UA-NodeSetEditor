@@ -7,7 +7,7 @@ import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import DeleteIcon from '@mui/icons-material/Delete';
+import { DeleteIcon } from '../icons';
 
 import api, { ApiError } from '../api/axios.api';
 import { idToUrn } from '../model/WorkspaceDescription';
@@ -131,7 +131,7 @@ export const ModelVersionsDialog: React.FC<ModelVersionsDialogProps> = ({
       const deleteDisabled = !canWrite || !v.canDelete || deletingId != null;
       const armed = confirmingId === v.id;
       const tooltip = !canWrite
-         ? t('modelVersions.readOnlyWorkspace', 'You do not have write access to this OPC UA server.')
+         ? t('modelVersions.readOnlyWorkspace', 'You do not have write access to this workspace.')
          : v.canDelete
             ? (armed
                ? t('modelVersions.confirmDelete', 'Click again to delete this version permanently.')

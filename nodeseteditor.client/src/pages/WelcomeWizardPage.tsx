@@ -6,9 +6,7 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Alert from '@mui/material/Alert';
 import Typography from '@mui/material/Typography';
-import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
-import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
-import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
+import { CategoryIcon as CategoryOutlinedIcon, FolderIcon as FolderOutlinedIcon, TaskAltIcon as TaskAltOutlinedIcon } from '../icons';
 
 import { WizardActionCard, type ContentBlock } from '../components/WizardActionCard';
 import { InfoPopover } from '../components/InfoPopover';
@@ -48,7 +46,9 @@ const WelcomeWizardPage: React.FC = () => {
          </Typography>
 
          {/* Beta disclaimer */}
-         <Alert severity="info" variant="outlined" sx={{ mt: 24, borderColor: 'divider' }}>
+         {/* A beta warning, tinted amber as it was before the restyle — `outlined` with a
+             divider border made the most prominent notice in the app look like plain chrome. */}
+         <Alert severity="warning" sx={{ mt: 24 }}>
             Public beta — please back up your models with Download. Feedback:{' '}
             <a href="mailto:webmaster@opcfoundation.org?subject=OPC%20UA%20NodeSetEditor%20Feedback">webmaster@opcfoundation.org</a>
          </Alert>

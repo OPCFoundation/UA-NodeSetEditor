@@ -7,11 +7,8 @@ import IconButton from '@mui/material/IconButton';
 import Toolbar from '@mui/material/Toolbar';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
-import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
-import MenuIcon from '@mui/icons-material/Menu';
+import { alpha } from '@mui/material/styles';
+import { CategoryIcon as CategoryOutlinedIcon, FolderIcon as FolderOutlinedIcon, HelpOutlineIcon, HomeIcon as HomeOutlinedIcon, MenuIcon } from '../icons';
 
 import SettingsMenu from './SettingsMenu';
 
@@ -26,7 +23,7 @@ interface TopMenuProps {
 
 const sections = [
    { path: '/', labelKey: 'topMenu.home', fallback: 'Home', icon: <HomeOutlinedIcon /> },
-   { path: '/model_library', labelKey: 'topMenu.projects', fallback: 'Servers', icon: <FolderOutlinedIcon /> },
+   { path: '/model_library', labelKey: 'topMenu.workspaces', fallback: 'Workspaces', icon: <FolderOutlinedIcon /> },
    { path: '/type_library', labelKey: 'topMenu.models', fallback: 'Models', icon: <CategoryOutlinedIcon /> },
 ];
 
@@ -60,14 +57,16 @@ export const TopMenu = ({ title, onOpenSidebar, onOpenHelp }: TopMenuProps) => {
                component="img"
                src="/opclogo.png"
                alt="OPC Foundation"
-               sx={{ height: 32, display: { xs: 'none', sm: 'block' }, borderRadius: 4 }}
+               sx={{ height: 32, display: { xs: 'none', sm: 'block' } }}
             />
             <Typography variant="h6" component="div" noWrap sx={{ fontSize: { xs: '1.05rem', md: '1.2rem' } }}>
                {t(title ?? '')}
             </Typography>
          </Box>
 
-         {/* Primary navigation — segmented control, centred */}
+         {/* Primary navigation — segmented control, centred. Everything here is tinted
+             from the bar's own foreground colour, so it works on the brand-blue bar in
+             light mode and the near-black one in dark without branching on the mode. */}
          <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center', minWidth: 0 }}>
             <Box
                component="nav"
@@ -76,7 +75,7 @@ export const TopMenu = ({ title, onOpenSidebar, onOpenHelp }: TopMenuProps) => {
                   gap: 4,
                   p: 4,
                   borderRadius: 980,
-                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                  bgcolor: (theme) => alpha(theme.palette.appBar.contrastText, 0.12),
                }}
             >
                {sections.map((s) => {
@@ -91,10 +90,22 @@ export const TopMenu = ({ title, onOpenSidebar, onOpenHelp }: TopMenuProps) => {
                            px: 18,
                            py: 6,
                            fontSize: '0.95rem',
-                           color: active ? 'text.primary' : 'text.secondary',
-                           bgcolor: active ? 'background.paper' : 'transparent',
-                           boxShadow: active ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
-                           '&:hover': { bgcolor: active ? 'background.paper' : 'action.hover' },
+                           // The active item is a solid pill in the bar's foreground colour
+                           // with the bar's own colour as text — 6.7:1 on the blue bar and
+                           // 15:1 in dark mode. A translucent fill with white text measured
+                           // 4.1:1, under the 4.5:1 this text size needs.
+                           color: (theme) => active
+                              ? theme.palette.appBar.main
+                              : alpha(theme.palette.appBar.contrastText, 0.85),
+                           bgcolor: (theme) => active
+                              ? theme.palette.appBar.contrastText
+                              : 'transparent',
+                           boxShadow: 'none',
+                           '&:hover': {
+                              bgcolor: (theme) => active
+                                 ? theme.palette.appBar.contrastText
+                                 : alpha(theme.palette.appBar.contrastText, 0.18),
+                           },
                         }}
                      >
                         {t(s.labelKey, s.fallback)}

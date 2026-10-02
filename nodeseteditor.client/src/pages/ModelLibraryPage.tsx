@@ -6,18 +6,7 @@ import api, { ApiError } from '../api/axios.api';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-import EditDocumentIcon from '@mui/icons-material/EditDocument';
-import DescriptionIcon from '@mui/icons-material/Description';
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
-import AccountTreeIcon from '@mui/icons-material/AccountTreeOutlined';
-import DownloadIcon from '@mui/icons-material/FileDownloadOutlined';
-import DeleteIcon from '@mui/icons-material/DeleteOutline';
-import FactCheckIcon from '@mui/icons-material/FactCheckOutlined';
-import EditIcon from '@mui/icons-material/EditOutlined';
-import VisibilityIcon from '@mui/icons-material/VisibilityOutlined';
-import HistoryIcon from '@mui/icons-material/History';
-import LockIcon from '@mui/icons-material/LockOutlined';
-import LockOpenIcon from '@mui/icons-material/LockOpenOutlined';
+import { EditDocumentIcon, DescriptionIcon, ErrorOutlineIcon, AccountTreeIcon, DownloadIcon, DeleteIcon, FactCheckIcon, EditIcon, VisibilityIcon, HistoryIcon, LockIcon, LockOpenIcon } from '../icons';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -604,7 +593,7 @@ const ModelLibraryPage: React.FC = () => {
       } catch (e) {
          const errorMessage = e instanceof ApiError
             ? e.message
-            : (e instanceof Error ? e.message : 'Failed to create server');
+            : (e instanceof Error ? e.message : 'Failed to create workspace');
          setCreateWorkspaceError(errorMessage);
       } finally {
          setIsCreatingWorkspace(false);
@@ -644,7 +633,7 @@ const ModelLibraryPage: React.FC = () => {
       } catch (e) {
          const errorMessage = e instanceof ApiError
             ? e.message
-            : (e instanceof Error ? e.message : 'Failed to update server');
+            : (e instanceof Error ? e.message : 'Failed to update workspace');
          setEditWorkspaceError(errorMessage);
       } finally {
          setIsSavingWorkspace(false);
@@ -672,7 +661,7 @@ const ModelLibraryPage: React.FC = () => {
       } catch (e) {
          const errorMessage = e instanceof ApiError
             ? e.message
-            : (e instanceof Error ? e.message : 'Failed to delete server');
+            : (e instanceof Error ? e.message : 'Failed to delete workspace');
          setDeleteWorkspaceError(errorMessage);
       } finally {
          setIsDeletingWorkspace(false);
@@ -994,7 +983,7 @@ const ModelLibraryPage: React.FC = () => {
             ]}
          >
                <WorkspaceSelector />
-               <Tooltip title={canWrite ? '' : t('modelLibrary.readOnlyWorkspace', 'This OPC UA server is read-only — shared with you by its owner')}>
+               <Tooltip title={canWrite ? '' : t('modelLibrary.readOnlyWorkspace', 'This workspace is read-only — shared with you by its owner')}>
                   <span>
                      <Button
                         variant="contained"
@@ -1049,20 +1038,20 @@ const ModelLibraryPage: React.FC = () => {
             rightActions={selectedWorkspaceId ? (
                <>
                   <Tooltip title={isWorkspaceOwner
-                     ? t('modelLibrary.editWorkspace', 'Edit Server')
-                     : t('modelLibrary.editWorkspaceDisabled', 'Only the owner can edit this server')}>
+                     ? t('modelLibrary.editWorkspace', 'Edit Workspace')
+                     : t('modelLibrary.editWorkspaceDisabled', 'Only the owner can edit this workspace')}>
                      <span>
                         <Button size="small" startIcon={<EditIcon />} onClick={handleEditWorkspace} disabled={!isWorkspaceOwner}>
-                           {t('modelLibrary.editWorkspace', 'Edit Server')}
+                           {t('modelLibrary.editWorkspace', 'Edit Workspace')}
                         </Button>
                      </span>
                   </Tooltip>
                   <Tooltip title={isWorkspaceOwner
-                     ? t('modelLibrary.deleteWorkspace', 'Delete Server')
-                     : t('modelLibrary.deleteWorkspaceDisabled', 'Only the owner can delete this server')}>
+                     ? t('modelLibrary.deleteWorkspace', 'Delete Workspace')
+                     : t('modelLibrary.deleteWorkspaceDisabled', 'Only the owner can delete this workspace')}>
                      <span>
                         <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={handleDeleteWorkspace} disabled={!isWorkspaceOwner}>
-                           {t('modelLibrary.deleteWorkspace', 'Delete Server')}
+                           {t('modelLibrary.deleteWorkspace', 'Delete Workspace')}
                         </Button>
                      </span>
                   </Tooltip>
@@ -1195,7 +1184,7 @@ const ModelLibraryPage: React.FC = () => {
                   {filteredModels.length === 0 && !isLoading && (
                      <ListItem>
                         <Typography variant="body2" color="text.secondary">
-                           No models found in this OPC UA server.
+                           No models found in this workspace.
                         </Typography>
                      </ListItem>
                   )}
@@ -1678,13 +1667,17 @@ const ModelLibraryPage: React.FC = () => {
             >
                {!checkinError && (
                   <Box sx={{ p: 3 }}>
-                     <Typography variant="body1" sx={{ mb: 2 }}>
+                     <Typography variant="body1" sx={{ mb: 12 }}>
                         {t('modelLibrary.checkinPrompt', { name: checkinModel.name ?? checkinModel.uri })}
                      </Typography>
-                     <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 2 }}>
+                     {/* Theme spacing is 1px per unit, so these are pixel values: 12px inside
+                         the border and 10px between options. The previous p: 2 / mb: 1 were
+                         2px and 1px, which left the choices crammed against the box. */}
+                     <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 12 }}>
                         <RadioGroup
                            value={checkinAction}
                            onChange={(e) => setCheckinAction(e.target.value as 'keep' | 'publish' | 'discard')}
+                           sx={{ gap: 10 }}
                         >
                            {([
                               { value: 'keep', label: t('modelLibrary.checkinKeep'), desc: t('modelLibrary.checkinKeepDesc') },
@@ -1694,8 +1687,8 @@ const ModelLibraryPage: React.FC = () => {
                               <FormControlLabel
                                  key={opt.value}
                                  value={opt.value}
-                                 control={<Radio sx={{ pt: 0.5 }} />}
-                                 sx={{ alignItems: 'flex-start', mb: 1 }}
+                                 control={<Radio sx={{ pt: 2 }} />}
+                                 sx={{ alignItems: 'flex-start' }}
                                  label={(
                                     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                                        <Typography variant="body2">{opt.label}</Typography>
@@ -1784,7 +1777,7 @@ const ModelLibraryPage: React.FC = () => {
             <ModelDialog
                open
                onClose={() => { setEditWorkspaceDialogOpen(false); setEditWorkspaceError(null); }}
-               title={t('modelLibrary.editWorkspaceDialogTitle', 'Edit Server')}
+               title={t('modelLibrary.editWorkspaceDialogTitle', 'Edit Workspace')}
                isLoading={isSavingWorkspace}
                isError={!!editWorkspaceError}
                error={editWorkspaceError ? new Error(editWorkspaceError) : null}
@@ -1820,7 +1813,7 @@ const ModelLibraryPage: React.FC = () => {
                         fullWidth
                         multiline
                         rows={4}
-                        helperText={t('modelLibrary.workspaceAclHelp', 'Email addresses of users who can access this OPC UA server')}
+                        helperText={t('modelLibrary.workspaceAclHelp', 'Email addresses of users who can access this workspace')}
                      />
                   </Box>
                )}
@@ -1832,7 +1825,7 @@ const ModelLibraryPage: React.FC = () => {
             <ModelDialog
                open
                onClose={() => { setDeleteWorkspaceDialogOpen(false); setDeleteWorkspaceError(null); }}
-               title={t('modelLibrary.deleteWorkspaceDialogTitle', 'Delete Server')}
+               title={t('modelLibrary.deleteWorkspaceDialogTitle', 'Delete Workspace')}
                isLoading={isDeletingWorkspace}
                isError={!!deleteWorkspaceError}
                error={deleteWorkspaceError ? new Error(deleteWorkspaceError) : null}
@@ -1849,7 +1842,7 @@ const ModelLibraryPage: React.FC = () => {
                      <Typography variant="body1">
                         {t('modelLibrary.deleteWorkspaceConfirmation',
                            { name: currentWorkspace?.applicationName?.text ?? selectedWorkspaceId,
-                             defaultValue: 'Are you sure you want to delete server "{{name}}"? This cannot be undone.' })}
+                             defaultValue: 'Are you sure you want to delete workspace "{{name}}"? This cannot be undone.' })}
                      </Typography>
                   </Box>
                )}

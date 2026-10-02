@@ -1232,7 +1232,7 @@ namespace NodeSetEditor.Server.Controllers
                     extension = ".json";
                     break;
                 case "compressed":
-                    serializer.SaveArchive(ms, 10000);
+                    //serializer.SaveArchive(ms, 10000);
                     contentType = "application/gzip";
                     extension = ".uanodeset";
                     break;

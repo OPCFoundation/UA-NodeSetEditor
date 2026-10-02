@@ -10,8 +10,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
 
-import ListAltIcon from '@mui/icons-material/ListAlt';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { ListAltIcon, ExpandMoreIcon } from '../icons';
 
 import api from '../api/axios.api';
 import { idToUrn } from '../model/WorkspaceDescription';

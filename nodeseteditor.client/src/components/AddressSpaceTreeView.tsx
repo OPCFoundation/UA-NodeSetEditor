@@ -7,7 +7,8 @@ import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import { alpha } from '@mui/material/styles';
 import { SimpleTreeView } from '@mui/x-tree-view/SimpleTreeView';
-import { getNodeClassIcon } from './nodeClassIcon';
+import { NodeIcon } from '../icons';
+import { IconSize } from '../icons/spec';
 import { nodeClassToNum } from '../model/NodeFormatting';
 import { treeLabelSx, treeSlots, treeSx } from './treeStyles';
 import { TreeItem } from '@mui/x-tree-view/TreeItem';
@@ -155,7 +156,13 @@ const TypeTreeItem: React.FC<TypeTreeItemProps> = ({ node, category, workspaceId
 
    const label = (
 	  <Box ref={targetRef} onClick={handleLabelClick} sx={treeLabelSx(isTarget, isHighlighted, isDimmed)}>
-		 {getNodeClassIcon(nodeClassToNum(node.nodeClass), isDimmed ? { sx: { opacity: 0.5 } } : undefined)}
+		 <NodeIcon
+			nodeClass={nodeClassToNum(node.nodeClass)}
+			nodeId={node.nodeId}
+			typeDefinition={node.typeDefinition}
+			size={IconSize.tree}
+			dimmed={isDimmed}
+		 />
 		 <span className="tree-label-text">{getNodePlainName(node)}</span>
 	  </Box>
    );

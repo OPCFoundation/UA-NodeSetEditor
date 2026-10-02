@@ -21,9 +21,7 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Select, { type SelectChangeEvent } from '@mui/material/Select';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import FactCheckIcon from '@mui/icons-material/FactCheck';
-import DownloadIcon from '@mui/icons-material/Download';
+import { ArrowBackIcon, FactCheckIcon, DownloadIcon } from '../icons';
 
 import { SearchBar } from './SearchBar';
 import { ContentLoader } from './ContentLoader';

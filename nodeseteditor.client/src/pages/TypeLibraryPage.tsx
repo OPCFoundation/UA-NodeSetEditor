@@ -6,19 +6,12 @@ import { slugifyNodeId } from '../api/slug';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-import WidgetsIcon from '@mui/icons-material/Widgets';
-import CategoryIcon from '@mui/icons-material/Category';
-import TuneIcon from '@mui/icons-material/Tune';
-import SchemaIcon from '@mui/icons-material/Schema';
-import LinkIcon from '@mui/icons-material/Link';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import EditIcon from '@mui/icons-material/Edit';
-import CallSplitIcon from '@mui/icons-material/CallSplit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
+import {
+   NodeIcon, WidgetsIcon, VisibilityIcon, EditIcon, CallSplitIcon, DeleteIcon, PlaylistAddIcon,
+} from '../icons';
+import { IconSize } from '../icons/spec';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import Avatar from '@mui/material/Avatar';
 import InputLabel from '@mui/material/InputLabel';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
@@ -62,25 +55,6 @@ const nodeClassOptions = [
    { value: 'Variable', label: 'Variable (top-level)' },
 ];
 
-
-function getNodeClassIcon(nodeClass?: string) {
-   switch (nodeClass) {
-      case 'ObjectType':
-         return <CategoryIcon />;
-      case 'VariableType':
-         return <TuneIcon />;
-      case 'DataType':
-         return <SchemaIcon />;
-      case 'ReferenceType':
-         return <LinkIcon />;
-      case 'Object':
-         return <CategoryIcon />;
-      case 'Variable':
-         return <TuneIcon />;
-      default:
-         return <WidgetsIcon />;
-   }
-}
 
 const TypeLibraryPage: React.FC = () => {
    const [pageSize, setPageSize] = React.useState<number>(25);
@@ -450,16 +424,16 @@ const TypeLibraryPage: React.FC = () => {
                            }}
                         >
                            <ListItemIcon>
-                              <Avatar
-                                 sx={{
-                                    width: 32,
-                                    height: 32,
-                                    bgcolor: theme.palette.grey[600],
-                                    color: theme.palette.grey[200]
-                                 }}
-                              >
-                                 {getNodeClassIcon(item.nodeClass)}
-                              </Avatar>
+                              {/* Same glyph the tree shows for this node — this page used to
+                                  keep its own mapping, which collapsed Object onto ObjectType
+                                  and Variable onto VariableType. */}
+                              <NodeIcon
+                                 nodeClass={item.nodeClass}
+                                 nodeId={item.nodeId}
+                                 typeDefinition={item.typeDefinition}
+                                 size={IconSize.inline}
+                                 sx={{ color: 'text.secondary' }}
+                              />
                            </ListItemIcon>
                            <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
                               <Typography variant="body2" component="div" noWrap>

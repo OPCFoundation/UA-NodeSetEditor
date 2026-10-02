@@ -7,7 +7,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
-import CloseIcon from '@mui/icons-material/Close';
+import { CloseIcon } from '../icons';
 
 import { ContentLoader } from './ContentLoader';
 
@@ -67,7 +67,11 @@ export const ModelDialog: React.FC<ModelDialogProps> = ({
 			   <CloseIcon fontSize="small" />
 			</IconButton>
 		 </DialogTitle>
-		 <DialogContent dividers sx={{ p: 0, m: 0 }}>
+		 {/* The dialog's gutter lives here, not in each caller. Callers add their own
+		     p: 3–6 (3–6px, theme spacing is 1px) for internal rhythm, which on its own
+		     left outlined inputs almost touching the dialog edge. 16px here brings every
+		     dialog to a ~20px gutter, matching DialogTitle and DialogActions. */}
+		 <DialogContent dividers sx={{ px: 16, py: 12, m: 0 }}>
 			<ContentLoader isLoading={isLoading} isError={isError} error={error}>
 			   {children}
 			</ContentLoader>

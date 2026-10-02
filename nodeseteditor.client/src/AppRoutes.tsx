@@ -3,9 +3,7 @@ import * as React from 'react';
 import WelcomeWizardPage from './pages/WelcomeWizardPage';
 import ModelLibraryPage from './pages/ModelLibraryPage';
 import TypeLibraryPage from './pages/TypeLibraryPage';
-import HomeIcon from '@mui/icons-material/Home';
-import WidgetsIcon from '@mui/icons-material/Widgets';
-import EditDocumentIcon from '@mui/icons-material/EditDocument';
+import { HomeIcon, WidgetsIcon, EditDocumentIcon } from './icons';
 import { AddressSpaceTree } from './components/AddressSpaceTree';
 import { RequireAuth } from './components/RequireAuth';
 

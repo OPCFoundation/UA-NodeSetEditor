@@ -10,7 +10,7 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Tooltip from '@mui/material/Tooltip';
 import { alpha, type SxProps, type Theme } from '@mui/material/styles';
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import { MoreHorizIcon } from '../icons';
 
 export interface ActionBarItem {
    /** Handler called when the action is clicked */

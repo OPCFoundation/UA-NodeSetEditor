@@ -9,12 +9,8 @@ import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
-import VisibilityIcon from '@mui/icons-material/Visibility';
+import { VisibilityIcon, FolderIcon as FolderOutlinedIcon, ExpandMoreIcon, MyLocationIcon, FilterCenterFocusIcon } from '../icons';
 
-import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import MyLocationIcon from '@mui/icons-material/MyLocation';
-import FilterCenterFocusIcon from '@mui/icons-material/FilterCenterFocus';
 
 import api from '../api/axios.api';
 import { WorkspaceContext } from '../WorkspaceContext';
@@ -92,7 +88,7 @@ export const SidebarToolbar: React.FC<SidebarToolbarProps> = ({
       (w) => urnToId(w.applicationUri) === selectedWorkspaceId,
    );
    const currentWorkspaceLabel =
-      currentWorkspace?.applicationName?.text ?? t('sidebarToolbar.noWorkspace', 'OPC UA Server');
+      currentWorkspace?.applicationName?.text ?? t('sidebarToolbar.noWorkspace', 'Workspace');
 
    const handleSelectWorkspace = (id: string) => {
       setSelectedWorkspaceId(id);
@@ -125,9 +121,9 @@ export const SidebarToolbar: React.FC<SidebarToolbarProps> = ({
 			borderColor: 'divider',
 		 }}
 	  >
-		 {/* Server picker — labelled so it's obvious what is being switched. */}
+		 {/* Workspace picker — labelled so it's obvious what is being switched. */}
 		 <Box sx={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-			<Tooltip title={t('sidebarToolbar.workspaceTooltip', 'Active OPC UA server')}>
+			<Tooltip title={t('sidebarToolbar.workspaceTooltip', 'Active workspace')}>
 			   <Button
 				  onClick={(e) => setWsAnchor(e.currentTarget)}
 				  startIcon={<FolderOutlinedIcon />}
@@ -148,7 +144,7 @@ export const SidebarToolbar: React.FC<SidebarToolbarProps> = ({
 			   >
 				  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0 }}>
 					 <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2 }}>
-						{t('sidebarToolbar.projectLabel', 'OPC UA Server')}
+						{t('sidebarToolbar.workspaceLabel', 'Workspace')}
 					 </Typography>
 					 <Typography variant="body1" noWrap sx={{ fontWeight: 600, lineHeight: 1.3, maxWidth: '100%' }}>
 						{currentWorkspaceLabel}
@@ -157,7 +153,7 @@ export const SidebarToolbar: React.FC<SidebarToolbarProps> = ({
 			   </Button>
 			</Tooltip>
 			{currentWorkspace && currentWorkspace.canWrite === false && (
-			   <Tooltip title={t('sidebarToolbar.readOnlyTooltip', 'This OPC UA server is shared with you and is read-only. Only the owner can make changes.')}>
+			   <Tooltip title={t('sidebarToolbar.readOnlyTooltip', 'This workspace is shared with you and is read-only. Only the owner can make changes.')}>
 				  <Chip
 					 size="small"
 					 variant="outlined"

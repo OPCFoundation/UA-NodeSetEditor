@@ -30,6 +30,20 @@ declare module '@mui/material/styles' {
    }
 }
 
+declare module '@mui/material/styles' {
+   // The header/footer bars carry their own colour pair so what sits inside them
+   // (TopMenu's segmented nav, the footer links) can tint against the bar instead
+   // of guessing from the palette mode. In light mode the bar is the brand blue,
+   // in dark mode it matches the page — so neither `primary` nor `background`
+   // describes it on its own.
+   interface Palette {
+      appBar: { main: string; contrastText: string };
+   }
+   interface PaletteOptions {
+      appBar?: { main: string; contrastText: string };
+   }
+}
+
 // Update the Typography's variant prop options
 declare module '@mui/material/Typography' {
    interface TypographyPropsVariantOverrides {
@@ -43,8 +57,8 @@ declare module '@mui/material/Typography' {
    }
 }
 
-// Apple-inspired design tokens. Colours follow the macOS/iOS system palette so the UI
-// reads as calm and familiar: one accent colour, soft grey surfaces, hairline separators.
+// Apple-inspired structure — soft grey surfaces, hairline separators, one accent colour
+// — carrying the OPC Foundation brand colours rather than the macOS system palette.
 const fontStack = [
    '-apple-system',
    'BlinkMacSystemFont',
@@ -58,9 +72,14 @@ const fontStack = [
 ].join(',');
 
 const light = {
-   accent: '#007AFF',
-   accentDark: '#0060DF',
-   accentLight: '#E5F1FF',
+   // OPC Foundation brand blue, as before the restyle: the accent for every
+   // interactive element and the fill of the header/footer bars.
+   accent: '#196096',
+   accentDark: '#084A79',
+   accentLight: '#E8EFF4',
+   onAccent: '#FFFFFF',
+   appBar: '#196096',
+   onAppBar: '#FFFFFF',
    background: '#FFFFFF',
    surface: '#F5F5F7',
    sidebar: '#F2F2F7',
@@ -70,12 +89,24 @@ const light = {
    red: '#FF3B30',
    green: '#34C759',
    orange: '#FF9500',
+   // Distinct from the brand accent so an info alert never reads as a warning
+   // (dark mode's accent is amber) or as a plain interactive element.
+   info: '#0288D1',
 };
 
 const dark = {
-   accent: '#0A84FF',
-   accentDark: '#0071E3',
-   accentLight: '#1C3A5E',
+   // Amber, not the brand blue: against near-black surfaces a saturated blue is too
+   // low-contrast to read as interactive. Amber is bright enough to carry links,
+   // toolbar icons and selected rows — but it needs DARK text on top of it, which is
+   // what onAccent is for (every `primary` background in the app honours it).
+   accent: '#FFB74D',
+   accentDark: '#F57C00',
+   accentLight: '#FFD95B',
+   onAccent: '#1A1A1A',
+   // The bars match the page in dark mode, as they did originally — the hairline
+   // border, not a fill, is what separates chrome from content.
+   appBar: '#1C1C1E',
+   onAppBar: '#F5F5F7',
    background: '#1C1C1E',
    surface: '#2C2C2E',
    sidebar: '#232325',
@@ -85,6 +116,7 @@ const dark = {
    red: '#FF453A',
    green: '#30D158',
    orange: '#FF9F0A',
+   info: '#64D2FF',
 };
 
 const bodyText = {
@@ -121,8 +153,13 @@ type Tokens = typeof light;
 
 const baseline = (t: Tokens) => `
    a { text-decoration: none; }
-   a:link, a:visited { color: ${t.accent}; }
-   a:hover, a:active { color: ${t.accentDark}; text-decoration: underline; }
+   /* Colour only hand-written anchors. An 'a:link' selector is (0,1,1) specificity, which
+      beats the (0,1,0) class an sx or a color prop generates — so applying it to every
+      anchor silently overrode MUI Link's own colour app-wide, and footer links came out
+      accent blue on the accent-blue bar. MUI Link defaults to color="primary" anyway, so
+      component-rendered links keep the colour they had. */
+   a:not([class]):link, a:not([class]):visited { color: ${t.accent}; }
+   a:not([class]):hover, a:not([class]):active { color: ${t.accentDark}; text-decoration: underline; }
    html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
    body { font-family: ${fontStack}; }
    span { white-space: pre-wrap; }
@@ -137,14 +174,20 @@ const baseline = (t: Tokens) => `
 const components = (t: Tokens): ThemeOptions['components'] => ({
    MuiCssBaseline: { styleOverrides: baseline(t) },
    MuiAppBar: {
+      // Opaque, not the translucent blurred bar: that was tuned for a near-white
+      // surface and turns muddy over a saturated fill. `root` and `colorDefault`
+      // carry the same values so the result does not depend on which slot MUI
+      // applies last.
       defaultProps: { elevation: 0, color: 'default' },
       styleOverrides: {
          root: {
-            backgroundColor: alpha(t.background, 0.8),
-            backdropFilter: 'saturate(180%) blur(20px)',
-            WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-            color: t.textPrimary,
+            backgroundColor: t.appBar,
+            color: t.onAppBar,
             borderBottom: `1px solid ${t.separator}`,
+         },
+         colorDefault: {
+            backgroundColor: t.appBar,
+            color: t.onAppBar,
          }
       }
    },
@@ -190,7 +233,7 @@ const components = (t: Tokens): ThemeOptions['components'] => ({
             '&:hover': { backgroundColor: t.surface, borderColor: t.separator },
          },
          outlined: { borderColor: t.separator },
-         // Tertiary/row actions (View, Types, Edit Server...): tinted pill; red tint for destructive ones.
+         // Tertiary/row actions (View, Types, Edit Workspace...): tinted pill; red tint for destructive ones.
          textPrimary: {
             backgroundColor: alpha(t.accent, 0.1),
             '&:hover': { backgroundColor: alpha(t.accent, 0.18) },
@@ -207,8 +250,10 @@ const components = (t: Tokens): ThemeOptions['components'] => ({
    MuiDialogActions: {
       styleOverrides: {
          // Apple dialog layout: actions right-aligned, secondary left of the primary action.
+         // 20px matches the gutter ModelDialog gives its content, so the buttons line up
+         // with the fields above them rather than sitting inset from (or past) them.
          root: {
-            padding: '12px 24px 20px',
+            padding: '12px 20px 16px',
             gap: 8,
             justifyContent: 'flex-end',
             '& > :not(style) ~ :not(style)': { marginLeft: 0 },
@@ -289,8 +334,19 @@ const components = (t: Tokens): ThemeOptions['components'] => ({
       }
    },
    MuiAlert: {
+      // MUI's `standard` variant is a 90%-lightened wash of the severity colour — on
+      // these tokens that lands on #FFEFEE / #FFF7EB / #EFFBF2, which read as white.
+      // Tint from the severity colour itself instead, so red/amber/green is legible at a
+      // glance. alpha() composites over whatever surface is behind it, so one value works
+      // in both modes; MUI's own text colour (dark in light mode, pale in dark) still sits
+      // on it with plenty of contrast. No single-side accent border: a border on one edge
+      // of a 12px-radius box gets mitred around the corners into a tapered sliver.
       styleOverrides: {
-         root: { borderRadius: 12, alignItems: 'center' }
+         root: { borderRadius: 12, alignItems: 'center' },
+         standardError: { backgroundColor: alpha(t.red, 0.12) },
+         standardWarning: { backgroundColor: alpha(t.orange, 0.12) },
+         standardSuccess: { backgroundColor: alpha(t.green, 0.12) },
+         standardInfo: { backgroundColor: alpha(t.info, 0.12) },
       }
    },
    MuiChip: {
@@ -330,11 +386,14 @@ const palette = (t: Tokens, mode: 'light' | 'dark'): ThemeOptions['palette'] => 
       main: t.accent,
       dark: t.accentDark,
       light: t.accentLight,
-      contrastText: '#FFFFFF'
+      // Dark mode's amber accent needs dark text, light mode's blue needs white.
+      contrastText: t.onAccent
    },
+   appBar: { main: t.appBar, contrastText: t.onAppBar },
    error: { main: t.red },
    success: { main: t.green },
    warning: { main: t.orange },
+   info: { main: t.info },
    divider: t.separator,
    background: {
       default: t.background,

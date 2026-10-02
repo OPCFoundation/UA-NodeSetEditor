@@ -15,9 +15,7 @@ import InputAdornment from '@mui/material/InputAdornment';
 import MenuItem from '@mui/material/MenuItem';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import CheckIcon from '@mui/icons-material/Check';
-import SearchIcon from '@mui/icons-material/Search';
-import RefreshIcon from '@mui/icons-material/Refresh';
+import { CheckIcon, SearchIcon, RefreshIcon } from '../icons';
 import { useTheme, alpha } from '@mui/material/styles';
 
 import api, { ApiError } from '../api/axios.api';

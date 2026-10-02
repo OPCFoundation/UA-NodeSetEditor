@@ -39,8 +39,30 @@ export const FooterLinks = ({ links = defaultFooterLinks }: FooterLinksProps) =>
    return (
       <>
          {links.map((link) => (
-            <Button key={link.href} sx={{ my: 2, backgroundColor: 'transparent', '&:hover': { backgroundColor: 'action.hover' } }}>
-               <Link href={link.href} target='_blank' rel='noopener noreferrer'>
+            <Button
+               key={link.href}
+               // `inherit` so the button takes the footer bar's foreground colour instead
+               // of `primary` — which the theme would also give a faint accent tint.
+               color='inherit'
+               sx={{
+                  my: 2,
+                  backgroundColor: 'transparent',
+                  '&:hover': { backgroundColor: 'action.hover' },
+               }}
+            >
+               {/* The footer bar IS the accent colour in light mode, so these links must
+                   take the bar's foreground like the version number next to them. Stated
+                   per link state so no global `a:link` rule can outrank it again. */}
+               <Link
+                  href={link.href}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  underline='hover'
+                  sx={{
+                     color: 'inherit',
+                     '&:link, &:visited, &:hover, &:active': { color: 'inherit' },
+                  }}
+               >
                   <Typography variant='body2'>{link.label}</Typography>
                </Link>
             </Button>

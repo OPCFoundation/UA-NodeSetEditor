@@ -21,15 +21,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Select, { type SelectChangeEvent } from '@mui/material/Select';
 import { useTheme } from '@mui/material/styles';
 
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
-import DescriptionIcon from '@mui/icons-material/Description';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import CancelIcon from '@mui/icons-material/Cancel';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import { ArrowBackIcon, UploadFileIcon, DescriptionIcon, DeleteIcon, EditIcon, PlayArrowIcon, CancelIcon, VisibilityIcon, RestartAltIcon } from '../icons';
 
 import api, { ApiError } from '../api/axios.api';
 import { WorkspaceContext } from '../WorkspaceContext';
