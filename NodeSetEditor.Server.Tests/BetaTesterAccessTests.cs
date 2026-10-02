@@ -52,11 +52,13 @@ public class BetaTesterAccessTests : UaRestTestBase
         return await client.SendAsync(request);
     }
 
-    // "jsonld" is deliberately absent from both beta-format theories: RDF/JSON-LD ships in its own
-    // assembly, which this build does not reference, so the server has no route that serves it.
+    // "compressed" and "jsonld" are deliberately absent from both beta-format theories: the
+    // .uanodeset package and RDF/JSON-LD ship in their own assembly, which this build does not
+    // reference, so the server has no route that serves either. A request for one is still refused
+    // to an account off the list — everything but XML is — but it is refused as an unknown format
+    // rather than as a beta one, and an account on the list gets XML back.
     [Theory]
     [InlineData("json")]
-    [InlineData("compressed")]
     public async Task Export_RefusesBetaFormats_ForAnAccountNotOnTheList(string format)
     {
         var modelId = await TestModelIdAsync();
@@ -95,7 +97,6 @@ public class BetaTesterAccessTests : UaRestTestBase
 
     [Theory]
     [InlineData("json", "application/json")]
-    [InlineData("compressed", "application/gzip")]
     public async Task Export_ServesBetaFormats_ForAnAccountOnTheList(string format, string expectedContentType)
     {
         var modelId = await TestModelIdAsync();
@@ -108,21 +109,29 @@ public class BetaTesterAccessTests : UaRestTestBase
         Assert.Equal(expectedContentType, response.Content.Headers.ContentType?.MediaType);
     }
 
-    [Fact]
-    public async Task Export_NamesTheArchiveWithTheUaNodeSetExtension()
+    /// <summary>
+    /// A format this build has no route for does not fail — it falls through to XML, the same way
+    /// "jsonld" always has. Worth pinning, because the alternative is a client receiving a file
+    /// named for a format whose bytes it did not get.
+    /// </summary>
+    [Theory]
+    [InlineData("compressed")]
+    [InlineData("jsonld")]
+    public async Task Export_FallsBackToXml_ForAFormatThisBuildDoesNotServe(string format)
     {
         var modelId = await TestModelIdAsync();
         using var client = Fixture.CreateClientWithBetaTesters(AdmitsTestUser);
 
-        var response = await ExportAsync(client, modelId, "compressed");
+        var response = await ExportAsync(client, modelId, format);
         response.EnsureSuccessStatusCode();
+
+        Assert.Equal("text/xml", response.Content.Headers.ContentType?.MediaType);
 
         var fileName = response.Content.Headers.ContentDisposition?.FileNameStar
                        ?? response.Content.Headers.ContentDisposition?.FileName
                        ?? string.Empty;
 
-        Assert.EndsWith(".uanodeset", fileName.Trim('"'));
-        Assert.DoesNotContain(".tar.gz", fileName);
+        Assert.EndsWith(".xml", fileName.Trim('"'));
     }
 
     // The bundle path serializes every dependency in the requested format, so it has to be gated

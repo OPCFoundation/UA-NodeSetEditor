@@ -8,7 +8,7 @@ import { FooterLinks } from './FooterLinks.tsx';
 export const Footer = () => {
    return (
       <Toolbar variant='dense' disableGutters sx={{ py: 0, minHeight: '36px', justifyContent: 'space-between' }}>
-         <Box ml={6} sx={{ flexGrow: 0, display: { xs: 'none', color: 'red', md: 'flex' } }}>
+         <Box ml={6} sx={{ flexGrow: 0, display: { xs: 'none', md: 'flex' } }}>
             <FooterLinks />
          </Box>
          <Box

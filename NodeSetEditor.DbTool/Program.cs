@@ -59,6 +59,9 @@ switch (command.ToLowerInvariant())
     case "script":
         PrintCreateScript(connectionString);
         break;
+    case "backfill-icons":
+        await BackfillIcons(connectionString);
+        break;
     default:
         PrintHelp();
         break;
@@ -76,6 +79,10 @@ static void PrintHelp()
       import --WebRoot=<path>     Import shared models from index.json into database
       import-file <path>          Import a single NodeSet file (XML, JSON, JSON-LD, or .tar.gz)
       status                       Show database statistics
+      backfill-icons              Stamp Nodes."Icon" on type nodes that have none, by
+                                    inheriting the nearest anchor in each supertype chain.
+                                    Run once after db/add_node_icon.sql; safe to re-run,
+                                    and re-run after adding an anchor to NodeIcons.
       script                       Print the full EF Core CREATE script for the current model
                                     (no DB connection needed — useful for diffing an additive
                                     patch against a live database before running it)
@@ -100,6 +107,72 @@ static void PrintCreateScript(string connectionString)
 {
     using var db = CreateContext(connectionString);
     Console.WriteLine(db.Database.GenerateCreateScript());
+}
+
+/// <summary>
+/// Stamps Nodes."Icon" on type nodes that have none.
+///
+/// Needed because a node only gets its icon at import or creation time, so everything
+/// already in the database predates the column. Walks each type node's supertype chain
+/// and takes the nearest anchor (see NodeIcons), which is the same rule the import uses —
+/// so a backfilled database and a freshly imported one agree.
+///
+/// Idempotent: nodes that already have an icon are left alone, so this is also how you
+/// roll out a NEW anchor — add it to NodeIcons.Anchors and re-run.
+/// </summary>
+static async Task BackfillIcons(string connectionString)
+{
+    await using var db = CreateContext(connectionString);
+
+    if (!await db.Database.CanConnectAsync())
+    {
+        Console.WriteLine("Cannot connect to database.");
+        return;
+    }
+
+    // ObjectType 8, VariableType 16, ReferenceType 32, DataType 64 (OPC UA Part 3).
+    var typeClasses = new[] { 8, 16, 32, 64 };
+
+    // The supertype graph for the whole database, in one read. Type counts are in the
+    // thousands even with many models loaded, so this is far cheaper than per-node
+    // queries up each chain.
+    var types = await db.Nodes
+        .Where(n => typeClasses.Contains(n.NodeClass) && n.NodeId != null)
+        .Select(n => new { n.Id, n.NodeId, n.SuperTypeId, n.Icon })
+        .ToListAsync();
+
+    Console.WriteLine($"Found {types.Count} type nodes ({types.Count(t => t.Icon != null)} already stamped).");
+
+    var superTypeOf = new Dictionary<string, string?>(StringComparer.Ordinal);
+    foreach (var t in types) superTypeOf[t.NodeId!] = t.SuperTypeId;
+
+    var resolved = new Dictionary<long, string>();
+    foreach (var t in types)
+    {
+        if (!string.IsNullOrEmpty(t.Icon)) continue;
+        var icon = NodeIcons.Resolve(t.NodeId, id => superTypeOf.TryGetValue(id, out var s) ? s : null);
+        if (icon != null) resolved[t.Id] = icon;
+    }
+
+    if (resolved.Count == 0)
+    {
+        Console.WriteLine("Nothing to stamp — every type node either has an icon or matches no rule.");
+        return;
+    }
+
+    // Grouped per icon so the whole backfill is a handful of UPDATEs rather than one per
+    // node; ExecuteUpdate keeps it server-side with no entity tracking.
+    foreach (var group in resolved.GroupBy(kv => kv.Value))
+    {
+        var ids = group.Select(kv => kv.Key).ToList();
+        var updated = await db.Nodes
+            .Where(n => ids.Contains(n.Id))
+            .ExecuteUpdateAsync(s => s.SetProperty(n => n.Icon, group.Key));
+        Console.WriteLine($"  {group.Key,-14} {updated} nodes");
+    }
+
+    Console.WriteLine($"Stamped {resolved.Count} type nodes.");
+    Console.WriteLine("Restart the server (or edit any model) so the address-space cache picks them up.");
 }
 
 static async Task ShowStatus(string connectionString)

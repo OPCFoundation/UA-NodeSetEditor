@@ -2,10 +2,15 @@ import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 
+import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import { alpha } from '@mui/material/styles';
 import { SimpleTreeView } from '@mui/x-tree-view/SimpleTreeView';
+import { NodeIcon } from '../icons';
+import { IconSize } from '../icons/spec';
+import { nodeClassToNum } from '../model/NodeFormatting';
+import { treeLabelSx, treeSlots, treeSx } from './treeStyles';
 import { TreeItem } from '@mui/x-tree-view/TreeItem';
 
 import api from '../api/axios.api';
@@ -84,9 +89,16 @@ const TypeTreeItem: React.FC<TypeTreeItemProps> = ({ node, category, workspaceId
    // is shown dimmed so the in-namespace matches stand out.
    const isDimmed = !!filterMode && !isHighlighted && !isTarget;
 
-   // Boundary node: no prefetched children, but might have subtypes. Never in
-   // filter mode, where the pruned children are already fully present.
-   const isBoundary = !filterMode && node.children.length === 0 && !node.hasNoSubtypes;
+   // Boundary node: the response withheld some of this node's subtypes, so they have to be
+   // browsed separately when it expands. The server says so outright rather than the client
+   // inferring it from "no children in the payload" — which was wrong for a type that has
+   // instance declarations AND subtypes: the row was expandable for its children while its
+   // subtypes had been pruned away, with nothing to signal they existed.
+   //
+   // This applies in filter mode too. Pruning to the active namespace is what keeps the dialog
+   // fast to open, but the pruned-away types are still legal targets, so expanding has to be
+   // able to reach them.
+   const isBoundary = node.subtypesTruncated === true;
    const expanded = expandedSet.has(node.nodeId);
 
    // Fetch subtypes on demand for boundary nodes
@@ -100,11 +112,15 @@ const TypeTreeItem: React.FC<TypeTreeItemProps> = ({ node, category, workspaceId
       staleTime: 1000 * 60 * 5,
    });
 
-   const children = node.children.length > 0 ? node.children : (boundaryTree ?? []);
-   // Leaf if: explicitly no subtypes, or prefetched with no children, or boundary fetch returned empty
-   const isSubtypeLeaf = node.hasNoSubtypes
-      || (!isBoundary && node.children.length === 0)
-      || (isBoundary && isFetched && children.length === 0);
+   // A truncated node prefers the re-browsed list once it arrives: it is the complete set, where
+   // node.children holds only whatever survived the prune. Until then the partial list is shown
+   // so expanding isn't visibly empty.
+   const children = isBoundary ? (boundaryTree ?? node.children) : node.children;
+   // Not truncated means the payload already holds every subtype this node has, so an empty
+   // children list is definitive. Truncated means we only know once the re-browse lands.
+   const isSubtypeLeaf = isBoundary
+      ? (isFetched && children.length === 0)
+      : node.children.length === 0;
 
    // A type also owns instance declarations (its Properties/Components/Methods).
    // The subtypes endpoint follows HasSubtype only, so they come from /children
@@ -135,6 +151,7 @@ const TypeTreeItem: React.FC<TypeTreeItemProps> = ({ node, category, workspaceId
       || (isTypeChildrenFetched && (typeChildren?.length ?? 0) === 0);
    const isLeaf = isSubtypeLeaf && isChildLeaf;
 
+
    React.useEffect(() => {
       if (isTarget && targetRef.current) {
          const timer = setTimeout(() => {
@@ -150,34 +167,15 @@ const TypeTreeItem: React.FC<TypeTreeItemProps> = ({ node, category, workspaceId
    };
 
    const label = (
-      <Typography
-         ref={targetRef}
-         variant="body2"
-         onClick={handleLabelClick}
-         sx={{
-            fontWeight: isTarget || isHighlighted ? 900 : 'normal',
-            // isTarget = the just-navigated-to row → primary highlight
-            //   (OPC blue in light mode, amber in dark mode via the dark
-            //   palette override).
-            // isHighlighted = belongs to active model → same primary tint
-            //   but at lower alpha so the selection still reads as the
-            //   stronger of the two states.
-            color: (isTarget || isHighlighted) ? 'primary.main' : isDimmed ? 'text.disabled' : 'text.primary',
-            backgroundColor: isTarget
-               ? (theme) => alpha(theme.palette.primary.main, 0.16)
-               : isHighlighted
-                  ? (theme) => alpha(theme.palette.primary.main, 0.08)
-                  : undefined,
-            borderRadius: isTarget || isHighlighted ? '4px' : undefined,
-            px: isTarget || isHighlighted ? 0.5 : 0,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            cursor: 'pointer',
-         }}
-      >
-         {getNodePlainName(node)}
-      </Typography>
+	  <Box ref={targetRef} onClick={handleLabelClick} sx={treeLabelSx(isTarget, isHighlighted, isDimmed)}>
+		 <NodeIcon
+			nodeClass={nodeClassToNum(node.nodeClass)}
+			icon={node.icon}
+			size={IconSize.tree}
+			dimmed={isDimmed}
+		 />
+		 <span className="tree-label-text">{getNodePlainName(node)}</span>
+	  </Box>
    );
 
    if (isLeaf) {
@@ -186,8 +184,13 @@ const TypeTreeItem: React.FC<TypeTreeItemProps> = ({ node, category, workspaceId
 
    return (
       <TreeItem itemId={node.nodeId} label={label}>
-         {/* Nothing to render while collapsed (lazy subtypes and/or lazy
-             instance declarations) — the placeholder keeps the expand arrow. */}
+         {/* Nothing is rendered while collapsed — the placeholder keeps the expand arrow.
+             The subtype rows used to render even when collapsed, which meant the instance
+             declarations (which arrive later, from their own request) were inserted BEFORE
+             items already mounted. The tree view registers JSX items in mount order and that
+             insert-ahead lost the subtype rows: a type with both kinds of child showed only
+             its declarations. Mounting everything in one commit, only while expanded, keeps
+             registration append-only. */}
          {!expanded && children.length === 0 && (
             <TreeItem itemId={`${node.nodeId}__placeholder`} label="" />
          )}
@@ -197,20 +200,10 @@ const TypeTreeItem: React.FC<TypeTreeItemProps> = ({ node, category, workspaceId
                label={<CircularProgress size={14} sx={{ ml: 1 }} />}
             />
          )}
-         {/* Instance declarations first: they are part of the type itself and
-             would otherwise be buried under a long list of subtypes. */}
-         {expanded && typeChildren?.map((child) => (
-            <HierarchicalTreeItem
-               key={child.nodeId}
-               node={child}
-               workspaceId={workspaceId}
-               expandedSet={expandedSet}
-               selectedNodeId={targetNodeId}
-               onSelect={onNodeSelect}
-               includeSubtypes={false}
-               filterModelUri={filterModelUri}
-            />
-         ))}
+         {/* Subtypes first, then the type's own instance declarations. The subtype rows continue
+             the hierarchy the row above belongs to, so keeping them adjacent to their parent
+             makes the nesting readable; a long run of declarations in between is what made
+             subtypes look like siblings of the type rather than its children. */}
          {children.map((child) => (
             <TypeTreeItem
                key={child.nodeId}
@@ -223,6 +216,18 @@ const TypeTreeItem: React.FC<TypeTreeItemProps> = ({ node, category, workspaceId
                onNodeSelect={onNodeSelect}
                filterMode={filterMode}
                showTypeChildren={showTypeChildren}
+               filterModelUri={filterModelUri}
+            />
+         ))}
+         {expanded && typeChildren?.map((child) => (
+            <HierarchicalTreeItem
+               key={child.nodeId}
+               node={child}
+               workspaceId={workspaceId}
+               expandedSet={expandedSet}
+               selectedNodeId={targetNodeId}
+               onSelect={onNodeSelect}
+               includeSubtypes={false}
                filterModelUri={filterModelUri}
             />
          ))}
@@ -529,7 +534,7 @@ export const AddressSpaceTreeView: React.FC<AddressSpaceTreeViewProps> = ({
 
    if (rootType) {
       return (
-         <SimpleTreeView
+         <SimpleTreeView slots={treeSlots} sx={treeSx}
             expandedItems={expandedItems}
             onExpandedItemsChange={onExpandedItemsChange}
          >
@@ -547,7 +552,7 @@ export const AddressSpaceTreeView: React.FC<AddressSpaceTreeViewProps> = ({
    }
 
    return (
-      <SimpleTreeView
+      <SimpleTreeView slots={treeSlots} sx={treeSx}
          expandedItems={expandedItems}
          onExpandedItemsChange={onExpandedItemsChange}
       >

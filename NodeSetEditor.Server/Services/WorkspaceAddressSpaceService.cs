@@ -1,6 +1,8 @@
 extern alias JsonNodeSet;
 
 using System.Collections.Concurrent;
+using Microsoft.EntityFrameworkCore;
+using NodeSetEditor.Model;
 using NodeSetEditor.Server.Model;
 using JsonNodeSet::NodeSetTool;
 using JsonNodeSet::Opc.Ua.NodeSetSerializer;
@@ -22,6 +24,14 @@ namespace NodeSetEditor.Server.Services
         /// Key = model URI, Value = error message.
         /// </summary>
         public Dictionary<string, string> BadModels { get; init; } = new();
+
+        /// <summary>
+        /// Icon concept key per TYPE NodeId, for the type nodes that have one stamped
+        /// (see <see cref="NodeSetEditor.Model.NodeIcons"/>). Loaded once with the address
+        /// space and invalidated with it, so serving an icon is a dictionary lookup rather
+        /// than a query or a hierarchy walk. Types with no rule are simply absent.
+        /// </summary>
+        public Dictionary<string, string> NodeIcons { get; init; } = new();
 
         /// <summary>
         /// Direct RequiredModel URIs per model URI, as declared in the nodeset XML/DB.
@@ -56,6 +66,12 @@ namespace NodeSetEditor.Server.Services
         {
             var result = await GetResultAsync(workspaceId);
             return result.BadModels;
+        }
+
+        public async Task<Dictionary<string, string>> GetNodeIconsAsync(Guid workspaceId)
+        {
+            var result = await GetResultAsync(workspaceId);
+            return result.NodeIcons;
         }
 
         public async Task<Dictionary<string, List<string>>> GetModelDependenciesAsync(Guid workspaceId)
@@ -508,11 +524,31 @@ namespace NodeSetEditor.Server.Services
                 modelDependencies[kvp.Key] = reqs;
             }
 
+            // One query for the whole workspace's stamped type icons. Keyed by NodeId
+            // only: a NodeId is namespace-qualified, so it is unique across the models in
+            // a workspace, and the same core type seen through two models resolves the
+            // same way.
+            var nodeIcons = new Dictionary<string, string>(StringComparer.Ordinal);
+            var modelIds = modelInfos
+                .Where(m => m?.Id != null)
+                .Select(m => m!.Id!.Value)
+                .ToList();
+            if (modelIds.Count > 0)
+            {
+                var db = scope.ServiceProvider.GetRequiredService<NodeSetEditorDbContext>();
+                var rows = await db.Nodes
+                    .Where(n => modelIds.Contains(n.ModelId) && n.Icon != null && n.NodeId != null)
+                    .Select(n => new { n.NodeId, n.Icon })
+                    .ToListAsync();
+                foreach (var r in rows) nodeIcons[r.NodeId!] = r.Icon!;
+            }
+
             return new WorkspaceAddressSpaceResult
             {
                 AddressSpace = addressSpace,
                 BadModels = badModelUris,
-                ModelDependencies = modelDependencies
+                ModelDependencies = modelDependencies,
+                NodeIcons = nodeIcons
             };
         }
 

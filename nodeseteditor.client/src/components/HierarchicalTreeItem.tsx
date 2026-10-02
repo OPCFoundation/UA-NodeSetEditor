@@ -2,20 +2,20 @@ import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import { TreeItem } from '@mui/x-tree-view/TreeItem';
 
 import api from '../api/axios.api';
 import { slugifyNodeId } from '../api/slug';
 import { idToUrn } from '../model/WorkspaceDescription';
-import { alpha } from '@mui/material/styles';
 import type { PaginatedResponse } from '../model/WorkspaceDescription';
 import { getNodePlainName } from '../model/Node';
 import type { Node, TreeNode } from '../model/Node';
 import { nodeClassToNum } from '../model/NodeFormatting';
 import { extractNamespaceUri } from '../utils/formatNodeId';
-import { getNodeClassIcon } from './nodeClassIcon';
+import { NodeIcon } from '../icons';
+import { IconSize } from '../icons/spec';
+import { treeLabelSx } from './treeStyles';
 
 export interface HierarchicalTreeItemProps {
    node: Node;
@@ -60,7 +60,6 @@ export const HierarchicalTreeItem: React.FC<HierarchicalTreeItemProps> = ({
 
    const nodeNs = extractNamespaceUri(node.nodeId);
    const isInNamespace = !!filterModelUri && nodeNs === filterModelUri;
-   const highlight = isSelected || isInNamespace;
    // Scaffolding (outside the filtered namespace) is dimmed so matches stand out.
    const isDimmed = !!filterMode && !isInNamespace && !isSelected;
 
@@ -86,48 +85,23 @@ export const HierarchicalTreeItem: React.FC<HierarchicalTreeItemProps> = ({
       ? (children?.length ?? 0) === 0
       : (node.hasNoChildren || (isFetched && (children?.length ?? 0) === 0));
 
-   const icon = getNodeClassIcon(nodeClassToNum(node.nodeClass), {
-      sx: {
-         fontSize: 16,
-         // Highlight uses primary.main — OPC blue in light mode, amber in
-         // dark mode (per the dark-theme palette override). One key,
-         // theme-aware.
-         color: highlight ? 'primary.main' : isDimmed ? 'text.disabled' : 'text.secondary',
-      },
-   });
+   const icon = (
+      <NodeIcon
+         nodeClass={nodeClassToNum(node.nodeClass)}
+         icon={node.icon}
+         size={IconSize.tree}
+         dimmed={!!isDimmed}
+      />
+   );
 
    const label = (
-      <Box
-         onClick={(e) => { e.stopPropagation(); onSelect(node); }}
-         sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 0.5,
-            cursor: 'pointer',
-            backgroundColor: isSelected
-               ? (theme) => alpha(theme.palette.primary.main, 0.16)
-               : isInNamespace
-                  ? (theme) => alpha(theme.palette.primary.main, 0.08)
-                  : undefined,
-            borderRadius: highlight ? '4px' : undefined,
-            px: highlight ? 0.5 : 0,
-            minWidth: 0,
-         }}
-      >
-         {icon}
-         <Typography
-            variant="body2"
-            sx={{
-               fontWeight: highlight ? 900 : 'normal',
-               color: highlight ? 'primary.main' : isDimmed ? 'text.disabled' : 'text.primary',
-               whiteSpace: 'nowrap',
-               overflow: 'hidden',
-               textOverflow: 'ellipsis',
-            }}
-         >
-            {getNodePlainName(node)}
-         </Typography>
-      </Box>
+	  <Box
+		 onClick={(e) => { e.stopPropagation(); onSelect(node); }}
+		 sx={treeLabelSx(!!isSelected, !!isInNamespace, !!isDimmed)}
+	  >
+		 {icon}
+		 <span className="tree-label-text">{getNodePlainName(node)}</span>
+	  </Box>
    );
 
    if (isLeaf) {

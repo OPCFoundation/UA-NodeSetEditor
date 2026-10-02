@@ -6,19 +6,7 @@ import api, { ApiError } from '../api/axios.api';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-import EditDocumentIcon from '@mui/icons-material/EditDocument';
-import DescriptionIcon from '@mui/icons-material/Description';
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
-import AccountTreeIcon from '@mui/icons-material/AccountTree';
-import DownloadIcon from '@mui/icons-material/Download';
-import DeleteIcon from '@mui/icons-material/Delete';
-import FactCheckIcon from '@mui/icons-material/FactCheck';
-import EditIcon from '@mui/icons-material/Edit';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import HistoryIcon from '@mui/icons-material/History';
-import LockIcon from '@mui/icons-material/Lock';
-import LockOpenIcon from '@mui/icons-material/LockOpen';
-import Alert from '@mui/material/Alert';
+import { EditDocumentIcon, DescriptionIcon, ErrorOutlineIcon, AccountTreeIcon, DownloadIcon, DeleteIcon, FactCheckIcon, EditIcon, VisibilityIcon, HistoryIcon, LockIcon, LockOpenIcon } from '../icons';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -35,12 +23,15 @@ import Checkbox from '@mui/material/Checkbox';
 import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
+import CircularProgress from '@mui/material/CircularProgress';
+import Alert from '@mui/material/Alert';
 
 
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 
 import { SearchBar } from '../components/SearchBar';
+import { PageHeader } from '../components/PageHeader';
 import { ContentLoader } from '../components/ContentLoader';
 import { ModelDialog } from '../components/ModelDialog';
 import { ActionBar } from '../components/ActionBar';
@@ -64,9 +55,11 @@ import type { WorkspaceNamespaceInfo } from '../model/WorkspaceNamespaceInfo';
 import { useTheme } from '@mui/material/styles';
 import { ImportModelDialog } from '../components/ImportModelDialog';
 import { ImportSharedModelDialog } from '../components/ImportSharedModelDialog';
+import { CreateModelDialog } from '../components/CreateModelDialog';
 import Link from '@mui/material/Link';
 import { useLicenseOptions } from '../hooks/useLicenseOptions';
 import { LicenseFields, isLicenseValid, type LicenseValue } from '../components/LicenseFields';
+import { ProfileGroupSelect } from '../components/ProfileGroupSelect';
 import { ModelVersionsDialog } from '../components/ModelVersionsDialog';
 
 // Helper function to format publication date as YYYY-MM-DD
@@ -77,105 +70,14 @@ function formatPublicationDate(dateString: string | null | undefined): string | 
    return date.toISOString().split('T')[0];
 }
 
-// Strip characters that can't appear unescaped in a URN namespace-specific
-// string. We keep alphanumerics plus a small set of safe punctuation
-// (- . _ ~) and replace runs of whitespace/other chars with a single dash so
-// "My Model 1.0!" becomes "My-Model-1.0".
-function sanitizeUriSegment(value: string): string {
-   if (!value) return '';
-   return value
-      .trim()
-      .replace(/[^A-Za-z0-9._~-]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-}
-
-
-// Validate a model namespace URI for the create dialog. Mirrors the server's
-// import-time rule (CanonicalUri.IsValid): absolute, ASCII-only, scheme
-// restricted to http/https/urn, well-formed percent-encoding (valid %HH accepted,
-// bare/truncated "%" rejected), and no ";" — then adds the URN Namespace
-// Identifier (NID) check that import intentionally omits. The editor never adds
-// percent-encoding; URIs are expected to arrive already correctly encoded, and we
-// only reject under-encoding. Returns an error message, or null if valid.
-function validateModelUri(uri: string): string | null {
-   const value = uri.trim();
-   if (!value) return 'A namespace URI is required.';
-   if (/\s/.test(value)) return 'Namespace URI must not contain whitespace.';
-   // A "%" must be followed by two hex digits; a bare or truncated escape is under-encoded.
-   if (/%(?![0-9A-Fa-f]{2})/.test(value)) return 'Namespace URI has malformed percent-encoding (use %HH).';
-   if (value.includes(';')) return 'Namespace URI must not contain ";".';
-   for (const ch of value) {
-      const c = ch.codePointAt(0)!;
-      if (c < 0x20 || c === 0x7f) return 'Namespace URI must not contain control characters.';
-      if (c > 0x7e) return 'Namespace URI must contain ASCII characters only.';
-   }
-
-   const schemeMatch = value.match(/^([a-zA-Z][a-zA-Z0-9+.-]*):/);
-   if (!schemeMatch) {
-      return 'Namespace URI must be absolute (start with http://, https://, or urn:).';
-   }
-   const scheme = schemeMatch[1].toLowerCase();
-   if (scheme !== 'http' && scheme !== 'https' && scheme !== 'urn') {
-      return 'Namespace URI must use the http, https, or urn scheme.';
-   }
-
-   if (scheme === 'http' || scheme === 'https') {
-      try {
-         const url = new URL(value);
-         if (!url.hostname) return 'Namespace URI must include a host name.';
-      } catch {
-         return 'Namespace URI is not a valid URL.';
-      }
-      return null;
-   }
-
-   // urn:<NID>:<NSS>
-   const urnMatch = value.match(/^urn:([^:]*):(.*)$/i);
-   if (!urnMatch || !urnMatch[1]) {
-      return 'A URN must have the form urn:<identifier>:<value>.';
-   }
-   const nid = urnMatch[1];
-   const nss = urnMatch[2];
-   if (!/^[A-Za-z0-9][A-Za-z0-9-]{0,30}[A-Za-z0-9]$/.test(nid)) {
-      return `Invalid URN identifier "${nid}": use 2–32 letters, digits, or hyphens ` +
-         `with no dots or underscores (e.g. "shaleriver-com").`;
-   }
-   if (!nss) {
-      return 'A URN must include text after the identifier (urn:<identifier>:<value>).';
-   }
-   return null;
-}
-
-// Build everything before the final "<model name>" part, of the form
-// "urn:opcua:<domain>:<YYYY-MM>:". The fixed "opcua" is the URN Namespace
-// Identifier (NID); the domain lives in the namespace-specific string where dots
-// are allowed, so it is kept verbatim (only stripped of characters that would
-// need encoding). The domain is the user's DefaultDomain preference when set,
-// otherwise the email domain. If neither yields a usable domain we return null
-// so the caller can fall back to a blank URI rather than emit "urn:opcua::2026-04:".
-function computeModelUriPrefix(email: string, now: Date, defaultDomain?: string): string | null {
-   let domainSource = defaultDomain?.trim();
-   if (!domainSource) {
-      const at = email.indexOf('@');
-      if (at <= 0 || at === email.length - 1) return null;
-      domainSource = email.slice(at + 1);
-   }
-   const domain = sanitizeUriSegment(domainSource);
-   if (!domain) return null;
-   const yyyy = now.getFullYear().toString().padStart(4, '0');
-   const mm = (now.getMonth() + 1).toString().padStart(2, '0');
-   return `urn:opcua:${domain}:${yyyy}-${mm}:`;
-}
-
 const ModelLibraryPage: React.FC = () => {
    const { t } = useTranslation();
    const navigate = useNavigate();
    const theme = useTheme();
    const queryClient = useQueryClient();
    const { selectedWorkspaceId, setSelectedWorkspaceId, highlightModelUri, selectedModelUri, setSelectedModelUri, modelLibraryCategories, setModelLibraryCategories, setSelectedType } = React.useContext(WorkspaceContext);
-   const { email: userEmail, defaultDomain: userDefaultDomain,
-      defaultLicense: userDefaultLicense, defaultLicenseUrl: userDefaultLicenseUrl,
-      defaultCopyrightHolder: userDefaultCopyright, betaTester } = React.useContext(UserContext);
+   const { defaultLicense: userDefaultLicense, defaultLicenseUrl: userDefaultLicenseUrl,
+      defaultCopyrightHolder: userDefaultCopyright, betaTester, admin } = React.useContext(UserContext);
    const { data: licenseOptions } = useLicenseOptions();
    const [filter, setFilter] = React.useState<string>('');
    const visibleCategories = modelLibraryCategories;
@@ -195,6 +97,7 @@ const ModelLibraryPage: React.FC = () => {
    const [modelToDownload, setModelToDownload] = React.useState<ModelInfo | null>(null);
    const [downloadFormat, setDownloadFormat] = React.useState<string>('xml');
    const [downloadIncludeDeps, setDownloadIncludeDeps] = React.useState<boolean>(false);
+   const [downloadRemoveUnused, setDownloadRemoveUnused] = React.useState<boolean>(false);
 
    // Create menu and workspace dialog state
    const [createMenuAnchor, setCreateMenuAnchor] = React.useState<HTMLElement | null>(null);
@@ -218,26 +121,8 @@ const ModelLibraryPage: React.FC = () => {
    const [isDeletingWorkspace, setIsDeletingWorkspace] = React.useState(false);
    const [deleteWorkspaceError, setDeleteWorkspaceError] = React.useState<string | null>(null);
 
-   // Create model dialog state
+   // The create-model dialog owns its own fields; this only decides whether it is mounted.
    const [createModelDialogOpen, setCreateModelDialogOpen] = React.useState(false);
-   const [newModelName, setNewModelName] = React.useState('');
-   const [newModelUri, setNewModelUri] = React.useState('');
-   const [newModelVersion, setNewModelVersion] = React.useState('');
-   const [newModelDescription, setNewModelDescription] = React.useState('');
-   const [isCreatingModel, setIsCreatingModel] = React.useState(false);
-   const [createModelError, setCreateModelError] = React.useState<string | null>(null);
-   // License & copyright for a new model. Default to the user's preferences via the
-   // "use my defaults" checkbox; unchecking enables a per-model override.
-   const [newModelUseDefaults, setNewModelUseDefaults] = React.useState(true);
-   const [newModelLicense, setNewModelLicense] = React.useState<LicenseValue>({ license: '', licenseUrl: '' });
-   const [newModelCopyright, setNewModelCopyright] = React.useState('');
-   // Captures the urn:<domain>:YYYY-MM:<localpart>: prefix for the *current*
-   // dialog session. Frozen when the dialog opens so the YYYY-MM doesn't tick
-   // forward mid-edit and the email lookup happens only once.
-   const [newModelUriPrefix, setNewModelUriPrefix] = React.useState<string | null>(null);
-   // Whether the user has manually edited the URI field. Once true, Name
-   // changes no longer overwrite the URI for the rest of the session.
-   const [newModelUriManuallyEdited, setNewModelUriManuallyEdited] = React.useState(false);
 
    // Edit model dialog state
    const [editModelDialogOpen, setEditModelDialogOpen] = React.useState(false);
@@ -252,6 +137,9 @@ const ModelLibraryPage: React.FC = () => {
    const [editModelLicense, setEditModelLicense] = React.useState('');
    const [editModelLicenseUrl, setEditModelLicenseUrl] = React.useState('');
    const [editModelCopyright, setEditModelCopyright] = React.useState('');
+   const [editModelProfileGroup, setEditModelProfileGroup] = React.useState('');
+   // True when the model being edited is shared — used to warn an admin that the edit is global.
+   const [editModelIsShared, setEditModelIsShared] = React.useState(false);
    // While a model is checked out the version is owned by the checkout/check-in
    // lifecycle, so the Version field is disabled in the edit dialog.
    const [editModelVersionLocked, setEditModelVersionLocked] = React.useState(false);
@@ -275,15 +163,20 @@ const ModelLibraryPage: React.FC = () => {
    // Import menu and file upload state
    const [importMenuAnchor, setImportMenuAnchor] = React.useState<HTMLElement | null>(null);
    const [uploadError, setUploadError] = React.useState<string | null>(null);
-   const [isUploading, setIsUploading] = React.useState(false);
-   // File-import license confirmation: after a file is picked we detect any embedded
-   // license/copyright, then prompt the user to confirm or set them before importing.
+   // File-import flow. After a file is picked we detect any embedded license/copyright
+   // ('detecting'). A file that carries both needs no confirmation and goes straight to
+   // 'uploading'; otherwise we'd be proposing the user's defaults, so 'confirm' asks first.
+   // 'detecting' and 'uploading' are both waits — the server resolves and fetches the whole
+   // dependency closure inside the import request.
+   const [importPhase, setImportPhase] = React.useState<'idle' | 'detecting' | 'confirm' | 'uploading'>('idle');
+   const isUploading = importPhase === 'uploading';
    const [pendingImportFile, setPendingImportFile] = React.useState<File | null>(null);
-   const [importLicenseDialogOpen, setImportLicenseDialogOpen] = React.useState(false);
-   const [importDetecting, setImportDetecting] = React.useState(false);
    const [importLicense, setImportLicense] = React.useState<LicenseValue>({ license: '', licenseUrl: '' });
    const [importCopyright, setImportCopyright] = React.useState('');
    const fileInputRef = React.useRef<HTMLInputElement>(null);
+   // Bumped whenever a file-import run is abandoned or superseded, so a detection
+   // response that lands after the user cancelled cannot start an import.
+   const importRunRef = React.useRef(0);
 
    // Fetch discovery data to get ownership info for the selected workspace
    const { data: discoveryData } = useQuery({
@@ -319,7 +212,9 @@ const ModelLibraryPage: React.FC = () => {
       enabled: !!selectedWorkspaceId
    });
 
-   const namespaces = namespacesData?.results ?? [];
+   // Memoized because the memo below takes it as a dependency: the `?? []` fallback would
+   // otherwise be a new array on every render and re-run it.
+   const namespaces = React.useMemo(() => namespacesData?.results ?? [], [namespacesData]);
 
    const filteredModels = React.useMemo(() => {
       const showPrivate = visibleCategories.includes('private');
@@ -362,22 +257,31 @@ const ModelLibraryPage: React.FC = () => {
 
    const CHUNK_SIZE = 4 * 1024 * 1024; // 4MB
 
-   // Picking a file no longer uploads immediately: detect any embedded license/copyright, then
-   // open a dialog for the user to confirm or set them before the import proceeds.
+   // Picking a file no longer uploads immediately: detect any embedded license/copyright
+   // first. A file that carries both is imported straight away — there is nothing for the
+   // user to confirm. Only when something has to be taken from the user's defaults do we
+   // stop at the confirmation dialog.
    const handleFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
       const selectedFile = event.target.files?.[0];
       // Reset the input so re-picking the same file fires onChange again.
       if (fileInputRef.current) fileInputRef.current.value = '';
       if (!selectedFile || !selectedWorkspaceId) return;
 
+      const run = ++importRunRef.current;
+
       setUploadError(null);
       setPendingImportFile(selectedFile);
       // Seed from the user's defaults; auto-detection below may overwrite.
-      setImportLicense({ license: userDefaultLicense ?? '', licenseUrl: userDefaultLicenseUrl ?? '' });
-      setImportCopyright(userDefaultCopyright ?? '');
-      setImportLicenseDialogOpen(true);
+      let license: LicenseValue = { license: userDefaultLicense ?? '', licenseUrl: userDefaultLicenseUrl ?? '' };
+      let copyright = userDefaultCopyright ?? '';
+      setImportLicense(license);
+      setImportCopyright(copyright);
+      setImportPhase('detecting');
 
-      setImportDetecting(true);
+      // The server resolves an import's license with the same detector used here, so when
+      // the file states both values — and they satisfy the same rule the dialog enforces,
+      // so the import cannot be rejected for them — there is nothing left to confirm.
+      let selfDescribed = false;
       try {
          const form = new FormData();
          form.append('file', selectedFile, selectedFile.name);
@@ -385,33 +289,58 @@ const ModelLibraryPage: React.FC = () => {
             '/opcua/v1/namespaces/info/detect-license', form,
             { headers: { 'Content-Type': 'multipart/form-data', 'OpcUa-Server': idToUrn(selectedWorkspaceId) } });
          const d = res.data;
-         if (d?.license) setImportLicense({ license: d.license, licenseUrl: d.licenseUrl ?? '' });
-         if (d?.copyrightHolder) setImportCopyright(d.copyrightHolder);
+         if (d?.license) license = { license: d.license, licenseUrl: d.licenseUrl ?? '' };
+         if (d?.copyrightHolder) copyright = d.copyrightHolder;
+         // Both must come from the FILE: a value taken from the user's defaults is a
+         // proposal, and proposals are exactly what the confirmation dialog is for.
+         selfDescribed = !!d?.license?.trim() && !!d?.copyrightHolder?.trim()
+            && isLicenseValid(d.license, d.licenseUrl ?? '', licenseOptions ?? []);
       } catch {
          // Detection is best-effort; keep the seeded defaults.
-      } finally {
-         setImportDetecting(false);
+      }
+
+      // The user cancelled (or picked another file) while detection was in flight.
+      if (importRunRef.current !== run) return;
+
+      setImportLicense(license);
+      setImportCopyright(copyright);
+
+      if (selfDescribed) {
+         await uploadImportFile(selectedFile, license.license.trim(), license.licenseUrl.trim(), copyright.trim());
+      } else {
+         setImportPhase('confirm');
       }
    };
 
-   const handleImportLicenseDialogClose = () => {
-      setImportLicenseDialogOpen(false);
+   const handleImportDialogClose = () => {
+      // The import itself cannot be cancelled — ignore close attempts so the progress
+      // indicator stays on screen until the request returns. Detection can be abandoned:
+      // the bumped run id keeps its late response from starting an import.
+      if (importPhase === 'uploading') return;
+      importRunRef.current++;
+      setImportPhase('idle');
       setPendingImportFile(null);
    };
 
    const handleConfirmImport = async () => {
       const file = pendingImportFile;
-      setImportLicenseDialogOpen(false);
-      setPendingImportFile(null);
-      if (file) {
-         await uploadImportFile(file, importLicense.license.trim(), importLicense.licenseUrl.trim(), importCopyright.trim());
+      if (!file) {
+         setImportPhase('idle');
+         return;
       }
+      await uploadImportFile(file, importLicense.license.trim(), importLicense.licenseUrl.trim(), importCopyright.trim());
    };
 
+   // Holds the dialog open in its 'uploading' wait state for the whole import: the server
+   // resolves and fetches the NodeSet's entire dependency closure inside that one request,
+   // which can take minutes, and the wait indicator is the only sign it is still working.
    const uploadImportFile = async (file: File, license: string, licenseUrl: string, copyright: string) => {
-      if (!selectedWorkspaceId) return;
+      if (!selectedWorkspaceId) {
+         setImportPhase('idle');
+         return;
+      }
 
-      setIsUploading(true);
+      setImportPhase('uploading');
       setUploadError(null);
 
       try {
@@ -459,60 +388,12 @@ const ModelLibraryPage: React.FC = () => {
             : (e instanceof Error ? e.message : t('modelLibrary.uploadFailed'));
          setUploadError(errorMessage);
       } finally {
-         setIsUploading(false);
+         // Done either way: the dialog closes and any error surfaces on the page.
+         setImportPhase('idle');
+         setPendingImportFile(null);
       }
    };
 
-   const handleCreateModel = () => {
-      setCreateMenuAnchor(null);
-      setNewModelName('');
-      const prefix = computeModelUriPrefix(userEmail, new Date(), userDefaultDomain);
-      setNewModelUriPrefix(prefix);
-      setNewModelUri(prefix ?? '');
-      setNewModelUriManuallyEdited(false);
-      // New models start as an editable working copy — default to the -alpha pre-release.
-      setNewModelVersion('1.0.0-alpha');
-      setNewModelDescription('');
-      setNewModelUseDefaults(true);
-      setNewModelLicense({ license: userDefaultLicense ?? '', licenseUrl: userDefaultLicenseUrl ?? '' });
-      setNewModelCopyright(userDefaultCopyright ?? '');
-      setCreateModelError(null);
-      setCreateModelDialogOpen(true);
-   };
-
-   // The effective license/copyright submitted for a new model: the user's defaults when
-   // "use my defaults" is checked, otherwise the per-model override fields.
-   const effectiveNewLicense = newModelUseDefaults
-      ? { license: userDefaultLicense ?? '', licenseUrl: userDefaultLicenseUrl ?? '' }
-      : newModelLicense;
-   const effectiveNewCopyright = newModelUseDefaults ? (userDefaultCopyright ?? '') : newModelCopyright;
-   const newModelLicenseOk = isLicenseValid(
-      effectiveNewLicense.license, effectiveNewLicense.licenseUrl, licenseOptions ?? []);
-   const newModelCopyrightOk = !!effectiveNewCopyright.trim();
-   // Name is mandatory and must be at least 2 characters.
-   const newModelNameOk = newModelName.trim().length >= 2;
-
-   const handleNewModelNameChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      const next = e.target.value;
-      setNewModelName(next);
-      // Mirror the (sanitized) name into the URI's last segment until the
-      // user takes manual control. We rebuild from the frozen prefix rather
-      // than mutating the existing URI to avoid drifting if the user has
-      // already partially typed something.
-      if (!newModelUriManuallyEdited && newModelUriPrefix) {
-         setNewModelUri(newModelUriPrefix + sanitizeUriSegment(next));
-      }
-   };
-
-   const handleNewModelUriChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      setNewModelUri(e.target.value);
-      // Any keystroke in the URI field locks it from further name-driven
-      // updates. We don't try to detect "the user typed exactly what we
-      // would have generated" — once they touch it, they own it.
-      setNewModelUriManuallyEdited(true);
-   };
-
-   // Adding, removing, checking out/in, or editing a model changes the whole address
    // space, so refresh EVERY workspace-scoped query (the namespaces list plus the tree
    // and type queries: subtypes, nodeChildren, queryTypes, workspaceTypes, nextNodeId, …),
    // not just the model list. Each of those keys carries the workspace id, so match on it.
@@ -525,40 +406,6 @@ const ModelLibraryPage: React.FC = () => {
       });
    }, [queryClient, selectedWorkspaceId]);
 
-   const handleCreateModelDialogClose = () => {
-      setCreateModelDialogOpen(false);
-      setCreateModelError(null);
-   };
-
-   const handleCreateModelConfirm = async () => {
-      if (!newModelUri.trim() || validateModelUri(newModelUri) || !selectedWorkspaceId) return;
-      if (!newModelNameOk || !newModelLicenseOk || !newModelCopyrightOk) return;
-
-      setIsCreatingModel(true);
-      setCreateModelError(null);
-
-      try {
-         await api.post('/opcua/v1/namespaces/info', {
-            uri: newModelUri.trim(),
-            name: newModelName.trim(),
-            version: newModelVersion.trim() || null,
-            description: newModelDescription.trim() || null,
-            license: effectiveNewLicense.license.trim(),
-            licenseUrl: effectiveNewLicense.licenseUrl.trim() || null,
-            copyrightHolder: effectiveNewCopyright.trim()
-         }, { headers: { 'OpcUa-Server': idToUrn(selectedWorkspaceId) } });
-
-         setCreateModelDialogOpen(false);
-         await invalidateWorkspaceData();
-      } catch (e) {
-         const errorMessage = e instanceof ApiError
-            ? e.message
-            : (e instanceof Error ? e.message : 'Failed to create model');
-         setCreateModelError(errorMessage);
-      } finally {
-         setIsCreatingModel(false);
-      }
-   };
 
    const handleCreateWorkspace = () => {
       setCreateMenuAnchor(null);
@@ -722,6 +569,7 @@ const ModelLibraryPage: React.FC = () => {
       setModelToDownload(nsToModelInfo(ns));
       setDownloadFormat('xml');
       setDownloadIncludeDeps(false);
+      setDownloadRemoveUnused(false);
       setDownloadDialogOpen(true);
    };
 
@@ -737,8 +585,11 @@ const ModelLibraryPage: React.FC = () => {
 
       try {
          const depsParam = downloadIncludeDeps ? '&includeDependencies=true' : '';
+         // Mirrors the checkbox's own enablement — the server ignores it otherwise anyway.
+         const trimParam = downloadIncludeDeps && downloadRemoveUnused && downloadFormat === 'xml'
+            ? '&removeUnusedNodes=true' : '';
          const response = await api.get(
-            `/opcua/v1/namespaces/info/${modelToDownload.id}/export?format=${downloadFormat}${depsParam}`,
+            `/opcua/v1/namespaces/info/${modelToDownload.id}/export?format=${downloadFormat}${depsParam}${trimParam}`,
             {
                responseType: 'blob',
                headers: { 'OpcUa-Server': idToUrn(selectedWorkspaceId) }
@@ -840,11 +691,16 @@ const ModelLibraryPage: React.FC = () => {
       setEditModelVersion(ns.version ?? '');
       setEditModelDescription(ns.description?.text ?? '');
       setEditModelError(null);
-      setEditModelReadOnly(!ns.isPrivate || !canWrite || isOpcFoundationModel(ns));
+      // Admins curate the standard models for everyone, so neither the private-only rule nor
+      // the read-only OPC Foundation namespace closes the dialog for them. The server applies
+      // the same exemption; this only decides what the form offers.
+      setEditModelReadOnly(!admin && (!ns.isPrivate || !canWrite || isOpcFoundationModel(ns)));
+      setEditModelIsShared(!ns.isPrivate);
       setEditModelVersionLocked(!!ns.isEditable);
       setEditModelLicense(ns.license ?? '');
       setEditModelLicenseUrl(ns.licenseUrl ?? '');
       setEditModelCopyright(ns.copyrightHolder ?? '');
+      setEditModelProfileGroup(ns.profileGroupName ?? '');
       setEditModelDialogOpen(true);
    };
 
@@ -876,6 +732,8 @@ const ModelLibraryPage: React.FC = () => {
             payload.license = editModelLicense.trim();
             payload.licenseUrl = editModelLicenseUrl.trim() || null;
             payload.copyrightHolder = editModelCopyright.trim();
+            // Always sent when editable — an empty string is how the profile group is cleared.
+            payload.profileGroupName = editModelProfileGroup.trim();
          }
          await api.put(`/opcua/v1/namespaces/info/${editModel.id}`, payload,
             { headers: { 'OpcUa-Server': idToUrn(selectedWorkspaceId) } });
@@ -980,23 +838,28 @@ const ModelLibraryPage: React.FC = () => {
    return (
       <Box p={8}>
          {/* Row 1: Title and actions */}
-         <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8, mb: 4 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8, flexGrow: 1 }}>
-               <EditDocumentIcon />
-               <Typography variant='h5' sx={{ fontWeight: 'bolder' }}>{t('modelLibrary.title')}</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+         <PageHeader
+            icon={<EditDocumentIcon />}
+            title={t('modelLibrary.title')}
+            infoLabel={t('common.learnMore', 'Learn more')}
+            info={[
+               t('aboutModelLibraryWizard.intro'),
+               t('aboutModelLibraryWizard.line1'),
+               t('aboutModelLibraryWizard.line2'),
+               t('aboutModelLibraryWizard.line3'),
+               t('aboutModelLibraryWizard.line4'),
+               t('common.betaNotice')
+            ]}
+         >
                <WorkspaceSelector />
                <Tooltip title={canWrite ? '' : t('modelLibrary.readOnlyWorkspace', 'This workspace is read-only — shared with you by its owner')}>
                   <span>
                      <Button
                         variant="contained"
-                        disabled={!canWrite}
+                        disabled={!canWrite || isUploading}
+                        size="small"
                         onClick={(e) => setImportMenuAnchor(e.currentTarget)}
-                        sx={{
-                           px: '30px',
-                           borderRadius: '50px'
-                        }}
+                        startIcon={isUploading ? <CircularProgress size={16} color="inherit" /> : undefined}
                      >
                         {isUploading ? t("common.uploading") : t("modelLibrary.importAction")}
                      </Button>
@@ -1019,11 +882,8 @@ const ModelLibraryPage: React.FC = () => {
                </Menu>
                <Button
                   variant="contained"
+                  size="small"
                   onClick={(e) => setCreateMenuAnchor(e.currentTarget)}
-                  sx={{
-                     px: '30px',
-                     borderRadius: '50px'
-                  }}
                >
                   {t("modelLibrary.createAction")}
                </Button>
@@ -1035,19 +895,14 @@ const ModelLibraryPage: React.FC = () => {
                   <MenuItem onClick={handleCreateWorkspace}>
                      {t('modelLibrary.createWorkspace')}
                   </MenuItem>
-                  <MenuItem onClick={handleCreateModel} disabled={!canWrite}>
+                  <MenuItem
+                     onClick={() => { setCreateMenuAnchor(null); setCreateModelDialogOpen(true); }}
+                     disabled={!canWrite}
+                  >
                      {t('modelLibrary.createModel')}
                   </MenuItem>
                </Menu>
-            </Box>
-         </Box>
-
-         {/* Beta disclaimer */}
-         <Alert severity="warning" sx={{ mb: 4 }}>
-            This site is currently in a public beta. Any models created should be backed up using the download feature.
-            Please help us make this site better by reporting any bugs, feature requests, or other feedback to{' '}
-            <a href="mailto:webmaster@opcfoundation.org?subject=OPC%20UA%20NodeSetEditor%20Feedback">webmaster@opcfoundation.org</a>.
-         </Alert>
+         </PageHeader>
 
          {/* Row 4: SearchBar with filter toggles and workspace actions */}
          <SearchBar
@@ -1059,18 +914,18 @@ const ModelLibraryPage: React.FC = () => {
                      ? t('modelLibrary.editWorkspace', 'Edit Workspace')
                      : t('modelLibrary.editWorkspaceDisabled', 'Only the owner can edit this workspace')}>
                      <span>
-                        <IconButton size="small" onClick={handleEditWorkspace} disabled={!isWorkspaceOwner}>
-                           <EditIcon fontSize="small" />
-                        </IconButton>
+                        <Button size="small" startIcon={<EditIcon />} onClick={handleEditWorkspace} disabled={!isWorkspaceOwner}>
+                           {t('modelLibrary.editWorkspace', 'Edit Workspace')}
+                        </Button>
                      </span>
                   </Tooltip>
                   <Tooltip title={isWorkspaceOwner
                      ? t('modelLibrary.deleteWorkspace', 'Delete Workspace')
                      : t('modelLibrary.deleteWorkspaceDisabled', 'Only the owner can delete this workspace')}>
                      <span>
-                        <IconButton size="small" onClick={handleDeleteWorkspace} disabled={!isWorkspaceOwner}>
-                           <DeleteIcon fontSize="small" />
-                        </IconButton>
+                        <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={handleDeleteWorkspace} disabled={!isWorkspaceOwner}>
+                           {t('modelLibrary.deleteWorkspace', 'Delete Workspace')}
+                        </Button>
                      </span>
                   </Tooltip>
                </>
@@ -1084,8 +939,8 @@ const ModelLibraryPage: React.FC = () => {
                size="small"
                sx={{ ml: 2 }}
             >
-               <ToggleButton value="private" sx={{ px: 4, py: 0.5, textTransform: 'none' }}>{t('modelLibrary.private')}</ToggleButton>
-               <ToggleButton value="shared" sx={{ px: 4, py: 0.5, textTransform: 'none' }}>{t('modelLibrary.shared')}</ToggleButton>
+               <ToggleButton value="private">{t('modelLibrary.private')}</ToggleButton>
+               <ToggleButton value="shared">{t('modelLibrary.shared')}</ToggleButton>
             </ToggleButtonGroup>
          </SearchBar>
 
@@ -1164,13 +1019,20 @@ const ModelLibraryPage: React.FC = () => {
                               },
                               {
                                  onAction: () => handleEditModel(ns),
-                                 icon: ns.isEditable ? <EditIcon /> : <VisibilityIcon />,
-                                 tooltipKey: ns.isEditable ? 'modelLibrary.editModel' : 'modelLibrary.viewModel'
+                                 // An admin gets the editable dialog on every model, so the
+                                 // action reads as Edit rather than View for them — in the
+                                 // glyph, the tooltip and the short label alike.
+                                 icon: (ns.isEditable || admin) ? <EditIcon /> : <VisibilityIcon />,
+                                 tooltipKey: (ns.isEditable || admin) ? 'modelLibrary.editModel' : 'modelLibrary.viewModel',
+                                 labelKey: (ns.isEditable || admin) ? 'modelLibrary.editShort' : 'modelLibrary.viewShort',
+                                 primary: true
                               },
                               {
                                  onAction: () => handleViewTypeDefinitions(ns),
                                  icon: <AccountTreeIcon />,
-                                 tooltipKey: 'modelLibrary.viewTypeDefinitions'
+                                 tooltipKey: 'modelLibrary.viewTypeDefinitions',
+                                 labelKey: 'modelLibrary.typesShort',
+                                 primary: true
                               },
                               {
                                  onAction: () => handleValidateModel(ns),
@@ -1188,7 +1050,8 @@ const ModelLibraryPage: React.FC = () => {
                                  onAction: () => handleDeleteModel(ns),
                                  icon: <DeleteIcon />,
                                  tooltipKey: 'modelLibrary.delete',
-                                 disabled: isCoreModel(ns) || !canWrite
+                                 disabled: isCoreModel(ns) || !canWrite,
+                                 destructive: true
                               }
                            ]}
                         />
@@ -1220,6 +1083,15 @@ const ModelLibraryPage: React.FC = () => {
             existingUris={namespaces.map(n => n.uri ?? '').filter(Boolean)}
          />
 
+         {/* Create a new private model. Mounted on demand so its fields reset each time. */}
+         {createModelDialogOpen && selectedWorkspaceId && (
+            <CreateModelDialog
+               open
+               onClose={() => setCreateModelDialogOpen(false)}
+               workspaceId={selectedWorkspaceId}
+            />
+         )}
+
          {/* Hidden file input for NodeSet file import */}
          <input
             type="file"
@@ -1229,48 +1101,72 @@ const ModelLibraryPage: React.FC = () => {
             onChange={handleFileSelected}
          />
 
-         {/* Confirm license & copyright before importing a picked NodeSet file */}
-         {importLicenseDialogOpen && (
+         {/* One dialog for the whole file import: a wait indicator while the file is checked
+             and imported, and — only when the file carried no license/copyright of its own —
+             a stop to confirm the values proposed from the user's defaults. */}
+         {importPhase !== 'idle' && (
             <ModelDialog
                open
-               onClose={handleImportLicenseDialogClose}
-               title={t('modelLibrary.importLicenseTitle', 'Confirm License & Copyright')}
-               actions={[
-                  {
-                     label: isUploading ? t('common.uploading') : t('common.ok'),
-                     onClick: handleConfirmImport,
-                     disabled: importDetecting || isUploading
-                        || !importCopyright.trim()
-                        || !isLicenseValid(importLicense.license, importLicense.licenseUrl, licenseOptions ?? []),
-                  }
-               ]}
+               onClose={handleImportDialogClose}
+               disableClose={isUploading}
+               title={importPhase === 'confirm'
+                  ? t('modelLibrary.importLicenseTitle', 'Confirm License & Copyright')
+                  : t('modelLibrary.importingTitle', 'Importing NodeSet')}
+               actions={importPhase === 'confirm'
+                  ? [
+                     {
+                        label: t('common.ok'),
+                        onClick: handleConfirmImport,
+                        disabled: !importCopyright.trim()
+                           || !isLicenseValid(importLicense.license, importLicense.licenseUrl, licenseOptions ?? []),
+                     }
+                  ]
+                  : []}
             >
-               <Box sx={{ p: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <Typography variant="body2" color="text.secondary">
-                     {importDetecting
-                        ? t('modelLibrary.importLicenseDetecting', 'Checking the file for license information…')
-                        : t('modelLibrary.importLicenseHelp',
-                           'Confirm the license and copyright holder for this NodeSet. Anything detected in the file is pre-filled; set them if none were found. These cannot be changed after import.')}
-                  </Typography>
-                  <TextField
-                     label={t('modelLibrary.copyrightHolder', 'Copyright holder')}
-                     value={importCopyright}
-                     onChange={(e) => setImportCopyright(e.target.value)}
-                     fullWidth
-                     required
-                     error={!importCopyright.trim()}
-                     helperText={!importCopyright.trim()
-                        ? t('modelLibrary.copyrightRequired', 'A copyright holder is required.')
-                        : undefined}
-                  />
-                  <LicenseFields
-                     options={licenseOptions ?? []}
-                     license={importLicense.license}
-                     licenseUrl={importLicense.licenseUrl}
-                     onChange={setImportLicense}
-                     size="medium"
-                  />
-               </Box>
+               {importPhase !== 'confirm' ? (
+                  <Box sx={{
+                     p: 6,
+                     minHeight: 200,
+                     display: 'flex',
+                     flexDirection: 'column',
+                     alignItems: 'center',
+                     justifyContent: 'center',
+                     gap: 12
+                  }}>
+                     <CircularProgress />
+                     <Typography variant="body2" color="text.secondary" align="center">
+                        {importPhase === 'detecting'
+                           ? t('modelLibrary.importLicenseDetecting', 'Checking the file for license information…')
+                           : t('modelLibrary.importInProgress',
+                              'Importing the NodeSet and fetching its dependencies. A model with many dependencies can take several minutes — please leave this dialog open.')}
+                     </Typography>
+                  </Box>
+               ) : (
+                  <Box sx={{ p: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                     <Typography variant="body2" color="text.secondary">
+                        {t('modelLibrary.importLicenseHelp',
+                           'This NodeSet does not state its own license and copyright holder. Confirm the values to record for it — anything found in the file is pre-filled, the rest comes from your defaults. These cannot be changed after import.')}
+                     </Typography>
+                     <TextField
+                        label={t('modelLibrary.copyrightHolder', 'Copyright holder')}
+                        value={importCopyright}
+                        onChange={(e) => setImportCopyright(e.target.value)}
+                        fullWidth
+                        required
+                        error={!importCopyright.trim()}
+                        helperText={!importCopyright.trim()
+                           ? t('modelLibrary.copyrightRequired', 'A copyright holder is required.')
+                           : undefined}
+                     />
+                     <LicenseFields
+                        options={licenseOptions ?? []}
+                        license={importLicense.license}
+                        licenseUrl={importLicense.licenseUrl}
+                        onChange={setImportLicense}
+                        size="medium"
+                     />
+                  </Box>
+               )}
             </ModelDialog>
          )}
 
@@ -1354,6 +1250,26 @@ const ModelLibraryPage: React.FC = () => {
                      }
                      label={t('modelLibrary.downloadIncludeDependencies', 'Include all dependencies (ZIP)')}
                   />
+                  {/* Only meaningful alongside dependencies, and only XML has a trimmed
+                      generator — the other formats are serialized from the whole address space. */}
+                  <Tooltip title={!downloadIncludeDeps
+                     ? t('modelLibrary.removeUnusedNeedsDependencies', 'Only available when dependencies are included.')
+                     : downloadFormat !== 'xml'
+                        ? t('modelLibrary.removeUnusedXmlOnly', 'Only available for the XML format.')
+                        : t('modelLibrary.removeUnusedHelp',
+                           'Each dependency keeps only the nodes this model uses. The model itself is unchanged.')}>
+                     <FormControlLabel
+                        sx={{ ml: 6 }}
+                        control={
+                           <Checkbox
+                              checked={downloadRemoveUnused && downloadIncludeDeps && downloadFormat === 'xml'}
+                              disabled={!downloadIncludeDeps || downloadFormat !== 'xml'}
+                              onChange={(e) => setDownloadRemoveUnused(e.target.checked)}
+                           />
+                        }
+                        label={t('modelLibrary.downloadRemoveUnusedNodes', 'Remove unused nodes')}
+                     />
+                  </Tooltip>
                </Box>
             </ModelDialog>
          )}
@@ -1397,104 +1313,6 @@ const ModelLibraryPage: React.FC = () => {
             </ModelDialog>
          )}
 
-         {/* Create Model Dialog */}
-         {createModelDialogOpen && (
-            <ModelDialog
-               open
-               onClose={handleCreateModelDialogClose}
-               title={t('modelLibrary.createModelDialogTitle')}
-               isLoading={isCreatingModel}
-               isError={!!createModelError}
-               error={createModelError ? new Error(createModelError) : null}
-               actions={createModelError ? [] : [
-                  {
-                     label: isCreatingModel ? t('modelLibrary.creating') : t('common.ok'),
-                     onClick: handleCreateModelConfirm,
-                     disabled: isCreatingModel || !newModelNameOk || !newModelUri.trim() || !!validateModelUri(newModelUri)
-                        || !newModelLicenseOk || !newModelCopyrightOk
-                  }
-               ]}
-            >
-               {!createModelError && (
-                  <Box sx={{ p: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                     <TextField
-                        label={t('modelLibrary.createModelName')}
-                        value={newModelName}
-                        onChange={handleNewModelNameChange}
-                        fullWidth
-                        required
-                        autoFocus
-                        error={!!newModelName && !newModelNameOk}
-                        helperText={!!newModelName && !newModelNameOk
-                           ? t('modelLibrary.createModelNameTooShort', 'Name must be at least 2 characters.')
-                           : undefined}
-                     />
-                     <TextField
-                        label={t('modelLibrary.createModelUri')}
-                        value={newModelUri}
-                        onChange={handleNewModelUriChange}
-                        fullWidth
-                        required
-                        error={!!newModelUri.trim() && !!validateModelUri(newModelUri)}
-                        helperText={newModelUri.trim() ? (validateModelUri(newModelUri) ?? undefined) : undefined}
-                     />
-                     <TextField
-                        label={t('modelLibrary.createModelVersion')}
-                        value={newModelVersion}
-                        onChange={(e) => setNewModelVersion(e.target.value)}
-                        fullWidth
-                     />
-                     <TextField
-                        label={t('modelLibrary.createModelDescription')}
-                        value={newModelDescription}
-                        onChange={(e) => setNewModelDescription(e.target.value)}
-                        fullWidth
-                        multiline
-                        rows={3}
-                     />
-
-                     {/* License & copyright — locked once the model is created. */}
-                     <Box sx={{ p: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <FormControlLabel
-                           control={
-                              <Checkbox
-                                 checked={newModelUseDefaults}
-                                 onChange={(e) => setNewModelUseDefaults(e.target.checked)}
-                              />
-                           }
-                           label={t('modelLibrary.useDefaultLicense', 'Use my default license & copyright')}
-                        />
-                        <TextField
-                           label={t('modelLibrary.copyrightHolder', 'Copyright holder')}
-                           value={effectiveNewCopyright}
-                           onChange={(e) => setNewModelCopyright(e.target.value)}
-                           fullWidth
-                           required
-                           disabled={newModelUseDefaults}
-                           error={!newModelCopyrightOk}
-                           helperText={!newModelCopyrightOk
-                              ? t('modelLibrary.copyrightRequired', 'A copyright holder is required.')
-                              : undefined}
-                        />
-                        <LicenseFields
-                           options={licenseOptions ?? []}
-                           license={effectiveNewLicense.license}
-                           licenseUrl={effectiveNewLicense.licenseUrl}
-                           onChange={setNewModelLicense}
-                           disabled={newModelUseDefaults}
-                           size="medium"
-                        />
-                        {newModelUseDefaults && !newModelLicenseOk && (
-                           <Typography variant="caption" color="error">
-                              {t('modelLibrary.defaultLicenseMissing',
-                                 'Set a default license and copyright holder in your account settings.')}
-                           </Typography>
-                        )}
-                     </Box>
-                  </Box>
-               )}
-            </ModelDialog>
-         )}
 
          {/* Edit / View Model Dialog */}
          {editModelDialogOpen && editModel && (
@@ -1519,6 +1337,14 @@ const ModelLibraryPage: React.FC = () => {
             >
                {!editModelError && (
                   <Box sx={{ p: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                     {/* An admin editing a shared model changes it for every workspace linked
+                         to that model row — say so before they start typing. */}
+                     {!editModelReadOnly && editModelIsShared && (
+                        <Alert severity="warning" variant="outlined">
+                           {t('modelLibrary.adminSharedModelWarning',
+                              'This is a shared model. Changes you make here apply to every user and workspace that uses it.')}
+                        </Alert>
+                     )}
                      <TextField
                         label={t('modelLibrary.createModelName')}
                         value={editModelName}
@@ -1590,6 +1416,13 @@ const ModelLibraryPage: React.FC = () => {
                                     {editModelLicenseUrl}
                                  </Link>
                               )}
+                              <TextField
+                                 label={t('modelLibrary.profileGroup', 'Profile Group')}
+                                 value={editModelProfileGroup || ''}
+                                 placeholder={t('common.notSet', 'Not set')}
+                                 fullWidth
+                                 slotProps={{ input: { readOnly: true } }}
+                              />
                            </>
                         ) : (
                            <>
@@ -1610,6 +1443,14 @@ const ModelLibraryPage: React.FC = () => {
                                  licenseUrl={editModelLicenseUrl}
                                  onChange={(v) => { setEditModelLicense(v.license); setEditModelLicenseUrl(v.licenseUrl); }}
                                  size="medium"
+                              />
+                              {/* Profile group the model's conformance units are assessed
+                                  against — surfaced on the Conformance Units view. */}
+                              <ProfileGroupSelect
+                                 value={editModelProfileGroup}
+                                 onChange={setEditModelProfileGroup}
+                                 workspaceId={selectedWorkspaceId ?? undefined}
+                                 enabled={editModelDialogOpen}
                               />
                            </>
                         )}
@@ -1680,13 +1521,17 @@ const ModelLibraryPage: React.FC = () => {
             >
                {!checkinError && (
                   <Box sx={{ p: 3 }}>
-                     <Typography variant="body1" sx={{ mb: 2 }}>
+                     <Typography variant="body1" sx={{ mb: 12 }}>
                         {t('modelLibrary.checkinPrompt', { name: checkinModel.name ?? checkinModel.uri })}
                      </Typography>
-                     <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 2 }}>
+                     {/* Theme spacing is 1px per unit, so these are pixel values: 12px inside
+                         the border and 10px between options. The previous p: 2 / mb: 1 were
+                         2px and 1px, which left the choices crammed against the box. */}
+                     <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 12 }}>
                         <RadioGroup
                            value={checkinAction}
                            onChange={(e) => setCheckinAction(e.target.value as 'keep' | 'publish' | 'discard')}
+                           sx={{ gap: 10 }}
                         >
                            {([
                               { value: 'keep', label: t('modelLibrary.checkinKeep'), desc: t('modelLibrary.checkinKeepDesc') },
@@ -1696,8 +1541,8 @@ const ModelLibraryPage: React.FC = () => {
                               <FormControlLabel
                                  key={opt.value}
                                  value={opt.value}
-                                 control={<Radio sx={{ pt: 0.5 }} />}
-                                 sx={{ alignItems: 'flex-start', mb: 1 }}
+                                 control={<Radio sx={{ pt: 2 }} />}
+                                 sx={{ alignItems: 'flex-start' }}
                                  label={(
                                     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                                        <Typography variant="body2">{opt.label}</Typography>

@@ -6,19 +6,12 @@ import { slugifyNodeId } from '../api/slug';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-import WidgetsIcon from '@mui/icons-material/Widgets';
-import CategoryIcon from '@mui/icons-material/Category';
-import TuneIcon from '@mui/icons-material/Tune';
-import SchemaIcon from '@mui/icons-material/Schema';
-import LinkIcon from '@mui/icons-material/Link';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import EditIcon from '@mui/icons-material/Edit';
-import CallSplitIcon from '@mui/icons-material/CallSplit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
+import {
+   NodeIcon, WidgetsIcon, VisibilityIcon, EditIcon, CallSplitIcon, DeleteIcon, PlaylistAddIcon,
+} from '../icons';
+import { IconSize } from '../icons/spec';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import Avatar from '@mui/material/Avatar';
 import InputLabel from '@mui/material/InputLabel';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
@@ -30,6 +23,7 @@ import FormControl from '@mui/material/FormControl';
 import type { SelectChangeEvent } from '@mui/material/Select';
 
 import { SearchBar } from '../components/SearchBar';
+import { PageHeader } from '../components/PageHeader';
 import { ContentLoader } from '../components/ContentLoader';
 import { ActionBar } from '../components/ActionBar';
 import { TypeDetailView } from '../components/TypeDetailView';
@@ -61,25 +55,6 @@ const nodeClassOptions = [
    { value: 'Variable', label: 'Variable (top-level)' },
 ];
 
-
-function getNodeClassIcon(nodeClass?: string) {
-   switch (nodeClass) {
-      case 'ObjectType':
-         return <CategoryIcon />;
-      case 'VariableType':
-         return <TuneIcon />;
-      case 'DataType':
-         return <SchemaIcon />;
-      case 'ReferenceType':
-         return <LinkIcon />;
-      case 'Object':
-         return <CategoryIcon />;
-      case 'Variable':
-         return <TuneIcon />;
-      default:
-         return <WidgetsIcon />;
-   }
-}
 
 const TypeLibraryPage: React.FC = () => {
    const [pageSize, setPageSize] = React.useState<number>(25);
@@ -175,7 +150,9 @@ const TypeLibraryPage: React.FC = () => {
       enabled: !!selectedWorkspaceId,
    });
 
-   const namespaces = namespacesData?.results ?? [];
+   // Memoized because several hooks below take it as a dependency: the `?? []` fallback
+   // would otherwise be a new array on every render and re-run all of them.
+   const namespaces = React.useMemo(() => namespacesData?.results ?? [], [namespacesData]);
 
    const namespaceOptions = React.useMemo(() => {
       return namespaces
@@ -191,6 +168,17 @@ const TypeLibraryPage: React.FC = () => {
       const ns = namespaces.find(n => n.uri === modelUri);
       return ns?.isPrivate ?? false;
    }, [namespaces]);
+
+   // Land on the new type: show its detail view and re-root the sidebar tree on it.
+   // Shared by every "create a type" path on this page.
+   const focusCreatedType = React.useCallback(
+      (nodeId: string, displayName: string, nodeClass: number, superTypeIds: string[] = []) => {
+         queryClient.invalidateQueries({ queryKey: ['queryTypes'] });
+         queryClient.invalidateQueries({ queryKey: ['subtypes'] });
+         queryClient.invalidateQueries({ queryKey: ['nextNodeId'] });
+         setSelectedType({ nodeId, displayName, nodeClass });
+         setNavigateToNode({ nodeId, superTypeIds, nodeClass, displayName, enterFocusMode: true });
+      }, [queryClient, setSelectedType, setNavigateToNode]);
 
    // Fetch types with optional filters
    const { data: typesData, isLoading, isError, error } = useQuery({
@@ -312,23 +300,13 @@ const TypeLibraryPage: React.FC = () => {
       return (
          <Box sx={{ p: 8, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
             {/* Row 1: Title */}
-            <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8, mb: 4 }}>
-               <Box
-                  onClick={handleTitleClick}
-                  sx={{
-                     display: 'flex',
-                     flexDirection: 'row',
-                     alignItems: 'center',
-                     gap: 8,
-                     flexGrow: 1,
-                     cursor: 'pointer',
-                     '&:hover': { color: 'primary.main' },
-                  }}
-               >
-                  <WidgetsIcon />
-                  <Typography variant='h5' sx={{ fontWeight: 'bolder' }}>{t('typeLibrary.title')}</Typography>
-               </Box>
-            </Box>
+            <PageHeader
+               icon={<WidgetsIcon />}
+               title={t('typeLibrary.title')}
+               onTitleClick={handleTitleClick}
+               infoLabel={t('common.learnMore', 'Learn more')}
+               info={[t('aboutTypeLibraryWizard.intro')]}
+            />
             <TypeDetailView
                nodeId={selectedType.nodeId}
                displayName={selectedType.displayName}
@@ -346,12 +324,12 @@ const TypeLibraryPage: React.FC = () => {
    return (
       <Box p={8}>
          {/* Row 1: Title */}
-         <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8, mb: 4 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8, flexGrow: 1 }}>
-               <WidgetsIcon />
-               <Typography variant='h5' sx={{ fontWeight: 'bolder' }}>{t('typeLibrary.title')}</Typography>
-            </Box>
-         </Box>
+         <PageHeader
+            icon={<WidgetsIcon />}
+            title={t('typeLibrary.title')}
+            infoLabel={t('common.learnMore', 'Learn more')}
+            info={[t('aboutTypeLibraryWizard.intro')]}
+         />
 
          <SearchBar
             value={filter}
@@ -459,16 +437,15 @@ const TypeLibraryPage: React.FC = () => {
                            }}
                         >
                            <ListItemIcon>
-                              <Avatar
-                                 sx={{
-                                    width: 32,
-                                    height: 32,
-                                    bgcolor: theme.palette.grey[600],
-                                    color: theme.palette.grey[200]
-                                 }}
-                              >
-                                 {getNodeClassIcon(item.nodeClass)}
-                              </Avatar>
+                              {/* Same glyph the tree shows for this node — this page used to
+                                  keep its own mapping, which collapsed Object onto ObjectType
+                                  and Variable onto VariableType. */}
+                              <NodeIcon
+                                 nodeClass={item.nodeClass}
+                                 icon={item.icon}
+                                 size={IconSize.inline}
+                                 sx={{ color: 'text.secondary' }}
+                              />
                            </ListItemIcon>
                            <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
                               <Typography variant="body2" component="div" noWrap>
@@ -486,6 +463,7 @@ const TypeLibraryPage: React.FC = () => {
                                        icon: <DeleteIcon />,
                                        tooltipKey: 'typeDetail.deleteType',
                                        disabled: !editable,
+                                       destructive: true,
                                     },
                                     {
                                        onAction: () => setCreateInstanceType(item),
@@ -542,22 +520,12 @@ const TypeLibraryPage: React.FC = () => {
                superTypeModelUri={extractNamespaceUri(extendType.nodeId)}
                nodeClass={nodeClassToNum(extendType.nodeClass)}
                onSaved={(created?: CreatedNodeInfo) => {
-                  queryClient.invalidateQueries({ queryKey: ['queryTypes'] });
-                  queryClient.invalidateQueries({ queryKey: ['subtypes'] });
-                  queryClient.invalidateQueries({ queryKey: ['nextNodeId'] });
                   if (created) {
-                     setSelectedType({
-                        nodeId: created.nodeId,
-                        displayName: created.displayName,
-                        nodeClass: created.nodeClass,
-                     });
-                     setNavigateToNode({
-                        nodeId: created.nodeId,
-                        superTypeIds: [],
-                        nodeClass: created.nodeClass,
-                        displayName: created.displayName,
-                        enterFocusMode: true,
-                     });
+                     focusCreatedType(created.nodeId, created.displayName, created.nodeClass);
+                  } else {
+                     queryClient.invalidateQueries({ queryKey: ['queryTypes'] });
+                     queryClient.invalidateQueries({ queryKey: ['subtypes'] });
+                     queryClient.invalidateQueries({ queryKey: ['nextNodeId'] });
                   }
                }}
             />

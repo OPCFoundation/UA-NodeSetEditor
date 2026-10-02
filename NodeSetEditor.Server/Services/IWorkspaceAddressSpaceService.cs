@@ -8,6 +8,9 @@ namespace NodeSetEditor.Server.Services
     {
         Task<AddressSpace> GetAddressSpaceAsync(Guid workspaceId);
         Task<Dictionary<string, string>> GetBadModelsAsync(Guid workspaceId);
+
+        /// <summary>Icon concept key per type NodeId; cached and invalidated with the address space.</summary>
+        Task<Dictionary<string, string>> GetNodeIconsAsync(Guid workspaceId);
         Task<Dictionary<string, List<string>>> GetModelDependenciesAsync(Guid workspaceId);
         Task AddModelAsync(Guid workspaceId, Guid modelId, bool isPrivate);
         Task RemoveModelAsync(Guid workspaceId, string modelUri);

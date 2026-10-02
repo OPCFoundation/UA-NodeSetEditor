@@ -6,10 +6,8 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
-import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
-import CloseIcon from '@mui/icons-material/Close';
-import { useTheme } from '@mui/material/styles';
+import { CloseIcon } from '../icons';
 
 import { ContentLoader } from './ContentLoader';
 
@@ -32,6 +30,12 @@ interface ModelDialogProps {
    error?: Error | null;
    maxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | false;
    fullWidth?: boolean;
+   /**
+    * Blocks every route out of the dialog (backdrop, Escape, the title's X and
+    * Cancel). For an operation in flight that cannot be cancelled — closing would
+    * only hide the progress while the request keeps running.
+    */
+   disableClose?: boolean;
 }
 
 export const ModelDialog: React.FC<ModelDialogProps> = ({
@@ -44,75 +48,58 @@ export const ModelDialog: React.FC<ModelDialogProps> = ({
    isError = false,
    error = null,
    maxWidth = 'sm',
-   fullWidth = true
+   fullWidth = true,
+   disableClose = false
 }) => {
    const { t } = useTranslation();
-   const theme = useTheme();
 
    return (
-      <Dialog
-         open={open}
-         onClose={onClose}
-         maxWidth={maxWidth}
-         fullWidth={fullWidth}
-         slotProps={{
-            paper: {
-               sx: {
-                  border: `4px solid ${theme.palette.primary.main}`,
-                  borderTop: 'none',
-                  borderRadius: 2
-               }
-            }
-         }}
-      >
-         <DialogTitle
-            sx={{
-               display: 'flex',
-               alignItems: 'center',
-               justifyContent: 'space-between',
-               backgroundColor: theme.palette.primary.main,
-               color: theme.palette.primary.contrastText,
-               py: 1,
-               minHeight: '52px'
-            }}
-         >
-            {title}
-            <IconButton
-               aria-label="close"
-               onClick={onClose}
-               size="small"
-               sx={{ color: theme.palette.primary.contrastText }}
-            >
-               <CloseIcon />
-            </IconButton>
-         </DialogTitle>
-         <DialogContent sx={{ p: 0, m: 0 }}>
-            <ContentLoader isLoading={isLoading} isError={isError} error={error}>
-               {children}
-            </ContentLoader>
-         </DialogContent>
-         <DialogActions sx={{ justifyContent: 'flex-start', px: 3, py: 2 }}>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-               {actions.map((action, index) => (
-                  <Button
-                     key={index}
-                     variant={action.variant ?? 'contained'}
-                     color={action.color ?? 'primary'}
-                     onClick={action.onClick}
-                     disabled={action.disabled || isLoading}
-                  >
-                     {action.label}
-                  </Button>
-               ))}
-               <Button
-                  variant="text"
-                  onClick={onClose}
-                  disabled={isLoading}
-               >
-                  {t('common.cancel', 'Cancel')}
-               </Button>
-            </Box>
-         </DialogActions>
-      </Dialog>
+	  <Dialog
+		 open={open}
+		 onClose={disableClose ? undefined : onClose}
+		 maxWidth={maxWidth}
+		 fullWidth={fullWidth}
+	  >
+		 <DialogTitle
+			sx={{
+			   display: 'flex',
+			   alignItems: 'center',
+			   justifyContent: 'space-between',
+			   gap: 8,
+			   pr: 12,
+			}}
+		 >
+			{title}
+			<IconButton aria-label={t('common.close', 'Close')} onClick={onClose} disabled={disableClose} size="small">
+			   <CloseIcon fontSize="small" />
+			</IconButton>
+		 </DialogTitle>
+		 {/* The dialog's gutter lives here, not in each caller. Callers add their own
+		     p: 3–6 (3–6px, theme spacing is 1px) for internal rhythm, which on its own
+		     left outlined inputs almost touching the dialog edge. 16px here brings every
+		     dialog to a ~20px gutter, matching DialogTitle and DialogActions. */}
+		 <DialogContent dividers sx={{ px: 16, py: 12, m: 0 }}>
+			<ContentLoader isLoading={isLoading} isError={isError} error={error}>
+			   {children}
+			</ContentLoader>
+		 </DialogContent>
+		 <DialogActions>
+			{/* Secondary (Cancel) on the left, primary action(s) on the right. */}
+			<Button variant="outlined" onClick={onClose} disabled={isLoading || disableClose}>
+			   {t('common.cancel', 'Cancel')}
+			</Button>
+			{actions.map((action, index) => (
+			   <Button
+				  key={index}
+				  variant={action.variant ?? 'contained'}
+				  color={action.color ?? 'primary'}
+				  onClick={action.onClick}
+				  disabled={action.disabled || isLoading}
+			   >
+				  {action.label}
+			   </Button>
+			))}
+		 </DialogActions>
+	  </Dialog>
    );
 };

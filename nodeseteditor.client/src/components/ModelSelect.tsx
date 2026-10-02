@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 
+import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
@@ -9,8 +10,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
 
-import ListAltIcon from '@mui/icons-material/ListAlt';
-import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import { ListAltIcon, ExpandMoreIcon } from '../icons';
 
 import api from '../api/axios.api';
 import { idToUrn } from '../model/WorkspaceDescription';
@@ -63,30 +63,32 @@ export const ModelSelect: React.FC<ModelSelectProps> = ({ workspaceId, value, on
       <>
          <Tooltip title={t('sidebarToolbar.modelTooltip', 'Active model')}>
             <Button
-               size="small"
-               color="primary"
                onClick={(e) => setAnchor(e.currentTarget)}
-               startIcon={<ListAltIcon fontSize="small" />}
-               endIcon={<ArrowDropDownIcon fontSize="small" />}
+               startIcon={<ListAltIcon />}
+               endIcon={<ExpandMoreIcon />}
                sx={{
-                  textTransform: 'none',
                   minWidth: 0,
                   flex: 1,
                   justifyContent: 'flex-start',
                   overflow: 'hidden',
-                  color: 'primary.main',
-                  // AppBar inherits white as its on-primary text colour, and
-                  // the Button picks that up for start/end icons unless we
-                  // pin the SVG fill back to primary explicitly.
-                  '& .MuiButton-startIcon, & .MuiButton-endIcon': {
-                     color: 'primary.main',
-                  },
-                  '& .MuiSvgIcon-root': { color: 'primary.main' },
+                  borderRadius: 10,
+                  py: 6,
+                  px: 10,
+                  color: 'text.primary',
+                  bgcolor: 'background.paper',
+                  border: 1,
+                  borderColor: 'divider',
+                  '& .MuiButton-endIcon': { ml: 'auto' },
                }}
             >
-               <Typography variant="body2" noWrap sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {currentModelLabel}
-               </Typography>
+               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2 }}>
+                     {t('sidebarToolbar.modelLabel', 'Model')}
+                  </Typography>
+                  <Typography variant="body1" noWrap sx={{ fontWeight: 600, lineHeight: 1.3, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                     {currentModelLabel}
+                  </Typography>
+               </Box>
             </Button>
          </Tooltip>
          <Menu

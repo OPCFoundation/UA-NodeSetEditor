@@ -13,9 +13,7 @@ import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import CheckIcon from '@mui/icons-material/Check';
-import SearchIcon from '@mui/icons-material/Search';
-import RefreshIcon from '@mui/icons-material/Refresh';
+import { CheckIcon, SearchIcon, RefreshIcon } from '../icons';
 import { useTheme, alpha } from '@mui/material/styles';
 
 import api, { ApiError } from '../api/axios.api';
@@ -239,10 +237,10 @@ export const ImportSharedModelDialog: React.FC<ImportSharedModelDialogProps> = (
                   onChange={(_, v) => handleViewModeChange(v as ViewMode | null)}
                   sx={{ height: 40, mx: 2 }}
                >
-                  <ToggleButton value="all" sx={{ textTransform: 'none', whiteSpace: 'nowrap' }}>
+                  <ToggleButton value="all">
                      {t('modelLibrary.viewAll', 'All')}
                   </ToggleButton>
-                  <ToggleButton value="selected" sx={{ textTransform: 'none', whiteSpace: 'nowrap' }}>
+                  <ToggleButton value="selected">
                      {t('modelLibrary.viewSelected', 'Selected')} ({selectedModels.length})
                   </ToggleButton>
                </ToggleButtonGroup>
@@ -278,10 +276,10 @@ export const ImportSharedModelDialog: React.FC<ImportSharedModelDialogProps> = (
                      onChange={(_, v) => v && setSortMode(v as SortMode)}
                      sx={{ bgcolor: theme.palette.background.paper }}
                   >
-                     <ToggleButton value="newest" sx={{ textTransform: 'none' }}>
+                     <ToggleButton value="newest">
                         {t('modelLibrary.sortNewest', 'Newest')}
                      </ToggleButton>
-                     <ToggleButton value="alpha" sx={{ textTransform: 'none' }}>
+                     <ToggleButton value="alpha">
                         {t('modelLibrary.sortAlpha', 'A–Z')}
                      </ToggleButton>
                   </ToggleButtonGroup>

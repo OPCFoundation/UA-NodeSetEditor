@@ -1,11 +1,8 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useTheme } from '@mui/material/styles';
-import PersonIcon from '@mui/icons-material/Person';
-import LoginIcon from '@mui/icons-material/Login';
-import LogoutIcon from '@mui/icons-material/Logout';
-import DarkModeIcon from '@mui/icons-material/DarkMode';
+import { useTheme, alpha } from '@mui/material/styles';
+import { PersonIcon, LoginIcon, LogoutIcon, DarkModeIcon } from '../icons';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -227,14 +224,21 @@ export default function SettingsMenu() {
             <Button
                onClick={toggleMouseHandler(true)}
                sx={{
-                  // Theme-aware primary instead of hardcoded lightBlue,
-                  // so dark mode's amber primary takes over the hover colour.
-                  my: 2, display: 'flex', borderRightWidth: '0px', minWidth: '0px',
-                  '&:hover .MuiAvatar-root': { bgcolor: 'primary.dark' },
-                  '& .MuiSvgIcon-root': { color: 'primary.dark' },
-                  '&:hover .MuiSvgIcon-root': { color: 'primary.light' },
-                  '& div': { transition: 'color 0.2s' },
-                  '&:hover div': { color: 'primary.dark' }
+                  // This button sits ON the header bar, so it is tinted from the bar's
+                  // foreground, not from `primary`: primary.dark is a deep navy that
+                  // disappears against the brand-blue bar.
+                  my: 2, display: 'flex', borderRightWidth: '0px', minWidth: '0px', backgroundColor: 'transparent', '&:hover': { backgroundColor: 'transparent' },
+                  color: (theme) => theme.palette.appBar.contrastText,
+                  '& .MuiAvatar-root': {
+                     bgcolor: (theme) => alpha(theme.palette.appBar.contrastText, 0.22),
+                     transition: 'background-color 0.2s'
+                  },
+                  '&:hover .MuiAvatar-root': { bgcolor: (theme) => theme.palette.appBar.contrastText },
+                  '& .MuiSvgIcon-root': {
+                     color: (theme) => theme.palette.appBar.contrastText,
+                     transition: 'color 0.2s'
+                  },
+                  '&:hover .MuiSvgIcon-root': { color: (theme) => theme.palette.appBar.main }
                }}
             >
                <Avatar sx={{ height: '24px', width: '24px' }}>
@@ -249,13 +253,19 @@ export default function SettingsMenu() {
             <Button
                onClick={() => setLoginOpen(true)}
                sx={{
-                  my: 2, display: 'flex', borderRightWidth: '0px', minWidth: '0px',
-                  '& .MuiAvatar-root': { bgcolor: 'primary.light', transition: 'background-color 0.2s' },
-                  '&:hover .MuiAvatar-root': { bgcolor: 'primary.dark' },
-                  '& .MuiSvgIcon-root': { color: 'primary.dark' },
-                  '&:hover .MuiSvgIcon-root': { color: 'primary.light' },
-                  '& div': { transition: 'color 0.2s' },
-                  '&:hover div': { color: 'primary.dark' },
+                  // Same bar-relative tinting as the authenticated trigger above.
+                  my: 2, display: 'flex', borderRightWidth: '0px', minWidth: '0px', backgroundColor: 'transparent', '&:hover': { backgroundColor: 'transparent' },
+                  color: (theme) => theme.palette.appBar.contrastText,
+                  '& .MuiAvatar-root': {
+                     bgcolor: (theme) => alpha(theme.palette.appBar.contrastText, 0.22),
+                     transition: 'background-color 0.2s'
+                  },
+                  '&:hover .MuiAvatar-root': { bgcolor: (theme) => theme.palette.appBar.contrastText },
+                  '& .MuiSvgIcon-root': {
+                     color: (theme) => theme.palette.appBar.contrastText,
+                     transition: 'color 0.2s'
+                  },
+                  '&:hover .MuiSvgIcon-root': { color: (theme) => theme.palette.appBar.main },
                }}
             >
                <Avatar sx={{ height: '24px', width: '24px' }}>

@@ -3,8 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useTheme, type SxProps, type Theme } from '@mui/material';
 import AppBar from '@mui/material/AppBar';
-import SearchIcon from '@mui/icons-material/Search';
-import RefreshIcon from '@mui/icons-material/Refresh';
+import { SearchIcon, RefreshIcon } from '../icons';
 import IconButton from '@mui/material/IconButton';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -33,7 +32,12 @@ export const SearchBar = ({ hint, value, onChange, onRefresh, sx, children, righ
             ...(Object(sx)),
          }}
       >
-         <AppBar position="static" sx={{ backgroundColor: theme.palette.grey[200] }}>
+         {/* This bar is a panel surface, not app chrome: it keeps the page's text colour
+             rather than the header/footer's (which is white over the brand-blue bar). */}
+         <AppBar
+            position="static"
+            sx={{ backgroundColor: theme.palette.grey[200], color: 'text.primary' }}
+         >
             {/* Stack drops to a column on xs/sm — each child (search box,
                 page-specific filters via `children`, right actions, refresh)
                 becomes its own row. On md+ the original single-row toolbar
@@ -58,14 +62,18 @@ export const SearchBar = ({ hint, value, onChange, onRefresh, sx, children, righ
                      flex: { md: '0 0 auto' },
                   }}
                >
-                  <SearchIcon sx={{ color: theme.palette.grey[800] }} />
+                  {/* grey[800] is a fixed mid-grey, which all but vanished against this
+                      bar in dark mode; text.secondary tracks the mode. */}
+                  <SearchIcon sx={{ color: 'text.secondary' }} />
+                  {/* The box sizes to its content, so on md+ it needs a floor wide enough for
+                      the longest placeholder ("Search conformance units…") — it was clipping. */}
                   <TextField
                      variant="outlined"
                      placeholder={hint ?? t('main.search')}
                      size="small"
                      value={value}
                      onChange={onChange}
-                     sx={{ flex: 1, minWidth: 0 }}
+                     sx={{ flex: 1, minWidth: { xs: 0, md: 280 } }}
                   />
                </Box>
                {children}
@@ -78,7 +86,7 @@ export const SearchBar = ({ hint, value, onChange, onRefresh, sx, children, righ
                   <IconButton
                      onClick={onRefresh}
                      size="small"
-                     sx={{ color: theme.palette.grey[800], alignSelf: { xs: 'flex-end', md: 'center' } }}
+                     sx={{ color: 'text.secondary', alignSelf: { xs: 'flex-end', md: 'center' } }}
                      title={t('common.refresh', 'Refresh')}
                   >
                      <RefreshIcon />

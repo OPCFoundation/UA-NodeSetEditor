@@ -35,27 +35,17 @@ import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
-import Avatar from '@mui/material/Avatar';
 import Tooltip from '@mui/material/Tooltip';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Link from '@mui/material/Link';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
-import EditIcon from '@mui/icons-material/Edit';
-import AddIcon from '@mui/icons-material/Add';
-import DeleteIcon from '@mui/icons-material/Delete';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import SubdirectoryArrowRightIcon from '@mui/icons-material/SubdirectoryArrowRight';
-import FolderIcon from '@mui/icons-material/Folder';
-import DataObjectIcon from '@mui/icons-material/DataObject';
-import FunctionsIcon from '@mui/icons-material/Functions';
-import LabelIcon from '@mui/icons-material/Label';
-import SettingsEthernetIcon from '@mui/icons-material/SettingsEthernet';
-import { useTheme } from '@mui/material/styles';
+import {
+   NodeIcon,
+   ArrowBackIcon, ArrowForwardIcon, ArrowBackIosIcon, EditIcon, AddIcon, DeleteIcon,
+   KeyboardArrowUpIcon, KeyboardArrowDownIcon, VisibilityIcon, VisibilityOffIcon,
+   SubdirectoryArrowRightIcon, ObjectIcon, DataVariableIcon, PropertyIcon, MethodIcon,
+   InterfaceIcon, AccountTreeIcon, ContentCopyIcon, CallSplitIcon, PlaylistAddIcon,
+   ListAltIcon,
+} from '../icons';
 import type { SxProps, Theme } from '@mui/material/styles';
 
 import { StripedTable } from './StripedTable';
@@ -78,18 +68,13 @@ import type { AddReferenceData } from './AddReferenceDialog';
 import { NodeIdLink } from './NodeIdLink';
 import { DataTypeCell } from './DataTypeCell';
 import { ValueEditor } from './ValueEditor';
-import { getNodeClassIcon } from './nodeClassIcon';
+import { IconSize } from '../icons/spec';
 import {
    autoInstantiateMandatoryChildren,
    autoInstantiateMandatoryDescendants,
    stripNamespace,
 } from '../utils/instantiateUtils';
 import type { TemplateChildDto } from '../utils/instantiateUtils';
-import AccountTreeIcon from '@mui/icons-material/AccountTree';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import CallSplitIcon from '@mui/icons-material/CallSplit';
-import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
-import ListAltIcon from '@mui/icons-material/ListAlt';
 
 const NodeClassValues = {
    UAObject: 1,
@@ -136,6 +121,8 @@ interface NodeChildDto {
    typeDefinitionId?: string;
    dataTypeId?: string;
    modellingRuleId?: string;
+   /** Icon concept key from the server; see Node.icon. */
+   icon?: string;
    valueRank?: number | null;
    browseNameRaw?: string;
    isInherited?: boolean;
@@ -200,10 +187,12 @@ function stripModelPrefix(value: string): string {
 
 /** Tooltip label + glyph for each per-NodeClass child-create button. */
 const CHILD_KIND_META: Record<ChildKind, { labelKey: string; icon: React.ReactElement }> = {
-   object: { labelKey: 'typeDetail.createObject', icon: <FolderIcon /> },
-   datavariable: { labelKey: 'typeDetail.createDataVariable', icon: <DataObjectIcon /> },
-   property: { labelKey: 'typeDetail.createProperty', icon: <LabelIcon /> },
-   method: { labelKey: 'typeDetail.createMethod', icon: <FunctionsIcon /> },
+   // Same glyphs the tree uses for these kinds — they come from icon-map.json's
+   // nodeIcon section, so the button and the row it creates cannot disagree.
+   object: { labelKey: 'typeDetail.createObject', icon: <ObjectIcon /> },
+   datavariable: { labelKey: 'typeDetail.createDataVariable', icon: <DataVariableIcon /> },
+   property: { labelKey: 'typeDetail.createProperty', icon: <PropertyIcon /> },
+   method: { labelKey: 'typeDetail.createMethod', icon: <MethodIcon /> },
 };
 
 export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
@@ -217,7 +206,6 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
    onTabChange,
 }) => {
    const { t } = useTranslation();
-   const theme = useTheme();
    const queryClient = useQueryClient();
    const { setSelectedType, setNavigateToNode } = React.useContext(WorkspaceContext);
    const validTabs: TabId[] = ['attributes', 'fields', 'value', 'children', 'references'];
@@ -532,6 +520,7 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
             dataType: formatBrowseName(n.dataTypeName, nsMap) || n.dataType,
             modellingRule: n.modellingRule,
             typeDefinitionId: n.typeDefinition,
+            icon: n.icon,
             dataTypeId: n.dataType,
             modellingRuleId: undefined,
             valueRank: n.valueRank,
@@ -1389,16 +1378,15 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
             : ''
          }>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-               <Avatar
-                  sx={{
-                     width: 22,
-                     height: 22,
-                     bgcolor: theme.palette.grey[600],
-                     color: theme.palette.grey[200],
-                  }}
-               >
-                  {getNodeClassIcon(child.nodeClass)}
-               </Avatar>
+               {/* Bare glyph, no avatar: the grey circle this used to sit in made the
+                   NodeClass unreadable (the Variable glyph measured 1.01:1 against it)
+                   and gave the same node a different look from the tree. */}
+               <NodeIcon
+                  nodeClass={child.nodeClass}
+                  icon={child.icon}
+                  size={IconSize.inline}
+                  sx={{ color: 'text.secondary' }}
+               />
                <span style={{ fontStyle: child.isInherited ? 'italic' : undefined }}>
                   <NodeIdLink
                      nodeId={child.nodeId}
@@ -1553,16 +1541,12 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
             <IconButton onClick={handleBackClick} title={t('typeDetail.back')}>
                <ArrowBackIosIcon />
             </IconButton>
-            <Avatar
-               sx={{
-                  width: 32,
-                  height: 32,
-                  bgcolor: theme.palette.grey[600],
-                  color: theme.palette.grey[200],
-               }}
-            >
-               {getNodeClassIcon(activeNodeClass)}
-            </Avatar>
+            <NodeIcon
+               nodeClass={activeNodeClass}
+               icon={attributesData?.raw.icon}
+               size={IconSize.header}
+               sx={{ color: 'text.secondary' }}
+            />
             {drillStack.length > 0 ? (
                <Breadcrumbs separator=">" sx={{ flex: 1 }}>
                   <Link
@@ -1640,7 +1624,9 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
             {showChildCreateButtons && showAddInterface && (
                <Tooltip title={t('typeDetail.addInterface', 'Add Interface')}>
                   <IconButton onClick={() => setAddInterfaceOpen(true)} size="small">
-                     <SettingsEthernetIcon />
+                     {/* The BaseInterfaceType glyph — the same one an interface
+                         ObjectType shows in the tree. */}
+                     <InterfaceIcon />
                   </IconButton>
                </Tooltip>
             )}

@@ -8,8 +8,7 @@ import {
    Typography
 } from '@mui/material';
 
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
-import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import { ErrorOutlineIcon, WarningAmberIcon } from '../icons';
 import type { ApiError } from '../api/axios.api';
 
 interface ContentLoaderProps {

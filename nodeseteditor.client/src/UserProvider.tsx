@@ -88,6 +88,8 @@ export const UserProvider = ({ children }: UserProviderProps) => {
    const [termsAccepted, setTermsAccepted] = React.useState<boolean>(true);
    // Defaults closed: until the server says otherwise, the beta formats stay hidden.
    const [betaTester, setBetaTester] = React.useState<boolean>(false);
+   // Defaults closed too: nobody is treated as an admin until the server says so.
+   const [admin, setAdmin] = React.useState<boolean>(false);
 
    // Single setter that updates React state, mirrors to localStorage (so
    // pre-auth reloads still respect the last choice), and best-effort
@@ -156,7 +158,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
       if (!userId) return;
       if (hasFetchedPrefsForUser.current === userId) return;
       hasFetchedPrefsForUser.current = userId;
-      api.get<{ themeMode?: string, name?: string, defaultDomain?: string, defaultLicense?: string, defaultLicenseUrl?: string, defaultCopyrightHolder?: string, termsAccepted?: boolean, betaTester?: boolean }>('/opcua/v1/user/preferences')
+      api.get<{ themeMode?: string, name?: string, defaultDomain?: string, defaultLicense?: string, defaultLicenseUrl?: string, defaultCopyrightHolder?: string, termsAccepted?: boolean, betaTester?: boolean, admin?: boolean }>('/opcua/v1/user/preferences')
          .then((res) => {
             const serverTheme = res.data?.themeMode;
             if (serverTheme === ThemeModes.Light || serverTheme === ThemeModes.Dark) {
@@ -170,6 +172,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
             if (res.data?.defaultCopyrightHolder != null) setDefaultCopyrightHolderRaw(res.data.defaultCopyrightHolder);
             setTermsAccepted(res.data?.termsAccepted ?? false);
             setBetaTester(res.data?.betaTester ?? false);
+            setAdmin(res.data?.admin ?? false);
          })
          .catch(() => { /* best-effort */ });
    }, [userId]);
@@ -303,7 +306,14 @@ export const UserProvider = ({ children }: UserProviderProps) => {
    const requestEmailCode = React.useCallback(async (emailAddr: string) => {
       clearLoginError();
       try {
-         await api.post('/auth/request-code', { email: emailAddr.trim() });
+         const res = await api.post<{ devCode?: string }>('/auth/request-code', { email: emailAddr.trim() });
+         if (res.data?.devCode) {
+            // Development only: the server has no mail provider and returned the code directly.
+            console.info(`[DEV] Sign-in code for ${emailAddr.trim()}: ${res.data.devCode}`);
+            // Copy to the clipboard and show it pre-selected in a prompt so it can be copied manually too.
+            navigator.clipboard?.writeText(res.data.devCode).catch(() => { });
+            window.prompt('Development mode (no email provider configured). Your sign-in code (already copied to the clipboard):', res.data.devCode);
+         }
       } catch (err) {
          throw new Error(extractAuthMessage(err, 'Could not send the code. Please try again.'));
       }
@@ -407,6 +417,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
       termsAccepted,
       acceptTerms,
       betaTester,
+      admin,
    } as UserContextType;
 
    return (

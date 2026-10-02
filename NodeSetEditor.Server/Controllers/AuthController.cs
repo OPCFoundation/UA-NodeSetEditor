@@ -26,6 +26,7 @@ namespace NodeSetEditor.Server.Controllers
         private readonly TestModeOptions _testMode;
         private readonly EmailDomainPolicy _domains;
         private readonly bool _requireSecureCookie;
+        private readonly IEmailSender _emailSender;
 
         public AuthController(
             EmailVerificationService verification,
@@ -33,8 +34,10 @@ namespace NodeSetEditor.Server.Controllers
             IWebHostEnvironment env,
             TestModeOptions testMode,
             EmailDomainPolicy domains,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IEmailSender emailSender)
         {
+            _emailSender = emailSender;
             _verification = verification;
             _cookie = cookie;
             _env = env;
@@ -58,6 +61,14 @@ namespace NodeSetEditor.Server.Controllers
             // the endpoint still reveals nothing — it simply never receives a code.
             if (_domains.IsAllowed(email))
                 await _verification.RequestCodeAsync(email, ct);
+
+            // Local development without a mail provider: hand the code back so sign-in can be
+            // completed without digging through the server log. Never active outside Development.
+            if (_env.IsDevelopment() && _emailSender is LoggingEmailSender devSender
+                && devSender.TryTakeLastCode(EmailVerificationService.Normalize(email), out var devCode))
+            {
+                return Ok(new { message = "Development mode: no email provider configured.", devCode });
+            }
 
             // Deliberately generic — the response is identical whether the address is new,
             // known, throttled, or undeliverable, so this endpoint reveals nothing.

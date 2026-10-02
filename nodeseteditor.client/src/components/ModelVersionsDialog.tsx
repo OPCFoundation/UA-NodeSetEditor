@@ -7,7 +7,7 @@ import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import DeleteIcon from '@mui/icons-material/Delete';
+import { DeleteIcon } from '../icons';
 
 import api, { ApiError } from '../api/axios.api';
 import { idToUrn } from '../model/WorkspaceDescription';

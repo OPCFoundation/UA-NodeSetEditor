@@ -43,7 +43,7 @@ const TermsConsentDialog: React.FC<TermsConsentDialogProps> = ({ onAgree, onSign
             </Stack>
          </DialogContent>
          <DialogActions>
-            <Button onClick={onSignOut} color="inherit">
+            <Button onClick={onSignOut} variant="outlined">
                {t('terms.signOut')}
             </Button>
             <Button onClick={onAgree} variant="contained" color="primary">

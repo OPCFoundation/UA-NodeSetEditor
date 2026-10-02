@@ -86,6 +86,12 @@ export type UserContextType = {
     * whether the options are offered.
     */
    betaTester: boolean,
+   /**
+    * True when the user may edit shared/standard models on everyone's behalf (the server's
+    * AdminEmails allow-list). Only decides whether the model dialog is offered in editable
+    * form; the server enforces the same rule on every write.
+    */
+   admin: boolean,
 }
 
 export const DefaultUserName = 'Anonymous';
@@ -123,4 +129,5 @@ export const UserContext = React.createContext<UserContextType>({
    termsAccepted: true,
    acceptTerms: () => Promise.resolve(),
    betaTester: false,
+   admin: false,
 });

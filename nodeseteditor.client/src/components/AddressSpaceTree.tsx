@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { SimpleTreeView } from '@mui/x-tree-view/SimpleTreeView';
+import { treeSlots, treeSx } from './treeStyles';
 
 import api from '../api/axios.api';
 import { slugifyNodeId } from '../api/slug';
@@ -291,7 +292,7 @@ export const AddressSpaceTree: React.FC = () => {
          )}
          <Box sx={{ p: 1, flex: 1, overflowY: 'auto', minHeight: 0 }}>
             {focused && focusRoot ? (
-               <SimpleTreeView
+               <SimpleTreeView slots={treeSlots} sx={treeSx}
                   expandedItems={expandedItems}
                   onExpandedItemsChange={handleExpandedItemsChange}
                >

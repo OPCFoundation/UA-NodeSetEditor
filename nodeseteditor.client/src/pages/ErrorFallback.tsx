@@ -6,7 +6,7 @@ import {
    Typography
 } from '@mui/material';
 
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import { ErrorOutlineIcon } from '../icons';
 
 import type { ApiError } from "../api/axios.api";
 

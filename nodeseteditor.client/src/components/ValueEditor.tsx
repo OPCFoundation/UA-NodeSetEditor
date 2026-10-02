@@ -13,8 +13,7 @@ import Alert from '@mui/material/Alert';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Tooltip from '@mui/material/Tooltip';
-import SchemaIcon from '@mui/icons-material/Schema';
-import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
+import { SchemaIcon, AutoFixHighIcon } from '../icons';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 

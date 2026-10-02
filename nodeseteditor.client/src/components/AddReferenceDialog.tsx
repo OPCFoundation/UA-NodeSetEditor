@@ -17,7 +17,7 @@ import Checkbox from '@mui/material/Checkbox';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import Tooltip from '@mui/material/Tooltip';
-import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import { AccountTreeIcon } from '../icons';
 
 import { ModelDialog } from './ModelDialog';
 import { NodeIdAutocomplete } from './NodeIdAutocomplete';

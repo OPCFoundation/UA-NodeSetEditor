@@ -41,6 +41,14 @@ namespace NodeSetEditor.Server.Model
         [JsonPropertyName("copyrightHolder")]
         public string? CopyrightHolder { get; set; }
 
+        /// <summary>
+        /// Profile group the NodeSet's conformance units are assessed against (a
+        /// <c>fullName</c> from profiles.opcfoundation.org, e.g. "UACore 1.05"); null = none.
+        /// Edited in the model dialog and shown on the conformance-unit view.
+        /// </summary>
+        [JsonPropertyName("profileGroupName")]
+        public string? ProfileGroupName { get; set; }
+
         [JsonPropertyName("errorMessage")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? ErrorMessage { get; set; }

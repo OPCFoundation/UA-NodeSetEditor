@@ -99,6 +99,20 @@ namespace Opc.Ua.RestfulApi
         [JsonPropertyName("typeDefinitionName")]
         public string? TypeDefinitionName { get; set; }
 
+        /// <summary>
+        /// Icon concept key for rendering this node — "folder", "property",
+        /// "interfaceType", … Resolved from the stored key on the node itself (types) or
+        /// on its TypeDefinition (instances). Null when no rule applies, which means the
+        /// client falls back to a default for the NodeClass; clients must handle null
+        /// rather than treat it as an error.
+        ///
+        /// A key, never a glyph: the mapping from key to image belongs to each UI (the
+        /// web client keeps it in src/icons/icon-map.json), so the same key serves a
+        /// React, Blazor or Razor front end.
+        /// </summary>
+        [JsonPropertyName("icon")]
+        public string? Icon { get; set; }
+
         [JsonPropertyName("modellingRule")]
         public string? ModellingRule { get; set; }
 
@@ -129,6 +143,21 @@ namespace Opc.Ua.RestfulApi
 
         [JsonPropertyName("hasNoSubtypes")]
         public bool? HasNoSubtypes { get; set; }
+
+        /// <summary>
+        /// True when the subtype walk stopped at this row because it hit the requested depth, so
+        /// the response does NOT contain this node's subtypes even though it has some. A client
+        /// that prefetches a shallow tree must re-browse from this node when the user expands it.
+        ///
+        /// <para>Absent means the opposite: whatever subtypes this node has are already in the
+        /// same response (or it has none — see <see cref="HasNoSubtypes"/>). Without this flag a
+        /// client has to guess "no children in the payload" = "not yet fetched", which is wrong
+        /// for a node that genuinely has none and hides real subtypes when it guesses the other
+        /// way.</para>
+        /// </summary>
+        [JsonPropertyName("subtypesTruncated")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? SubtypesTruncated { get; set; }
 
         [JsonPropertyName("hasNoChildren")]
         public bool? HasNoChildren { get; set; }

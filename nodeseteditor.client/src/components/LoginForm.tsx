@@ -14,11 +14,7 @@ import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import CloseIcon from '@mui/icons-material/Close';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import MicrosoftIcon from '@mui/icons-material/Microsoft';
-import EmailIcon from '@mui/icons-material/Email';
-import ScienceIcon from '@mui/icons-material/Science';
+import { CloseIcon, HelpOutlineIcon, MicrosoftIcon, EmailIcon, ScienceIcon } from '../icons';
 
 import { UserContext } from '../UserContext';
 import { safeOpcFoundationUrl } from '../utils/safeUrl';
@@ -269,7 +265,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
                </Stack>
             </DialogContent>
             <DialogActions>
-               <Button onClick={() => setHelpOpen(false)}>{t('common.close')}</Button>
+               <Button variant="contained" onClick={() => setHelpOpen(false)}>{t('common.close')}</Button>
             </DialogActions>
          </Dialog>
       </Stack>

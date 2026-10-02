@@ -1,4 +1,4 @@
-﻿{
+{
   "validation": {
     "shortName": "Validate Specification",
     "title": "Validate Specification",
@@ -63,6 +63,7 @@
   },
   "common": {
     "cancel": "Cancel",
+    "back": "Back",
     "ok": "OK",
     "deleting": "Deleting...",
     "save": "Save",
@@ -71,7 +72,11 @@
     "reset": "Reset",
     "select": "Select",
     "uploading": "Uploading...",
-    "notSet": "Not set"
+    "notSet": "Not set",
+    "more": "More",
+    "learnMore": "Learn more",
+    "saving": "Saving…",
+    "betaNotice": "This site is in public beta. Back up your models with Download, and send feedback to webmaster@opcfoundation.org."
   },
   "nodePicker": {
     "title": "Select a Node",
@@ -165,26 +170,35 @@
   "welcomeWizard": {
     "shortName": "Welcome Wizard",
     "title": "Welcome to the OPC UA NodeSet Editor",
+    "tagline": "Describe your machines and processes in a common language that any OPC UA system understands.",
     "summary": "The editor allows users to create an information model (a.k.a. a NodeSet) for a manufacturing asset or process, with the goal of arriving at common, reusable interfaces for accessing data. As a key design principle, all NodeSets should derive from (extend or reuse) other NodeSets. You can start with core and standardized building blocks provided by the OPC Foundation, or import a starting point created by another designer, standards group, or organization."
   },
   "aboutModelLibraryWizard": {
-    "title": "Managing Workspaces",
-    "intro": "Workspaces are collections of Models that can be viewed and modified.",
-    "line1": "A Workspace corresponds to an OPC UA Server's AddressSpace.",
-    "line2": "A Workspace should include all Models needed to resolve any references.",
-    "line3": "A Shared Models can be used by multiple Workspaces and are always read-only.",
-    "line4": "A Private Models are local to a specific Workspace and can be edited.",
-    "action": "Start Managing Workspaces"
+    "title": "Workspaces",
+    "summary": "Set up a workspace and add models to it.",
+    "intro": "Each workspace here is a collection of models that together form its address space.",
+    "line1": "Add every model the workspace needs, so all references can be resolved.",
+    "line2": "You can download the combined NodeSet and load it into a real OPC UA server.",
+    "line3": "Shared models can be used by many workspaces and are always read-only.",
+    "line4": "Private models belong to a single workspace and can be edited.",
+    "action": "Open Workspaces"
   },
   "aboutTypeLibraryWizard": {
-    "title": "Managing Models",
+    "title": "Models",
+    "summary": "Browse and build the types and objects that describe your equipment.",
     "intro": "A Model is a collection of Nodes created by a single authority and is identified by a globally unique URI assigned by that authority. Models can be exported in various file formats, with any file containing a Model referred to as a NodeSet. Models can be imported into a Workspace via the UACloudLibrary or by uploading a NodeSet. Additionally, new Types and Instances can be created within private Models and Models can be shared so they can be used by other Workspaces.",
-    "action": "Start Managing Models"
+    "action": "Open Models"
+  },
+  "aboutCsvImportWizard": {
+    "title": "Create Models from CSV",
+    "summary": "Turn a CSV tag list from an existing plant into an information model.",
+    "action": "Import Tags from CSV"
   },
   "aboutModelValidationWizard": {
-    "title": "Validating Models",
+    "title": "Validation",
+    "summary": "Check that a specification document matches its model.",
     "intro": "Authors of OPC UA Companion Specifications can use the tool to check that the document matches the NodeSet. Each private model has a 'validate' button which brings up a page used to upload Word documents and start a test to compare it to the Model. The Word documents must follow the CS guidelines published by the OPC Foundation.",
-    "action": "Start Validating Models"
+    "action": "Start Validating"
   },
   "addressSpaceTree": {
     "title": "Address Space",
@@ -195,6 +209,10 @@
   },
   "sidebarToolbar": {
     "modelTooltip": "Active model",
+    "modelLabel": "Model",
+    "workspaceLabel": "Workspace",
+    "focusLabel": "Focus",
+    "syncLabel": "Locate",
     "workspaceTooltip": "Active workspace",
     "workspaceHeader": "Workspace: {{name}}",
     "allModels": "All Models",
@@ -215,20 +233,67 @@
   "topMenu": {
     "openSidebar": "Open sidebar",
     "homeTooltip": "Home",
-    "helpTooltip": "Help"
+    "helpTooltip": "Help",
+    "home": "Home",
+    "workspaces": "Workspaces",
+    "models": "Models"
   },
   "typeLibrary": {
-    "shortName": "Manage Models",
-    "title": "Manage Models",
+    "shortName": "Models",
+    "title": "Models",
     "namespace": "Namespace",
     "allNamespaces": "All Namespaces",
     "nodeClass": "Node Class",
     "createType": "Create type",
     "createTypeTooltip": "Create a new {{nodeClass}} in this namespace"
   },
+  "csvImport": {
+    "title": "Import CSV",
+    "next": "Next",
+    "backToFile": "Change file",
+    "noWorkspace": "No workspace is available to import into. Create one from Manage Workspaces.",
+    "startFailed": "Could not start the import",
+    "pickFile": "Choose file...",
+    "chooseFilePrompt": "Choose the CSV file to import. The next step shows how its columns will be mapped, before anything is created.",
+    "pickHint": "Many configurations for existing factories are stored in CSVs for similar files. This wizard allows you to quickly create an OPC UA Information Model from CSV files. The column names are used to create the model and you will be prompted to refine the mapping after the file is loaded.",
+    "fileSummary": "{{fileName}} — {{rowCount}} rows, {{columnCount}} columns, delimiter \"{{delimiter}}\"",
+    "detailsSummary": "{{rowCount}} rows from {{fileName}} will become {{rowCount}} Variables, using {{mappedColumnCount}} of {{columnCount}} columns.",
+    "noRows": "The file has a header row but no data rows.",
+    "objectName": "Object Name",
+    "parent": "Parent",
+    "noParent": "(none — top level)",
+    "newFolder": "New Folder",
+    "folderName": "Folder Name",
+    "createTypeToo": "Create Type",
+    "typeName": "Type Name",
+    "columnHeader": "Column",
+    "columnRole": "Maps to",
+    "columnPropertyName": "Property Name",
+    "dataTypePerRow": "per row",
+    "needsNameColumn": "Set one column to BrowseName — every row needs a name.",
+    "unresolvedDataTypes": "These values are not known DataTypes and will use the default: {{values}}",
+    "createAction": "Create",
+    "creating": "Creating...",
+    "analyzeFailed": "Could not read the file",
+    "createFailed": "Nothing was created",
+    "role": {
+      "Ignore": "(ignore)",
+      "BrowseName": "BrowseName",
+      "DisplayName": "DisplayName",
+      "Description": "Description",
+      "DataType": "DataType",
+      "Value": "Value",
+      "EngineeringUnits": "EngineeringUnits",
+      "EuRangeLow": "EURange.Low",
+      "EuRangeHigh": "EURange.High",
+      "InstrumentRangeLow": "InstrumentRange.Low",
+      "InstrumentRangeHigh": "InstrumentRange.High",
+      "Property": "Property"
+    }
+  },
   "modelLibrary": {
-    "shortName": "Manage Workspaces",
-    "title": "Manage Workspaces",
+    "shortName": "Workspaces",
+    "title": "Workspaces",
     "importAction": "Import..",
     "createAction": "Create..",
     "importDialogTitle": "Import Models",
@@ -257,6 +322,9 @@
     "authorityAll": "All authorities",
     "markedForRemoval": "marked for removal",
     "viewTypeDefinitions": "View Type Definitions",
+    "editShort": "Edit",
+    "viewShort": "View",
+    "typesShort": "Types",
     "download": "Download NodeSet",
     "delete": "Delete Model",
     "deleteDialogTitle": "Delete Model",
@@ -300,8 +368,10 @@
     "useDefaultLicense": "Use my default license & copyright",
     "defaultLicenseMissing": "Set a default license and copyright holder in your account settings.",
     "importLicenseTitle": "Confirm License & Copyright",
-    "importLicenseHelp": "Confirm the license and copyright holder for this NodeSet. Anything detected in the file is pre-filled; set them if none were found. These cannot be changed after import.",
+    "importLicenseHelp": "This NodeSet does not state its own license and copyright holder. Confirm the values to record for it — anything found in the file is pre-filled, the rest comes from your defaults. These cannot be changed after import.",
     "importLicenseDetecting": "Checking the file for license information…",
+    "importingTitle": "Importing NodeSet",
+    "importInProgress": "Importing the NodeSet and fetching its dependencies. A model with many dependencies can take several minutes — please leave this dialog open.",
     "private": "Private",
     "shared": "Shared",
     "editModel": "Edit Model",
@@ -333,7 +403,13 @@
     "deleteWorkspaceDisabled": "Only the owner can delete this workspace",
     "deleteWorkspaceConfirmation": "Are you sure you want to delete workspace \"{{name}}\"? This cannot be undone.",
     "workspaceAcl": "Access List (one email per line)",
-    "workspaceAclHelp": "Email addresses of users who can access this workspace"
+    "workspaceAclHelp": "Email addresses of users who can access this workspace",
+    "adminSharedModelWarning": "This is a shared model. Changes you make here apply to every user and workspace that uses it.",
+    "downloadRemoveUnusedNodes": "Remove unused nodes",
+    "removeUnusedHelp": "Each dependency keeps only the nodes this model uses. The model itself is unchanged.",
+    "removeUnusedNeedsDependencies": "Only available when dependencies are included.",
+    "removeUnusedXmlOnly": "Only available for the XML format.",
+    "profileGroup": "Profile Group"
   },
   "modelVersions": {
     "dialogTitle": "Model Versions",
