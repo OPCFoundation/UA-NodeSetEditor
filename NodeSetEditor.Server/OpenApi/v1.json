@@ -1159,6 +1159,14 @@
               "type": "boolean",
               "default": false
             }
+          },
+          {
+            "name": "removeUnusedNodes",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {
@@ -1643,6 +1651,185 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Node"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/csv/analyze": {
+      "post": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ContentType": {
+                    "type": "string"
+                  },
+                  "ContentDisposition": {
+                    "type": "string"
+                  },
+                  "Headers": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "Length": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)$",
+                    "format": "int64"
+                  },
+                  "Name": {
+                    "type": "string"
+                  },
+                  "FileName": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CsvAnalysisResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CsvAnalysisResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CsvAnalysisResult"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
+    "/api/opcua/v1/csv/create-type": {
+      "post": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "ContentType": {
+                        "type": "string"
+                      },
+                      "ContentDisposition": {
+                        "type": "string"
+                      },
+                      "Headers": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "Length": {
+                        "pattern": "^-?(?:0|[1-9]\\d*)$",
+                        "format": "int64"
+                      },
+                      "Name": {
+                        "type": "string"
+                      },
+                      "FileName": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "mapping": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CsvCreateTypeResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CsvCreateTypeResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CsvCreateTypeResult"
                 }
               }
             }
@@ -3400,6 +3587,150 @@
           }
         }
       },
+      "CsvAnalysisResult": {
+        "type": "object",
+        "properties": {
+          "fileName": {
+            "type": "string"
+          },
+          "rowCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "delimiter": {
+            "type": "string"
+          },
+          "proposedObjectBrowseName": {
+            "type": "string"
+          },
+          "proposedTypeBrowseName": {
+            "type": "string"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CsvColumnAnalysis"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "CsvColumnAnalysis": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "header": {
+            "type": "string"
+          },
+          "sampleValues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "proposedRole": {
+            "type": "string"
+          },
+          "proposedBrowseName": {
+            "type": "string",
+            "nullable": true
+          },
+          "proposedDataTypeNodeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "dataTypeValues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CsvDataTypeMatch"
+            },
+            "nullable": true
+          }
+        }
+      },
+      "CsvCreateTypeResult": {
+        "type": "object",
+        "properties": {
+          "instance": {
+            "oneOf": [
+              {
+                "enum": [
+                  null
+                ]
+              },
+              {
+                "$ref": "#/components/schemas/Node"
+              }
+            ]
+          },
+          "type": {
+            "oneOf": [
+              {
+                "enum": [
+                  null
+                ]
+              },
+              {
+                "$ref": "#/components/schemas/Node"
+              }
+            ]
+          },
+          "folder": {
+            "oneOf": [
+              {
+                "enum": [
+                  null
+                ]
+              },
+              {
+                "$ref": "#/components/schemas/Node"
+              }
+            ]
+          },
+          "variablesCreated": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "propertiesCreated": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "rowsSkipped": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "format": "int32"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "CsvDataTypeMatch": {
+        "type": "object",
+        "properties": {
+          "rawValue": {
+            "type": "string"
+          },
+          "dataTypeNodeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "dataTypeName": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
       "DataTypeDefinitionResponse": {
         "type": "object",
         "properties": {
@@ -3677,6 +4008,10 @@
           "copyrightHolder": {
             "type": "string",
             "nullable": true
+          },
+          "profileGroupName": {
+            "type": "string",
+            "nullable": true
           }
         }
       },
@@ -3884,6 +4219,10 @@
             "nullable": true
           },
           "hasNoSubtypes": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "subtypesTruncated": {
             "type": "boolean",
             "nullable": true
           },
@@ -4116,6 +4455,10 @@
           "copyrightHolder": {
             "type": "string",
             "nullable": true
+          },
+          "profileGroupName": {
+            "type": "string",
+            "nullable": true
           }
         }
       },
@@ -4283,6 +4626,10 @@
             "nullable": true
           },
           "betaTester": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "admin": {
             "type": "boolean",
             "nullable": true
           }
@@ -4607,6 +4954,10 @@
             "nullable": true
           },
           "copyrightHolder": {
+            "type": "string",
+            "nullable": true
+          },
+          "profileGroupName": {
             "type": "string",
             "nullable": true
           },

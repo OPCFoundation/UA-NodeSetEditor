@@ -44,6 +44,12 @@ namespace NodeSetEditor.Server.Model
         public string? CopyrightHolder { get; set; }
 
         /// <summary>
+        /// Profile group the NodeSet's conformance units are assessed against (a
+        /// <c>fullName</c> from profiles.opcfoundation.org); null = none.
+        /// </summary>
+        public string? ProfileGroupName { get; set; }
+
+        /// <summary>
         /// Represents a parsed semantic version for comparison.
         /// </summary>
         public class SemVer : IComparable<SemVer>

@@ -120,9 +120,13 @@ namespace NodeSetEditor.Model
                 model = existing;
             }
 
-            // Build metadata (Aliases stored in URI form for round-trip)
-            var metadata = BuildMetadata(nodeSet, modelTable, nsTable, aliases);
+            // Build metadata. This REPLACES the whole Metadata object, so any curated key that
+            // isn't derived from the NodeSet has to be carried across explicitly — the profile
+            // group is user-chosen and a re-import of the same version must not silently drop it.
+            var profileGroupName = model.GetProfileGroupName();
+            var metadata = BuildMetadata(nodeSet, modelTable, nsTable);
             model.Metadata = metadata.Count > 0 ? metadata : null;
+            model.SetProfileGroupName(profileGroupName);
 
             if (existing == null)
                 db.Models.Add(model);
@@ -131,6 +135,9 @@ namespace NodeSetEditor.Model
             var nodes = new List<Node>();
             var references = new List<Reference>();
 
+            // Set when the NamespaceMetadata object carries the ProfileGroup:<Name> convention.
+            string? declaredProfileGroupName = null;
+
             var nodeOrdinal = 0;
             if (nodeSet.Items != null)
             {
@@ -138,7 +145,8 @@ namespace NodeSetEditor.Model
                 {
                     var rawNodeId = ResolveAlias(item.NodeId, aliases);
                     int nodeClass = GetNodeClass(item);
-                    var attrs = BuildAttributes(item, aliases, nsTable);
+                    var attrs = BuildAttributes(item, aliases, nsTable, nodeSet.NamespaceUris);
+                    var isNamespaceMetadataNode = false;
 
                     string? parentNodeId = null;
                     if (item is Opc.Ua.Export.UAInstance instance && instance.ParentNodeId != null)
@@ -163,7 +171,10 @@ namespace NodeSetEditor.Model
                             if (refTypeId == HasSubtypeId && !r.IsForward)
                                 superTypeId = FormatColumnNodeId(targetId, nsTable);
                             else if (refTypeId == HasTypeDefinitionId && r.IsForward)
+                            {
                                 typeDefinitionId = FormatColumnNodeId(targetId, nsTable);
+                                isNamespaceMetadataNode = typeDefinitionId == NamespaceMetadataTypeId;
+                            }
                             else if (refTypeId == HasEncodingId && !r.IsForward)
                                 inverseHasEncodingTarget = FormatColumnNodeId(targetId, nsTable);
                         }
@@ -181,6 +192,18 @@ namespace NodeSetEditor.Model
                         && inverseHasEncodingTarget != null)
                     {
                         parentNodeId = inverseHasEncodingTarget;
+                    }
+
+                    // A ProfileGroup:<Name> conformance unit on the NamespaceMetadata object
+                    // declares the namespace's profile group. Lift it out of the node's unit
+                    // list — it lives in model metadata, not on the node (see
+                    // ProfileGroupConvention). On every other node the same spelling is a
+                    // literal unit name and is left alone.
+                    if (isNamespaceMetadataNode)
+                    {
+                        var (declared, keptUnits) = ProfileGroupConvention.Split(attrs.Category);
+                        attrs.Category = keptUnits;
+                        if (declared != null) declaredProfileGroupName = declared;
                     }
 
                     // Extract display name and description from item
@@ -248,6 +271,12 @@ namespace NodeSetEditor.Model
                     }
                 }
             }
+
+            // The NodeSet is authoritative when it declares a profile group; when it doesn't, the
+            // value curated in the editor is left alone (same rule as Name/Description above —
+            // automatic code never clears what a user set).
+            if (declaredProfileGroupName != null)
+                model.SetProfileGroupName(declaredProfileGroupName);
 
             await StampIconsAsync(db, nodes);
 
@@ -415,8 +444,15 @@ namespace NodeSetEditor.Model
 
         #region Load
 
+        /// <param name="includeNodeIds">
+        /// When supplied, only these of the model's nodes are emitted — the conformance-unit
+        /// subset export. References whose source was dropped go with it; a reference whose
+        /// TARGET was dropped is kept, because a NodeId pointing outside the file is exactly how
+        /// a NodeSet already expresses a cross-model link.
+        /// </param>
         public static async Task<Opc.Ua.Export.UANodeSet> CreateNodeSetAsync(
-            NodeSetEditorDbContext db, string modelUri, string? version = null)
+            NodeSetEditorDbContext db, string modelUri, string? version = null,
+            IReadOnlySet<string>? includeNodeIds = null)
         {
             // Find the model — version param is the freeform Version text for exact match
             Model? model;
@@ -441,6 +477,32 @@ namespace NodeSetEditor.Model
                 .OrderBy(n => n.Ordinal).ToListAsync();
             var dbRefs = await db.References.Where(r => r.ModelId == model.Id)
                 .OrderBy(r => r.Ordinal).ToListAsync();
+
+            if (includeNodeIds != null)
+            {
+                // Every node of the model, before the subset is applied — needed to tell a
+                // reference that leaves the MODEL (fine: the namespace becomes a RequiredModel)
+                // from one that merely leaves the SUBSET (not fine: it would dangle).
+                var modelNodeIds = dbNodes
+                    .Where(n => n.NodeId != null)
+                    .Select(n => n.NodeId!)
+                    .ToHashSet(StringComparer.Ordinal);
+
+                dbNodes = dbNodes.Where(n => n.NodeId != null && includeNodeIds.Contains(n.NodeId)).ToList();
+
+                // A subset must have no unresolved references. Rows whose source was dropped go
+                // with it, and so do rows pointing AT a node of this model that the subset left
+                // out — an included supertype, for instance, still carries a forward HasSubtype
+                // row for every subtype, and those are deliberately not in the subset.
+                dbRefs = dbRefs.Where(r =>
+                    r.SourceNodeId != null && includeNodeIds.Contains(r.SourceNodeId)
+                    && r.TargetNodeId != null
+                    && (!modelNodeIds.Contains(r.TargetNodeId) || includeNodeIds.Contains(r.TargetNodeId))
+                    && (r.ReferenceTypeId == null
+                        || !modelNodeIds.Contains(r.ReferenceTypeId)
+                        || includeNodeIds.Contains(r.ReferenceTypeId)))
+                    .ToList();
+            }
 
             // Collect namespace URIs in two buckets:
             //   * dependencyUris — namespaces whose definitions this model actually
@@ -481,12 +543,20 @@ namespace NodeSetEditor.Model
             var collectedUris = new HashSet<string>(dependencyUris);
             collectedUris.UnionWith(valueOnlyUris);
 
-            // Build NamespaceUris: model's own URI first (ns=1), then others sorted
-            var namespaceUris = new List<string> { model.Uri! };
+            // Build NamespaceUris: model's own URI first (ns=1), then others sorted.
+            //
+            // http://opcfoundation.org/UA/ is ns=0 in EVERY NodeSet, including its own — the
+            // index is fixed by the spec, not chosen per document. So when Core itself is the
+            // model being exported it gets no NamespaceUris entry: listing it would announce it
+            // as ns=1 while its nodes are written bare (ns=0), which is simply wrong.
+            var isCoreModel = model.Uri == UaCoreNamespace;
+            var namespaceUris = new List<string>();
+            if (!isCoreModel) namespaceUris.Add(model.Uri!);
             foreach (var uri in collectedUris.Where(u => u != model.Uri).OrderBy(u => u))
                 namespaceUris.Add(uri);
 
-            // Build URI → namespace index mapping
+            // Build URI → namespace index mapping. Core is seeded at 0 and, because it is never
+            // in namespaceUris, the loop below cannot reassign it.
             var uriToIdx = new Dictionary<string, int> { [UaCoreNamespace] = 0 };
             for (int i = 0; i < namespaceUris.Count; i++)
                 uriToIdx[namespaceUris[i]] = i + 1;
@@ -498,11 +568,13 @@ namespace NodeSetEditor.Model
             // Reconstruct UANodeSet
             var nodeSet = new Opc.Ua.Export.UANodeSet
             {
-                NamespaceUris = namespaceUris.ToArray(),
+                // Null rather than an empty array so a Core export with no dependencies omits
+                // the element entirely instead of emitting an empty <NamespaceUris />.
+                NamespaceUris = namespaceUris.Count > 0 ? namespaceUris.ToArray() : null,
             };
 
-            // Restore non-namespace metadata (Aliases with restored indices, Extensions, etc.)
-            RestoreMetadata(nodeSet, model.Metadata, uriToIdx);
+            // Restore non-namespace metadata (ServerUris, LastModified, Extensions)
+            RestoreMetadata(nodeSet, model.Metadata);
 
             // Build model entry
             DateTime modelPd = DateTime.MinValue;
@@ -580,6 +652,12 @@ namespace NodeSetEditor.Model
                 uaNode.BrowseName = RestoreDbBrowseName(dbNode.BrowseName, uriToIdx);
 
                 PopulateCommonAttributes(uaNode, attrs, uriToIdx);
+
+                // Emit the namespace's profile group as the ProfileGroup:<Name> conformance unit
+                // on the NamespaceMetadata object. It is held in model metadata rather than on
+                // the node, so this is where it re-joins the NodeSet (see ProfileGroupConvention).
+                if (dbNode.TypeDefinitionId == NamespaceMetadataTypeId)
+                    uaNode.Category = ProfileGroupConvention.Merge(uaNode.Category, model.GetProfileGroupName());
 
                 // Every exported node carries a DisplayName. Part 6 permits omitting one that
                 // merely repeats the BrowseName, and many source NodeSets do — but consumers that
@@ -815,6 +893,11 @@ namespace NodeSetEditor.Model
             if (ns >= nsTable.Length)
                 throw new InvalidOperationException($"Namespace index {ns} out of range in NodeId '{rawNodeId}'");
 
+            // http://opcfoundation.org/UA/ is ns=0 in every NodeSet. A file that also lists it in
+            // NamespaceUris makes some other index resolve to it as well; both spellings have to
+            // land on the same bare identifier, or the same Core node is stored two ways.
+            if (nsTable[ns] == UaCoreNamespace) return identifier;
+
             return $"nsu={nsTable[ns]};{identifier}";
         }
 
@@ -830,6 +913,9 @@ namespace NodeSetEditor.Model
             if (ns >= nsTable.Length)
                 throw new InvalidOperationException($"Namespace index {ns} out of range in BrowseName '{browseName}'");
 
+            // See FormatColumnNodeId: an index that resolves to Core is still ns=0.
+            if (nsTable[ns] == UaCoreNamespace) return name;
+
             return $"nsu={nsTable[ns]};{name}";
         }
 
@@ -844,6 +930,9 @@ namespace NodeSetEditor.Model
 
             if (ns >= nsTable.Length)
                 throw new InvalidOperationException($"Namespace index {ns} out of range in attribute NodeId '{rawNodeId}'");
+
+            // See FormatColumnNodeId: an index that resolves to Core is still ns=0.
+            if (nsTable[ns] == UaCoreNamespace) return identifier;
 
             return $"nsu={nsTable[ns]};{identifier}";
         }
@@ -1043,21 +1132,14 @@ namespace NodeSetEditor.Model
 
         private static JsonObject BuildMetadata(
             Opc.Ua.Export.UANodeSet nodeSet, Opc.Ua.Export.ModelTableEntry modelTable,
-            string[] nsTable, Dictionary<string, string> aliases)
+            string[] nsTable)
         {
             var metadata = new JsonObject();
 
-            // Store Aliases in URI-resolved form so round-trip works regardless of namespace ordering
-            if (nodeSet.Aliases != null && nodeSet.Aliases.Length > 0)
-            {
-                var aliasObj = new JsonObject();
-                foreach (var alias in nodeSet.Aliases)
-                {
-                    // Resolve the alias value's namespace to URI form
-                    aliasObj[alias.Alias] = FormatAttrNodeId(alias.Value, nsTable);
-                }
-                metadata["Aliases"] = aliasObj;
-            }
+            // Aliases are NOT stored. They are expanded on the way in (see ResolveAlias) and never
+            // re-applied on the way out (see RestoreMetadata), so keeping the table would be dead
+            // data: nothing reads it, and an alias is derivable from a DataType's BrowseName if the
+            // exporter ever wants to emit one again.
 
             // Store RequiredModels as fallback for version info
             if (modelTable.RequiredModel != null && modelTable.RequiredModel.Length > 0)
@@ -1115,25 +1197,17 @@ namespace NodeSetEditor.Model
         }
 
         private static void RestoreMetadata(
-            Opc.Ua.Export.UANodeSet nodeSet, JsonObject? metadata, Dictionary<string, int> uriToIdx)
+            Opc.Ua.Export.UANodeSet nodeSet, JsonObject? metadata)
         {
             if (metadata == null) return;
 
-            // Restore Aliases with namespace indices updated to match reconstructed NamespaceUris
-            if (metadata.TryGetPropertyValue("Aliases", out var aliasNode) && aliasNode is JsonObject aliasObj)
-            {
-                var aliasList = new List<Opc.Ua.Export.NodeIdAlias>();
-                foreach (var kvp in aliasObj)
-                {
-                    var restoredValue = RestoreAttrNodeId(kvp.Value?.ToString(), uriToIdx);
-                    aliasList.Add(new Opc.Ua.Export.NodeIdAlias
-                    {
-                        Alias = kvp.Key,
-                        Value = restoredValue ?? ""
-                    });
-                }
-                nodeSet.Aliases = aliasList.ToArray();
-            }
+            // Aliases are deliberately NOT restored, so nodeSet.Aliases stays null and the element
+            // is omitted entirely. An alias is only ever a shorthand for a NodeId at the point of
+            // use, and the writers here emit every NodeId in full (RestoreColumnNodeId /
+            // RestoreAttrNodeId) — nothing is written that an alias could stand in for. Replaying
+            // the source document's table would therefore emit a block in which every entry is
+            // unused: ~48 of them for an OPC Foundation NodeSet, several naming DataTypes that a
+            // subset export has already trimmed away.
 
             if (metadata.TryGetPropertyValue("ServerUris", out var suNode))
                 nodeSet.ServerUris = suNode.Deserialize<string[]>(JsonOptions);
@@ -1257,8 +1331,16 @@ namespace NodeSetEditor.Model
             _ => throw new NotSupportedException($"Unknown UANode type: {node.GetType().Name}")
         };
 
+        /// <summary>
+        /// <paramref name="nsTable"/> is indexed by the document's own ns index (index 0 = Core);
+        /// <paramref name="valueNamespaceUris"/> is the same table in the shape the Part 6 value
+        /// converter wants — the raw <c>NamespaceUris</c> element, Core implicit. Values need it
+        /// for the same reason every other NodeId here needs <paramref name="nsTable"/>: a stored
+        /// <c>ns=N</c> is meaningless outside the document it came from.
+        /// </summary>
         private static NodeAttributesBase BuildAttributes(
-            Opc.Ua.Export.UANode node, Dictionary<string, string> aliases, string[] nsTable)
+            Opc.Ua.Export.UANode node, Dictionary<string, string> aliases, string[] nsTable,
+            IReadOnlyList<string>? valueNamespaceUris)
         {
             NodeAttributesBase attrs = node switch
             {
@@ -1269,7 +1351,7 @@ namespace NodeSetEditor.Model
                 Opc.Ua.Export.UAVariableType vt => new VariableTypeAttributes
                 {
                     IsAbstract = vt.IsAbstract ? true : null,
-                    Value = XmlElementToJson(vt.Value),
+                    Value = XmlElementToJson(vt.Value, valueNamespaceUris),
                     DataType = vt.DataType != null ? FormatAttrNodeId(ResolveAlias(vt.DataType, aliases), nsTable) : null,
                     ValueRank = vt.ValueRank != -1 ? vt.ValueRank : null,
                     ArrayDimensions = vt.ArrayDimensions,
@@ -1297,7 +1379,7 @@ namespace NodeSetEditor.Model
                 },
                 Opc.Ua.Export.UAVariable v => new VariableAttributes
                 {
-                    Value = XmlElementToJson(v.Value),
+                    Value = XmlElementToJson(v.Value, valueNamespaceUris),
                     DataType = v.DataType != null ? FormatAttrNodeId(ResolveAlias(v.DataType, aliases), nsTable) : null,
                     ValueRank = v.ValueRank != -1 ? v.ValueRank : null,
                     ArrayDimensions = v.ArrayDimensions,
@@ -1397,11 +1479,19 @@ namespace NodeSetEditor.Model
         /// arrays as JSON arrays, etc. Routed through <c>Opc.Ua.NodeSetSerializer.Part6Variant</c>
         /// so the same converter implementation drives both the standalone NodeSetTool
         /// path and the DB-persisted path.
+        ///
+        /// <para><paramref name="namespaceUris"/> is the source NodeSet's <c>NamespaceUris</c>
+        /// table (Core implicit at index 0). It is what lets a <c>ns=N</c> inside the value —
+        /// most commonly an ExtensionObject's TypeId — be stored as <c>nsu=URI</c> like every
+        /// other NodeId. Omitting it stores the document-local index, which silently means a
+        /// different namespace as soon as the value is written into a NodeSet whose
+        /// <c>NamespaceUris</c> is ordered differently.</para>
         /// </summary>
-        private static JsonNode? XmlElementToJson(XmlElement? element)
+        private static JsonNode? XmlElementToJson(
+            XmlElement? element, IReadOnlyList<string>? namespaceUris = null)
         {
             if (element == null) return null;
-            var jsonText = Part6Variant.ReadXmlValueAsJsonText(element);
+            var jsonText = Part6Variant.ReadXmlValueAsJsonText(element, null, namespaceUris);
             if (string.IsNullOrEmpty(jsonText)) return null;
             try { return JsonNode.Parse(jsonText); }
             catch { return null; }

@@ -150,7 +150,9 @@ const TypeLibraryPage: React.FC = () => {
       enabled: !!selectedWorkspaceId,
    });
 
-   const namespaces = namespacesData?.results ?? [];
+   // Memoized because several hooks below take it as a dependency: the `?? []` fallback
+   // would otherwise be a new array on every render and re-run all of them.
+   const namespaces = React.useMemo(() => namespacesData?.results ?? [], [namespacesData]);
 
    const namespaceOptions = React.useMemo(() => {
       return namespaces
@@ -166,6 +168,17 @@ const TypeLibraryPage: React.FC = () => {
       const ns = namespaces.find(n => n.uri === modelUri);
       return ns?.isPrivate ?? false;
    }, [namespaces]);
+
+   // Land on the new type: show its detail view and re-root the sidebar tree on it.
+   // Shared by every "create a type" path on this page.
+   const focusCreatedType = React.useCallback(
+      (nodeId: string, displayName: string, nodeClass: number, superTypeIds: string[] = []) => {
+         queryClient.invalidateQueries({ queryKey: ['queryTypes'] });
+         queryClient.invalidateQueries({ queryKey: ['subtypes'] });
+         queryClient.invalidateQueries({ queryKey: ['nextNodeId'] });
+         setSelectedType({ nodeId, displayName, nodeClass });
+         setNavigateToNode({ nodeId, superTypeIds, nodeClass, displayName, enterFocusMode: true });
+      }, [queryClient, setSelectedType, setNavigateToNode]);
 
    // Fetch types with optional filters
    const { data: typesData, isLoading, isError, error } = useQuery({
@@ -507,22 +520,12 @@ const TypeLibraryPage: React.FC = () => {
                superTypeModelUri={extractNamespaceUri(extendType.nodeId)}
                nodeClass={nodeClassToNum(extendType.nodeClass)}
                onSaved={(created?: CreatedNodeInfo) => {
-                  queryClient.invalidateQueries({ queryKey: ['queryTypes'] });
-                  queryClient.invalidateQueries({ queryKey: ['subtypes'] });
-                  queryClient.invalidateQueries({ queryKey: ['nextNodeId'] });
                   if (created) {
-                     setSelectedType({
-                        nodeId: created.nodeId,
-                        displayName: created.displayName,
-                        nodeClass: created.nodeClass,
-                     });
-                     setNavigateToNode({
-                        nodeId: created.nodeId,
-                        superTypeIds: [],
-                        nodeClass: created.nodeClass,
-                        displayName: created.displayName,
-                        enterFocusMode: true,
-                     });
+                     focusCreatedType(created.nodeId, created.displayName, created.nodeClass);
+                  } else {
+                     queryClient.invalidateQueries({ queryKey: ['queryTypes'] });
+                     queryClient.invalidateQueries({ queryKey: ['subtypes'] });
+                     queryClient.invalidateQueries({ queryKey: ['nextNodeId'] });
                   }
                }}
             />

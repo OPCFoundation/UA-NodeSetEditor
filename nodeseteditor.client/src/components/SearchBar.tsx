@@ -65,13 +65,15 @@ export const SearchBar = ({ hint, value, onChange, onRefresh, sx, children, righ
                   {/* grey[800] is a fixed mid-grey, which all but vanished against this
                       bar in dark mode; text.secondary tracks the mode. */}
                   <SearchIcon sx={{ color: 'text.secondary' }} />
+                  {/* The box sizes to its content, so on md+ it needs a floor wide enough for
+                      the longest placeholder ("Search conformance units…") — it was clipping. */}
                   <TextField
                      variant="outlined"
                      placeholder={hint ?? t('main.search')}
                      size="small"
                      value={value}
                      onChange={onChange}
-                     sx={{ flex: 1, minWidth: 0 }}
+                     sx={{ flex: 1, minWidth: { xs: 0, md: 280 } }}
                   />
                </Box>
                {children}

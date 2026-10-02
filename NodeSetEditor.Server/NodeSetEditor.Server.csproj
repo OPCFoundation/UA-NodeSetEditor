@@ -69,6 +69,20 @@
     <Content Include="OpenApi\**" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The two authoritative unit lists the CSV importer resolves engineering units against.
+       IEC 62720 covers units used in engineering calculations and is searched first; UNECE
+       Recommendation 20 covers units used for trade and is the fallback.
+
+       Embedded rather than copied to the output so a deployment cannot lose them, and read by
+       UnitLookup through the logical names MSBuild derives from this path
+       ("NodeSetEditor.Server.Data.<file>") — the constants there must track this folder. -->
+  <ItemGroup>
+    <None Remove="Data\IEC62720_to_OPCUA.csv" />
+    <None Remove="Data\UNECE_to_OPCUA.csv" />
+    <EmbeddedResource Include="Data\IEC62720_to_OPCUA.csv" />
+    <EmbeddedResource Include="Data\UNECE_to_OPCUA.csv" />
+  </ItemGroup>
+
   <!-- Windows-only: the script is PowerShell and there is no build counter to bump on a
        Linux build agent or inside the container image build. -->
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition="'$(OS)' == 'Windows_NT'">

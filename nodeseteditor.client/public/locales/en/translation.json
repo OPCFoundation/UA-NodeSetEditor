@@ -63,6 +63,7 @@
   },
   "common": {
     "cancel": "Cancel",
+    "back": "Back",
     "ok": "OK",
     "deleting": "Deleting...",
     "save": "Save",
@@ -74,6 +75,7 @@
     "notSet": "Not set",
     "more": "More",
     "learnMore": "Learn more",
+    "saving": "Saving…",
     "betaNotice": "This site is in public beta. Back up your models with Download, and send feedback to webmaster@opcfoundation.org."
   },
   "nodePicker": {
@@ -187,6 +189,11 @@
     "intro": "A Model is a collection of Nodes created by a single authority and is identified by a globally unique URI assigned by that authority. Models can be exported in various file formats, with any file containing a Model referred to as a NodeSet. Models can be imported into a Workspace via the UACloudLibrary or by uploading a NodeSet. Additionally, new Types and Instances can be created within private Models and Models can be shared so they can be used by other Workspaces.",
     "action": "Open Models"
   },
+  "aboutCsvImportWizard": {
+    "title": "Create Models from CSV",
+    "summary": "Turn a CSV tag list from an existing plant into an information model.",
+    "action": "Import Tags from CSV"
+  },
   "aboutModelValidationWizard": {
     "title": "Validation",
     "summary": "Check that a specification document matches its model.",
@@ -239,6 +246,50 @@
     "nodeClass": "Node Class",
     "createType": "Create type",
     "createTypeTooltip": "Create a new {{nodeClass}} in this namespace"
+  },
+  "csvImport": {
+    "title": "Import CSV",
+    "next": "Next",
+    "backToFile": "Change file",
+    "noWorkspace": "No workspace is available to import into. Create one from Manage Workspaces.",
+    "startFailed": "Could not start the import",
+    "pickFile": "Choose file...",
+    "chooseFilePrompt": "Choose the CSV file to import. The next step shows how its columns will be mapped, before anything is created.",
+    "pickHint": "Many configurations for existing factories are stored in CSVs for similar files. This wizard allows you to quickly create an OPC UA Information Model from CSV files. The column names are used to create the model and you will be prompted to refine the mapping after the file is loaded.",
+    "fileSummary": "{{fileName}} — {{rowCount}} rows, {{columnCount}} columns, delimiter \"{{delimiter}}\"",
+    "detailsSummary": "{{rowCount}} rows from {{fileName}} will become {{rowCount}} Variables, using {{mappedColumnCount}} of {{columnCount}} columns.",
+    "noRows": "The file has a header row but no data rows.",
+    "objectName": "Object Name",
+    "parent": "Parent",
+    "noParent": "(none — top level)",
+    "newFolder": "New Folder",
+    "folderName": "Folder Name",
+    "createTypeToo": "Create Type",
+    "typeName": "Type Name",
+    "columnHeader": "Column",
+    "columnRole": "Maps to",
+    "columnPropertyName": "Property Name",
+    "dataTypePerRow": "per row",
+    "needsNameColumn": "Set one column to BrowseName — every row needs a name.",
+    "unresolvedDataTypes": "These values are not known DataTypes and will use the default: {{values}}",
+    "createAction": "Create",
+    "creating": "Creating...",
+    "analyzeFailed": "Could not read the file",
+    "createFailed": "Nothing was created",
+    "role": {
+      "Ignore": "(ignore)",
+      "BrowseName": "BrowseName",
+      "DisplayName": "DisplayName",
+      "Description": "Description",
+      "DataType": "DataType",
+      "Value": "Value",
+      "EngineeringUnits": "EngineeringUnits",
+      "EuRangeLow": "EURange.Low",
+      "EuRangeHigh": "EURange.High",
+      "InstrumentRangeLow": "InstrumentRange.Low",
+      "InstrumentRangeHigh": "InstrumentRange.High",
+      "Property": "Property"
+    }
   },
   "modelLibrary": {
     "shortName": "Workspaces",
@@ -317,8 +368,10 @@
     "useDefaultLicense": "Use my default license & copyright",
     "defaultLicenseMissing": "Set a default license and copyright holder in your account settings.",
     "importLicenseTitle": "Confirm License & Copyright",
-    "importLicenseHelp": "Confirm the license and copyright holder for this NodeSet. Anything detected in the file is pre-filled; set them if none were found. These cannot be changed after import.",
+    "importLicenseHelp": "This NodeSet does not state its own license and copyright holder. Confirm the values to record for it — anything found in the file is pre-filled, the rest comes from your defaults. These cannot be changed after import.",
     "importLicenseDetecting": "Checking the file for license information…",
+    "importingTitle": "Importing NodeSet",
+    "importInProgress": "Importing the NodeSet and fetching its dependencies. A model with many dependencies can take several minutes — please leave this dialog open.",
     "private": "Private",
     "shared": "Shared",
     "editModel": "Edit Model",
@@ -350,7 +403,13 @@
     "deleteWorkspaceDisabled": "Only the owner can delete this workspace",
     "deleteWorkspaceConfirmation": "Are you sure you want to delete workspace \"{{name}}\"? This cannot be undone.",
     "workspaceAcl": "Access List (one email per line)",
-    "workspaceAclHelp": "Email addresses of users who can access this workspace"
+    "workspaceAclHelp": "Email addresses of users who can access this workspace",
+    "adminSharedModelWarning": "This is a shared model. Changes you make here apply to every user and workspace that uses it.",
+    "downloadRemoveUnusedNodes": "Remove unused nodes",
+    "removeUnusedHelp": "Each dependency keeps only the nodes this model uses. The model itself is unchanged.",
+    "removeUnusedNeedsDependencies": "Only available when dependencies are included.",
+    "removeUnusedXmlOnly": "Only available for the XML format.",
+    "profileGroup": "Profile Group"
   },
   "modelVersions": {
     "dialogTitle": "Model Versions",

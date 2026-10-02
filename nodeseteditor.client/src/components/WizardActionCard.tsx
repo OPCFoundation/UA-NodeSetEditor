@@ -37,6 +37,8 @@ export interface WizardActionCardProps {
    buttonColor?: string;
    /** Optional: theme-aware text color for the button (e.g. 'primary.dark') */
    buttonTextColor?: string;
+   /** Optional: disables the button, e.g. while the action it starts is still resolving. */
+   buttonDisabled?: boolean;
 }
 
 export const WizardActionCard: React.FC<WizardActionCardProps> = ({
@@ -47,7 +49,8 @@ export const WizardActionCard: React.FC<WizardActionCardProps> = ({
    onButtonClick,
    icon,
    buttonColor,
-   buttonTextColor
+   buttonTextColor,
+   buttonDisabled
 }) => {
    const { t } = useTranslation();
 
@@ -106,6 +109,7 @@ export const WizardActionCard: React.FC<WizardActionCardProps> = ({
             <Button
                variant="contained"
                onClick={onButtonClick}
+               disabled={buttonDisabled}
                sx={{
                   ...(buttonColor && { bgcolor: buttonColor }),
                   ...(buttonTextColor && { color: buttonTextColor })

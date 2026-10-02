@@ -104,17 +104,26 @@ namespace NodeSetEditor.Server.Controllers
         private readonly INodeSetStorageService _storage;
         private readonly IWorkspaceAddressSpaceService _addressSpace;
         private readonly BetaTesterPolicy _betaTesters;
+        private readonly AdminPolicy _admins;
+        private readonly INodeSetSubsetService _subsets;
+        private readonly ICsvTypeImportService _csvImport;
         private readonly ILogger<UaRestApiController> _logger;
 
         public UaRestApiController(
             INodeSetStorageService storage,
             IWorkspaceAddressSpaceService addressSpace,
             BetaTesterPolicy betaTesters,
+            AdminPolicy admins,
+            INodeSetSubsetService subsets,
+            ICsvTypeImportService csvImport,
             ILogger<UaRestApiController> logger)
         {
             _storage = storage;
             _addressSpace = addressSpace;
             _betaTesters = betaTesters;
+            _admins = admins;
+            _subsets = subsets;
+            _csvImport = csvImport;
             _logger = logger;
         }
 
@@ -399,6 +408,7 @@ namespace NodeSetEditor.Server.Controllers
                         License = m?.License,
                         LicenseUrl = m?.LicenseUrl,
                         CopyrightHolder = m?.CopyrightHolder,
+                        ProfileGroupName = m?.ProfileGroupName,
                     };
                 }).ToList();
 
@@ -585,13 +595,19 @@ namespace NodeSetEditor.Server.Controllers
                         "The version cannot be changed while the model is checked out for editing."));
                 }
 
+                // Admins curate shared/standard models on everyone's behalf, so the private-only
+                // and reserved-namespace rules below are lifted for them. Their edit lands on the
+                // shared model row and every workspace linked to it sees the result.
+                var isAdmin = _admins.IsAdmin(user?.Email);
+                var mayEditSharedModel = modelRef?.IsPrivate == true || isAdmin;
+
                 // License/copyright are editable, but only on the user's own private models
                 // (shared/published models stay read-only). Validate when a change is requested.
                 var editingLicense = request.License != null || request.CopyrightHolder != null || request.LicenseUrl != null;
                 string? resolvedLicenseUrl = null;
                 if (editingLicense)
                 {
-                    if (modelRef?.IsPrivate != true)
+                    if (!mayEditSharedModel)
                     {
                         return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument, nameof(Opc.Ua.StatusCodes.BadInvalidArgument),
                             "License and copyright can only be changed on your own private models."));
@@ -609,6 +625,14 @@ namespace NodeSetEditor.Server.Controllers
                     resolvedLicenseUrl = licUrl;
                 }
 
+                // Same rule as license/copyright: the profile group is a property of the shared
+                // model row, so a non-admin may only set it through their own private link.
+                if (request.ProfileGroupName != null && !mayEditSharedModel)
+                {
+                    return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument, nameof(Opc.Ua.StatusCodes.BadInvalidArgument),
+                        "The profile group can only be changed on your own private models."));
+                }
+
                 var modelInfo = await _storage.UpdateModelInfoAsync(
                     workspaceId,
                     id,
@@ -618,7 +642,17 @@ namespace NodeSetEditor.Server.Controllers
                     license: editingLicense ? request.License!.Trim() : null,
                     licenseUrl: editingLicense ? resolvedLicenseUrl : null,
                     copyrightHolder: editingLicense ? request.CopyrightHolder!.Trim() : null,
-                    enforceReadOnlyReserved: true);
+                    profileGroupName: request.ProfileGroupName,
+                    // The OPC Foundation namespace is read-only to users, but curating exactly
+                    // those standard models is what the admin role is for.
+                    enforceReadOnlyReserved: !isAdmin);
+
+                // The profile group is emitted into the generated NodeSet XML (the
+                // ProfileGroup:<Name> conformance unit on the NamespaceMetadata object), and the
+                // cached address space is built from that XML — so unlike the other fields edited
+                // here, this one changes what export produces and the cache has to be dropped.
+                if (request.ProfileGroupName != null)
+                    _addressSpace.Invalidate(workspaceId);
 
                 return Ok(ToNamespaceInfo(modelInfo, modelRef?.IsPrivate, modelRef?.IsEditable));
             }
@@ -1033,7 +1067,8 @@ namespace NodeSetEditor.Server.Controllers
             Guid id,
             [FromHeader(Name = "OpcUa-Server")] string? opcUaServer,
             [FromQuery] string format = "xml",
-            [FromQuery] bool includeDependencies = false)
+            [FromQuery] bool includeDependencies = false,
+            [FromQuery] bool removeUnusedNodes = false)
         {
             try
             {
@@ -1065,7 +1100,11 @@ namespace NodeSetEditor.Server.Controllers
 
                 if (includeDependencies)
                 {
-                    return await ExportNamespaceBundle(workspaceId, modelInfo, models, addressSpace, fmt);
+                    // Trimming is generated from the DB, which emits XML; the other formats are
+                    // serialized from the address space and have no trimmed path.
+                    var trim = removeUnusedNodes && fmt == OpenExportFormat;
+                    return await ExportNamespaceBundle(
+                        workspaceId, modelInfo, models, addressSpace, fmt, trim, user, workspace!.Name);
                 }
 
                 var ms = SerializeModel(addressSpace, modelInfo.ModelUri!, fmt, out var contentType, out var extension,
@@ -1099,7 +1138,10 @@ namespace NodeSetEditor.Server.Controllers
             ModelInfo modelInfo,
             IReadOnlyList<ModelInfo?> models,
             JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace,
-            string fmt)
+            string fmt,
+            bool removeUnusedNodes = false,
+            AuthenticatedUser? user = null,
+            string? workspaceName = null)
         {
             var modelByUri = models
                 .Where(m => m != null && !string.IsNullOrEmpty(m!.ModelUri))
@@ -1118,6 +1160,24 @@ namespace NodeSetEditor.Server.Controllers
 
             var bundleUris = ResolveDependencyClosure(modelInfo.ModelUri!, modelByUri.Keys, modelDeps);
 
+            // "Remove unused nodes": each DEPENDENCY keeps only what the downloaded model reaches.
+            // The model itself is never trimmed — it is the thing being shipped.
+            IReadOnlySet<string>? keep = null;
+            if (removeUnusedNodes)
+            {
+                var dependencyIds = bundleUris
+                    .Where(u => !string.Equals(u, modelInfo.ModelUri, StringComparison.Ordinal))
+                    .Select(u => modelByUri.TryGetValue(u, out var m) ? m.Id : null)
+                    .Where(id => id.HasValue)
+                    .Select(id => id!.Value)
+                    .ToList();
+
+                keep = await _subsets.ComputeDependencyClosureAsync(modelInfo.Id!.Value, dependencyIds);
+            }
+
+            var provenance = new SubsetProvenance(
+                user?.DisplayName, workspaceName, modelInfo.ModelUri!, DateTime.UtcNow);
+
             var zipStream = new MemoryStream();
             using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, leaveOpen: true))
             {
@@ -1126,10 +1186,36 @@ namespace NodeSetEditor.Server.Controllers
                 {
                     if (!modelByUri.TryGetValue(uri, out var depInfo)) continue;
 
-                    using var modelStream = SerializeModel(addressSpace, uri, fmt, out _, out var ext,
-                        depInfo.CopyrightHolder, depInfo.License, depInfo.LicenseUrl);
+                    var isPrimary = string.Equals(uri, modelInfo.ModelUri, StringComparison.Ordinal);
 
-                    var entryName = GenerateExportFileName(depInfo, ext);
+                    // With "remove unused nodes" on, the dependencies in this bundle are specific to
+                    // THIS workspace's model rather than interchangeable with the published
+                    // NodeSets they are named after, so every one of them is prefixed with the
+                    // workspace — not just the ones the trimmer actually rewrote. A reader cannot
+                    // tell a trimmed copy from a whole one by its filename, so the bundle marks the
+                    // whole set or none of it. The primary is never trimmed and never prefixed.
+                    var namePrefix = keep != null && !isPrimary
+                        ? WorkspaceFileNamePrefix(workspaceName)
+                        : string.Empty;
+
+                    Stream modelStream;
+                    string ext;
+
+                    if (keep != null && !isPrimary && depInfo.Id.HasValue)
+                    {
+                        var trimmed = await _subsets.ExportTrimmedAsync(depInfo.Id.Value, keep, provenance);
+                        if (trimmed == null) continue;
+                        modelStream = new MemoryStream(trimmed);
+                        ext = ".xml";
+                    }
+                    else
+                    {
+                        modelStream = SerializeModel(addressSpace, uri, fmt, out _, out ext,
+                            depInfo.CopyrightHolder, depInfo.License, depInfo.LicenseUrl);
+                    }
+
+                    using var _modelStream = modelStream;
+                    var entryName = namePrefix + GenerateExportFileName(depInfo, ext);
                     if (!usedNames.Add(entryName))
                     {
                         var bareName = entryName.Substring(0, entryName.Length - ext.Length);
@@ -1198,11 +1284,10 @@ namespace NodeSetEditor.Server.Controllers
         {
             var serializer = NodeSetSerializer.FromAddressSpace(addressSpace, modelUri);
 
-            // JSON-family NodeSets carry SPDX license/copyright as a structured header object (JSON has
-            // no comment syntax); the XML path injects comment headers post-serialization instead. The
-            // header is written once — on the first file of a multi-file archive. (JSON-LD conveys
-            // provenance through its own RDF/OWL vocabulary and is left untouched here.)
-            if (fmt is "json" or "compressed")
+            // A JSON NodeSet carries SPDX license/copyright as a structured header object (JSON has
+            // no comment syntax); the XML path injects comment headers post-serialization instead.
+            // (JSON-LD conveys provenance through its own RDF/OWL vocabulary and is left untouched.)
+            if (fmt is "json")
             {
                 var copyrightText = NodeSetEditor.Model.SpdxHeaders.FormatCopyrightText(copyrightHolder);
                 if (copyrightText != null
@@ -1231,14 +1316,16 @@ namespace NodeSetEditor.Server.Controllers
                     contentType = "application/json";
                     extension = ".json";
                     break;
-                case "compressed":
-                    //serializer.SaveArchive(ms, 10000);
-                    contentType = "application/gzip";
-                    extension = ".uanodeset";
-                    break;
-                // "jsonld" is deliberately absent. RDF/JSON-LD is a prototype of a draft encoding
-                // and ships in its own assembly, which this build does not reference — so there is
-                // no route to serve it and an asking client falls through to XML below.
+                // "compressed" and "jsonld" are deliberately absent. The .uanodeset package and the
+                // RDF/JSON-LD encoding are prototypes of a draft specification and ship in their own
+                // assembly, which this build does not reference — so there is no route to serve
+                // either and an asking client falls through to XML below. The client offers both as
+                // disabled placeholders for the same reason.
+                //
+                // The package encoding used to be reachable here, when it was a gzipped tar the
+                // serializer itself could write. It is now an ASiC-E container carrying JSONL, built
+                // by Opc.Ua.NodeSetSerializer.Jsonl — taking that on would mean shipping a draft
+                // encoding from this build.
                 default:
                     serializer.SaveXml(ms);
                     contentType = "text/xml";
@@ -1272,7 +1359,6 @@ namespace NodeSetEditor.Server.Controllers
 
                 var workspaceId = workspace!.Id!.Value;
                 var addressSpace = await _addressSpace.GetAddressSpaceAsync(workspaceId);
-                var nodeIcons = await _addressSpace.GetNodeIconsAsync(workspaceId);
 
                 var uaNode = addressSpace.Read(nodeId);
                 if (uaNode == null)
@@ -1280,7 +1366,7 @@ namespace NodeSetEditor.Server.Controllers
                     return NotFound(MakeError(Opc.Ua.StatusCodes.BadNotFound, nameof(Opc.Ua.StatusCodes.BadNotFound), $"Node '{nodeId}' not found."));
                 }
 
-                var restNode = UaNodeToRestNode(uaNode, addressSpace, nodeIcons);
+                var restNode = UaNodeToRestNode(uaNode, addressSpace);
 
                 // The structural parent, which the list endpoints each set for themselves
                 // after mapping. A null one is meaningful here: it marks a top-level node
@@ -1914,9 +2000,6 @@ namespace NodeSetEditor.Server.Controllers
                 _addressSpace.Invalidate(workspaceId);
 
                 var models = await _storage.GetWorkspaceModelsAsync(workspaceId);
-                // No icon on a create response: the cache was just invalidated, so asking
-                // for icons here would rebuild the whole address space synchronously to
-                // decorate a payload the client replaces with a refetch anyway.
                 var restNode = UaNodeToRestNode(uaNode, addressSpace);
                 restNode.ParentNodeId = parentNodeId;
 
@@ -1937,6 +2020,227 @@ namespace NodeSetEditor.Server.Controllers
                 return InternalError(e);
             }
         }
+
+        #region CSV type import
+
+        /// <summary>
+        /// Inspects an uploaded CSV and proposes how its columns map onto OPC UA: one row
+        /// becomes one Variable under a new ObjectType, and each column becomes that
+        /// Variable's BrowseName, DataType, EngineeringUnits, EURange bound, or a Property.
+        ///
+        /// Creates nothing. The caller shows the proposal, lets the user adjust it, and posts
+        /// the confirmed mapping back to <see cref="CreateTypeFromCsv"/> with the same file.
+        /// </summary>
+        [HttpPost("csv/analyze")]
+        [RequestSizeLimit(20_000_000)]
+        [RequestFormLimits(MultipartBodyLengthLimit = 20_000_000)]
+        public async Task<ActionResult<CsvAnalysisResult>> AnalyzeCsv(
+            [FromHeader(Name = "OpcUa-Server")] string? opcUaServer,
+            [FromForm] IFormFile file)
+        {
+            try
+            {
+                // requireWrite even though nothing is written: analyzing is only useful as a
+                // precursor to creating the type, and it reads the workspace's DataTypes.
+                var (user, workspace, error) = await ResolveServer(opcUaServer, requireWrite: true);
+                if (error != null) return error;
+
+                var addressSpace = await _addressSpace.GetAddressSpaceAsync(workspace!.Id!.Value);
+
+                using var stream = file.OpenReadStream();
+                var table = _csvImport.Parse(stream);
+
+                if (table.Headers.Count == 0)
+                    return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument,
+                        nameof(Opc.Ua.StatusCodes.BadInvalidArgument), "The file has no header row."));
+
+                return Ok(_csvImport.Analyze(table, file.FileName, addressSpace));
+            }
+            catch (InvalidOperationException e)
+            {
+                return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument,
+                    nameof(Opc.Ua.StatusCodes.BadInvalidArgument), e.Message));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error analyzing uploaded CSV");
+                return InternalError(e);
+            }
+        }
+
+        /// <summary>
+        /// Creates an ObjectType from a CSV and a confirmed column mapping: one Mandatory
+        /// Variable instance declaration per row, plus the EngineeringUnits / EURange /
+        /// Property children the mapping calls for.
+        ///
+        /// The whole type lands in a single changeset, so a long tag list is one write rather
+        /// than one per node. The file is re-uploaded alongside the mapping instead of being
+        /// cached from the analyze call, so there is no server-side state to expire.
+        /// </summary>
+        /// <param name="mapping">A <see cref="CsvCreateTypeRequest"/> as JSON.</param>
+        [HttpPost("csv/create-type")]
+        [RequestSizeLimit(20_000_000)]
+        [RequestFormLimits(MultipartBodyLengthLimit = 20_000_000)]
+        public async Task<ActionResult<CsvCreateTypeResult>> CreateTypeFromCsv(
+            [FromHeader(Name = "OpcUa-Server")] string? opcUaServer,
+            [FromForm] IFormFile file,
+            [FromForm] string mapping)
+        {
+            try
+            {
+                var (user, workspace, error) = await ResolveServer(opcUaServer, requireWrite: true);
+                if (error != null) return error;
+
+                var workspaceId = workspace!.Id!.Value;
+
+                CsvCreateTypeRequest? request;
+                try
+                {
+                    request = System.Text.Json.JsonSerializer.Deserialize<CsvCreateTypeRequest>(
+                        mapping, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                }
+                catch (System.Text.Json.JsonException e)
+                {
+                    return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument,
+                        nameof(Opc.Ua.StatusCodes.BadInvalidArgument), $"mapping is not valid JSON: {e.Message}"));
+                }
+
+                if (request == null)
+                    return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument,
+                        nameof(Opc.Ua.StatusCodes.BadInvalidArgument), "mapping is required."));
+
+                var addressSpace = await _addressSpace.GetAddressSpaceAsync(workspaceId);
+
+                using var stream = file.OpenReadStream();
+                var table = _csvImport.Parse(stream);
+                if (table.Headers.Count == 0)
+                    return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument,
+                        nameof(Opc.Ua.StatusCodes.BadInvalidArgument), "The file has no header row."));
+
+                // NodeIds come from a counter seeded once per model rather than from a
+                // GetNextNodeIdAsync call per node: that call rescans every node in the
+                // workspace, and an import allocates thousands of ids in a row.
+                var counters = new Dictionary<string, long>(StringComparer.Ordinal);
+                string AllocateNodeId(string modelUri)
+                {
+                    if (!counters.TryGetValue(modelUri, out var next))
+                        next = long.Parse(_addressSpace.GetNextNodeIdAsync(workspaceId, modelUri).Result);
+                    counters[modelUri] = next + 1;
+                    return next.ToString();
+                }
+
+                var build = _csvImport.Build(table, request, addressSpace, AllocateNodeId,
+                    (value, dataType) => JsonElementToVariant(value, dataType, null, addressSpace));
+
+                if (build.InstanceNode?.NodeId == null)
+                    return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument,
+                        nameof(Opc.Ua.StatusCodes.BadInvalidArgument), "The mapping produced no object."));
+
+                var changeset = new ModelChangeset();
+                foreach (var node in build.Nodes)
+                {
+                    // Nodes come back parent-first, so a child's parent is already in the
+                    // address space by the time we get here.
+                    addressSpace.AddNode(node, node.ParentId);
+                    AttachToParentChildren(addressSpace, node);
+
+                    changeset.Nodes.Add(BuildNodeChange(node, ChangeKind.Upsert));
+                    foreach (var r in node.References ?? new List<JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.Reference>())
+                    {
+                        changeset.References.Add(new ReferenceChange
+                        {
+                            Kind = ChangeKind.Upsert,
+                            SourceNodeId = node.NodeId!,
+                            ReferenceTypeId = r.ReferenceTypeId!,
+                            TargetNodeId = r.TargetId!,
+                            IsForward = r.IsForward ?? true
+                        });
+                    }
+                }
+
+                await PersistModelAsync(addressSpace, workspaceId, build.InstanceNode.NodeId!, changeset);
+                _addressSpace.Invalidate(workspaceId);
+
+                var result = new CsvCreateTypeResult
+                {
+                    Instance = ToImportedNode(build.InstanceNode, addressSpace),
+                    Type = build.TypeNode == null ? null : ToImportedNode(build.TypeNode, addressSpace),
+                    Folder = build.FolderNode == null ? null : ToImportedNode(build.FolderNode, addressSpace),
+                    VariablesCreated = build.VariablesCreated,
+                    PropertiesCreated = build.PropertiesCreated,
+                    RowsSkipped = build.RowsSkipped,
+                    Warnings = build.Warnings,
+                };
+
+                return CreatedAtAction(nameof(GetNode), new { nodeId = build.InstanceNode.NodeId }, result);
+            }
+            catch (InvalidOperationException e)
+            {
+                return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument,
+                    nameof(Opc.Ua.StatusCodes.BadInvalidArgument), e.Message));
+            }
+            catch (ModelReadOnlyException e)
+            {
+                return Forbidden(MakeError(Opc.Ua.StatusCodes.BadNotWritable,
+                    nameof(Opc.Ua.StatusCodes.BadNotWritable), e.Message));
+            }
+            catch (KeyNotFoundException e)
+            {
+                return NotFound(MakeError(Opc.Ua.StatusCodes.BadNotFound,
+                    nameof(Opc.Ua.StatusCodes.BadNotFound), e.Message));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error creating a type from an uploaded CSV");
+                return InternalError(e);
+            }
+        }
+
+        /// <summary>
+        /// Maps a node the CSV import created into the REST shape, with its supertype chain
+        /// filled in. The client re-roots its tree on the node, and a type is navigated along
+        /// SuperTypeIds rather than ParentNodeId, so the chain has to travel with it.
+        /// </summary>
+        private static Opc.Ua.RestfulApi.Node ToImportedNode(
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UANode node,
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace)
+        {
+            var restNode = UaNodeToRestNode(node, addressSpace);
+            restNode.ParentNodeId = node.ParentId;
+            restNode.SuperTypeIds = GetSuperTypeIds(addressSpace, node.NodeId!);
+            if (restNode.SuperTypeIds.Count > 0) restNode.SuperTypeId = restNode.SuperTypeIds[^1];
+            return restNode;
+        }
+
+        /// <summary>
+        /// Adds a freshly created instance node to its parent's Children collection, which is
+        /// what the NodeSet serializer walks when it writes the parent out. A top-level node
+        /// (no ParentId) has nowhere to attach. Mirrors CreateChildNode's wiring.
+        /// </summary>
+        private static void AttachToParentChildren(
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace,
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UANode node)
+        {
+            if (node.ParentId == null) return;
+            var parent = addressSpace.Read(node.ParentId);
+            if (parent == null) return;
+
+            parent.Children ??= new JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.ChildList();
+            switch (node)
+            {
+                case JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariable v:
+                    (parent.Children.Variables ??= new()).Add(v);
+                    break;
+                case JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAMethod m:
+                    (parent.Children.Methods ??= new()).Add(m);
+                    break;
+                case JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAObject o:
+                    (parent.Children.Objects ??= new()).Add(o);
+                    break;
+            }
+        }
+
+        #endregion
 
         /// <summary>
         /// Update a node's attributes.
@@ -2362,7 +2666,6 @@ namespace NodeSetEditor.Server.Controllers
 
                 var workspaceId = workspace!.Id!.Value;
                 var addressSpace = await _addressSpace.GetAddressSpaceAsync(workspaceId);
-                var nodeIcons = await _addressSpace.GetNodeIconsAsync(workspaceId);
 
                 var results = new List<Opc.Ua.RestfulApi.Node>();
                 if (!string.IsNullOrEmpty(modelUri))
@@ -2381,11 +2684,11 @@ namespace NodeSetEditor.Server.Controllers
                         var rootNode = addressSpace.Read(nodeId);
                         if (rootNode == null)
                             return NotFound(MakeError(Opc.Ua.StatusCodes.BadNotFound, nameof(Opc.Ua.StatusCodes.BadNotFound), $"Node '{nodeId}' not found."));
-                        var rootRest = UaNodeToRestNode(rootNode, addressSpace, nodeIcons);
+                        var rootRest = UaNodeToRestNode(rootNode, addressSpace);
                         rootRest.HasNoChildren = ComputeHasNoChildren(addressSpace, nodeId);
                         results.Add(rootRest);
                     }
-                    CollectSubtypes(addressSpace, nodeId, depth, results, nodeIcons);
+                    CollectSubtypes(addressSpace, nodeId, depth, results);
                 }
 
                 if (start < 0) start = 0;
@@ -3072,7 +3375,6 @@ namespace NodeSetEditor.Server.Controllers
 
                 var workspaceId = workspace!.Id!.Value;
                 var addressSpace = await _addressSpace.GetAddressSpaceAsync(workspaceId);
-                var nodeIcons = await _addressSpace.GetNodeIconsAsync(workspaceId);
 
                 var filterTrimmed = filter?.Trim() ?? "";
                 var nsUriFilter = namespaceUri?.Trim();
@@ -3118,7 +3420,7 @@ namespace NodeSetEditor.Server.Controllers
                         !string.Equals(modelUri, nsUriFilter, StringComparison.OrdinalIgnoreCase))
                         continue;
 
-                    var restNode = UaNodeToRestNode(uaNode, addressSpace, nodeIcons);
+                    var restNode = UaNodeToRestNode(uaNode, addressSpace);
 
                     if (!string.IsNullOrEmpty(filterTrimmed) &&
                         !(restNode.DisplayName?.Text?.Contains(filterTrimmed, StringComparison.OrdinalIgnoreCase) ?? false) &&
@@ -3222,7 +3524,6 @@ namespace NodeSetEditor.Server.Controllers
 
                 var workspaceId = workspace!.Id!.Value;
                 var addressSpace = await _addressSpace.GetAddressSpaceAsync(workspaceId);
-                var nodeIcons = await _addressSpace.GetNodeIconsAsync(workspaceId);
 
                 // Namespace filter: return the instance subtree under `nodeId` pruned
                 // to branches containing a node in `modelUri` (as a flat list with
@@ -3245,7 +3546,7 @@ namespace NodeSetEditor.Server.Controllers
 
                 // Collect own children
                 var results = new List<Opc.Ua.RestfulApi.Node>();
-                CollectChildren(addressSpace, nodeId, refType, depth, results, includeSubtypes, nodeIcons);
+                CollectChildren(addressSpace, nodeId, refType, depth, results, includeSubtypes);
 
                 // Collect inherited children from supertype chain (most derived wins)
                 if (full)
@@ -3267,7 +3568,7 @@ namespace NodeSetEditor.Server.Controllers
                     foreach (var ancestorId in superTypeIds)
                     {
                         var inherited = new List<Opc.Ua.RestfulApi.Node>();
-                        CollectChildren(addressSpace, ancestorId, refType, depth, inherited, includeSubtypes, nodeIcons);
+                        CollectChildren(addressSpace, ancestorId, refType, depth, inherited, includeSubtypes);
 
                         foreach (var child in inherited)
                         {
@@ -3437,8 +3738,7 @@ namespace NodeSetEditor.Server.Controllers
             JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace,
             string parentNodeId,
             int remainingDepth,
-            List<Opc.Ua.RestfulApi.Node> results,
-            IReadOnlyDictionary<string, string>? nodeIcons = null)
+            List<Opc.Ua.RestfulApi.Node> results)
         {
             if (remainingDepth <= 0) return;
 
@@ -3450,7 +3750,7 @@ namespace NodeSetEditor.Server.Controllers
                 var uaNode = addressSpace.Read(r.TargetNodeId);
                 if (uaNode == null) continue;
 
-                var restNode = UaNodeToRestNode(uaNode, addressSpace, nodeIcons);
+                var restNode = UaNodeToRestNode(uaNode, addressSpace);
                 restNode.SuperTypeId = parentNodeId;
 
                 // Instance declarations are never prefetched (this walk follows
@@ -3458,11 +3758,15 @@ namespace NodeSetEditor.Server.Controllers
                 // flag for a client that shows them.
                 restNode.HasNoChildren = ComputeHasNoChildren(addressSpace, r.TargetNodeId);
 
-                // Check if this node has subtypes (for leaf detection)
+                // Leaf/continuation state. This is the deepest level the caller asked for, so the
+                // row must say which of the two it is: genuinely subtype-free, or cut off with
+                // subtypes the response doesn't carry. A client that prefetches a shallow tree
+                // needs the second case to know it has to re-browse from here on expand.
                 if (remainingDepth == 1)
                 {
                     var childRefs = addressSpace.Browse(r.TargetNodeId, HAS_SUBTYPE, includeForward: true, includeInverse: false);
                     restNode.HasNoSubtypes = childRefs.Count == 0 ? true : null;
+                    restNode.SubtypesTruncated = childRefs.Count > 0 ? true : null;
                 }
 
                 children.Add((r.TargetNodeId, restNode));
@@ -3475,7 +3779,7 @@ namespace NodeSetEditor.Server.Controllers
             foreach (var (targetId, node) in children)
             {
                 results.Add(node);
-                CollectSubtypes(addressSpace, targetId, remainingDepth - 1, results, nodeIcons);
+                CollectSubtypes(addressSpace, targetId, remainingDepth - 1, results);
             }
         }
 
@@ -3541,7 +3845,25 @@ namespace NodeSetEditor.Server.Controllers
                 }
             }
 
-            MarkPrunedLeaves(byId, n => n.SuperTypeId, (n, leaf) => n.HasNoSubtypes = leaf);
+            // Say which rows are incomplete. Pruning withholds subtypes that are perfectly valid
+            // picks (a Core type outside the active namespace, say), so a row that kept fewer
+            // subtypes than it really has must advertise that — "no children in the payload"
+            // previously became HasNoSubtypes=true, which told the client a node with subtypes
+            // was terminal and left no way to ever see them.
+            var keptSubtypeCounts = byId.Values
+                .Where(n => !string.IsNullOrEmpty(n.SuperTypeId))
+                .GroupBy(n => n.SuperTypeId!, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
+
+            foreach (var (id, rest) in byId)
+            {
+                var realSubtypes = addressSpace.Browse(id, HAS_SUBTYPE, includeForward: true, includeInverse: false).Count;
+                var kept = keptSubtypeCounts.TryGetValue(id, out var k) ? k : 0;
+
+                rest.HasNoSubtypes = realSubtypes == 0 ? true : null;
+                rest.SubtypesTruncated = realSubtypes > kept ? true : null;
+            }
+
             results.AddRange(byId.Values);
         }
 
@@ -3719,8 +4041,7 @@ namespace NodeSetEditor.Server.Controllers
             string referenceTypeId,
             int remainingDepth,
             List<Opc.Ua.RestfulApi.Node> results,
-            bool includeSubtypes = false,
-            IReadOnlyDictionary<string, string>? nodeIcons = null)
+            bool includeSubtypes = false)
         {
             if (remainingDepth <= 0) return;
 
@@ -3751,7 +4072,7 @@ namespace NodeSetEditor.Server.Controllers
                     continue;
                 }
 
-                var restNode = UaNodeToRestNode(uaNode, addressSpace, nodeIcons);
+                var restNode = UaNodeToRestNode(uaNode, addressSpace);
                 restNode.ParentNodeId = parentNodeId;
 
                 // Resolve reference type name
@@ -3781,7 +4102,7 @@ namespace NodeSetEditor.Server.Controllers
             foreach (var (targetId, node) in children)
             {
                 results.Add(node);
-                CollectChildren(addressSpace, targetId, referenceTypeId, remainingDepth - 1, results, includeSubtypes, nodeIcons);
+                CollectChildren(addressSpace, targetId, referenceTypeId, remainingDepth - 1, results, includeSubtypes);
             }
         }
 
@@ -4152,35 +4473,9 @@ namespace NodeSetEditor.Server.Controllers
             return nc;
         }
 
-        /// <summary>
-        /// Resolves the icon key a node should be served with: a TYPE node's own stamped
-        /// key, or for an instance the key stamped on its TypeDefinition. One dictionary
-        /// lookup — the hierarchy was walked once, at write time.
-        /// </summary>
-        private static string? ResolveNodeIcon(
-            JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UANode node,
-            IReadOnlyDictionary<string, string>? nodeIcons)
-        {
-            if (nodeIcons == null || nodeIcons.Count == 0) return null;
-
-            if (!string.IsNullOrEmpty(node.NodeId) && nodeIcons.TryGetValue(node.NodeId!, out var own))
-                return own;
-
-            var typeId = node switch
-            {
-                JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAObject o => o.TypeId,
-                JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariable v => v.TypeId,
-                _ => null,
-            };
-            return !string.IsNullOrEmpty(typeId) && nodeIcons.TryGetValue(typeId!, out var fromType)
-                ? fromType
-                : null;
-        }
-
         private static Opc.Ua.RestfulApi.Node UaNodeToRestNode(
             JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UANode node,
-            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace? addressSpace = null,
-            IReadOnlyDictionary<string, string>? nodeIcons = null)
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace? addressSpace = null)
         {
             // An empty DisplayName is "not set", not "named the empty string" — fall back to
             // the BrowseName the same way a missing one does. Nodes saved before the write
@@ -4232,7 +4527,6 @@ namespace NodeSetEditor.Server.Controllers
                 ModellingRule = node.ModellingRuleId,
                 TypeDefinition = node.TypeId,
                 TypeDefinitionName = ResolveBrowseName(addressSpace, node.TypeId),
-                Icon = ResolveNodeIcon(node, nodeIcons),
                 DataType = dataTypeId,
                 DataTypeName = ResolveBrowseName(addressSpace, dataTypeId),
                 // Variables and VariableTypes always have a ValueRank (Scalar = -1
@@ -4505,6 +4799,7 @@ namespace NodeSetEditor.Server.Controllers
                     DefaultCopyrightHolder = pref.DefaultCopyrightHolder,
                     TermsAccepted = pref.TermsAcceptedAt.HasValue,
                     BetaTester = _betaTesters.IsBetaTester(user.Email),
+                    Admin = _admins.IsAdmin(user.Email),
                 });
             }
             catch (Exception e)
@@ -4595,6 +4890,7 @@ namespace NodeSetEditor.Server.Controllers
                     DefaultCopyrightHolder = pref.DefaultCopyrightHolder,
                     TermsAccepted = pref.TermsAcceptedAt.HasValue,
                     BetaTester = _betaTesters.IsBetaTester(user.Email),
+                    Admin = _admins.IsAdmin(user.Email),
                 });
             }
             catch (Exception e)
@@ -4815,7 +5111,25 @@ namespace NodeSetEditor.Server.Controllers
                 License = m.License,
                 LicenseUrl = m.LicenseUrl,
                 CopyrightHolder = m.CopyrightHolder,
+                ProfileGroupName = m.ProfileGroupName,
             };
+        }
+
+        /// <summary>
+        /// A workspace name reduced to a filename prefix: lowercased, with everything that is not
+        /// a letter or a digit removed, and a trailing "_" separator. Empty when the workspace has
+        /// no usable name — the caller then falls back to the unprefixed name rather than emitting
+        /// a bare separator.
+        ///
+        /// <para>Static and public because it is a pure function; ASP.NET only routes public
+        /// INSTANCE methods, so this is not reachable as an action.</para>
+        /// </summary>
+        public static string WorkspaceFileNamePrefix(string? workspaceName)
+        {
+            if (string.IsNullOrWhiteSpace(workspaceName)) return string.Empty;
+
+            var slug = new string(workspaceName.Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
+            return slug.Length > 0 ? slug + "_" : string.Empty;
         }
 
         private static string GenerateExportFileName(ModelInfo modelInfo, string extension = ".xml")
@@ -5346,6 +5660,12 @@ namespace NodeSetEditor.Server.Controllers
 
         /// <summary>Copyright holder — editable for private models. Required when changing the license.</summary>
         public string? CopyrightHolder { get; set; }
+
+        /// <summary>
+        /// Profile group for the NodeSet's conformance units — editable for private models.
+        /// Empty string clears it; omitted (null) leaves it unchanged.
+        /// </summary>
+        public string? ProfileGroupName { get; set; }
     }
 
     public class LinkNamespaceRequest

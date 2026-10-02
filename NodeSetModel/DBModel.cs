@@ -297,6 +297,41 @@ namespace NodeSetEditor.Model
         }
 
         /// <summary>
+        /// Metadata key holding the profile group this NodeSet's conformance units are
+        /// assessed against (a <c>fullName</c> from profiles.opcfoundation.org, e.g.
+        /// "UACore 1.05"). It lives in <see cref="Metadata"/> rather than in its own column
+        /// because the schema is created with <c>EnsureCreated</c>, which cannot add a
+        /// column to an already-existing database.
+        /// </summary>
+        public const string ProfileGroupNameKey = "ProfileGroupName";
+
+        /// <summary>The NodeSet's profile group, or null when none is set.</summary>
+        public string? GetProfileGroupName()
+        {
+            var value = Metadata?[ProfileGroupNameKey]?.GetValue<string>();
+            return string.IsNullOrWhiteSpace(value) ? null : value;
+        }
+
+        /// <summary>
+        /// Sets (or, with null/blank, clears) the NodeSet's profile group. Always assigns a
+        /// fresh <see cref="JsonObject"/> — EF tracks this property by reference, so mutating
+        /// the existing instance in place would not be detected as a change.
+        /// </summary>
+        public void SetProfileGroupName(string? profileGroupName)
+        {
+            var name = string.IsNullOrWhiteSpace(profileGroupName) ? null : profileGroupName.Trim();
+
+            var next = Metadata == null
+                ? new JsonObject()
+                : JsonNode.Parse(Metadata.ToJsonString())!.AsObject();
+
+            if (name == null) next.Remove(ProfileGroupNameKey);
+            else next[ProfileGroupNameKey] = name;
+
+            Metadata = next.Count > 0 ? next : null;
+        }
+
+        /// <summary>
         /// Normalize a SemVer string to a zero-padded sortable form.
         /// "1.5.1" → "000100050001~", "1.5.1-beta" → "000100050001-beta".
         /// </summary>

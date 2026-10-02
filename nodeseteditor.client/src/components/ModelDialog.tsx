@@ -30,6 +30,12 @@ interface ModelDialogProps {
    error?: Error | null;
    maxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | false;
    fullWidth?: boolean;
+   /**
+    * Blocks every route out of the dialog (backdrop, Escape, the title's X and
+    * Cancel). For an operation in flight that cannot be cancelled — closing would
+    * only hide the progress while the request keeps running.
+    */
+   disableClose?: boolean;
 }
 
 export const ModelDialog: React.FC<ModelDialogProps> = ({
@@ -42,14 +48,15 @@ export const ModelDialog: React.FC<ModelDialogProps> = ({
    isError = false,
    error = null,
    maxWidth = 'sm',
-   fullWidth = true
+   fullWidth = true,
+   disableClose = false
 }) => {
    const { t } = useTranslation();
 
    return (
 	  <Dialog
 		 open={open}
-		 onClose={onClose}
+		 onClose={disableClose ? undefined : onClose}
 		 maxWidth={maxWidth}
 		 fullWidth={fullWidth}
 	  >
@@ -63,7 +70,7 @@ export const ModelDialog: React.FC<ModelDialogProps> = ({
 			}}
 		 >
 			{title}
-			<IconButton aria-label={t('common.close', 'Close')} onClick={onClose} size="small">
+			<IconButton aria-label={t('common.close', 'Close')} onClick={onClose} disabled={disableClose} size="small">
 			   <CloseIcon fontSize="small" />
 			</IconButton>
 		 </DialogTitle>
@@ -78,7 +85,7 @@ export const ModelDialog: React.FC<ModelDialogProps> = ({
 		 </DialogContent>
 		 <DialogActions>
 			{/* Secondary (Cancel) on the left, primary action(s) on the right. */}
-			<Button variant="outlined" onClick={onClose} disabled={isLoading}>
+			<Button variant="outlined" onClick={onClose} disabled={isLoading || disableClose}>
 			   {t('common.cancel', 'Cancel')}
 			</Button>
 			{actions.map((action, index) => (
