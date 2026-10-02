@@ -8,7 +8,6 @@ import AuthCallbackPage from './pages/AuthCallbackPage';
 import LoginPage from './pages/LoginPage';
 import ValidationPage from './pages/ValidationPage';
 import { RequireAuth } from './components/RequireAuth';
-import { TypeFamiliesProvider } from './icons/TypeFamiliesProvider';
 
 const App: React.FC = () => {
    const [title] = React.useState<string>('main.title');
@@ -19,10 +18,6 @@ const App: React.FC = () => {
    }, [t, title]);
 
    return (
-      // Mounted once here (inside WorkspaceProvider, so it can see the selected
-      // workspace): loads the type-family subtype closures every NodeIcon resolves
-      // against, instead of each tree row opening its own queries.
-      <TypeFamiliesProvider>
       <Routes>
          {pages.map((page: PageLayout) => {
             return <Route key={page.path} path={page.path} element={<Layout page={page}></Layout>} />;
@@ -48,7 +43,6 @@ const App: React.FC = () => {
              React Router renders nothing and the auth flow appears to hang. */}
          <Route path="/login/success" element={<AuthCallbackPage />} />
       </Routes>
-      </TypeFamiliesProvider>
    );
 }
 

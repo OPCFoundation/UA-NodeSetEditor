@@ -27,6 +27,15 @@ const sections = [
    { path: '/type_library', labelKey: 'topMenu.models', fallback: 'Models', icon: <CategoryOutlinedIcon /> },
 ];
 
+/**
+ * Height of the nav pill, and of the logo beside it.
+ *
+ * Pinned to one constant rather than left to emerge from padding + the theme's button
+ * minHeight (38px + 2×4px), so the two stay the same height by construction: changing the
+ * button metrics can no longer silently desynchronise them.
+ */
+const NAV_PILL_HEIGHT = 46;
+
 export const TopMenu = ({ title, onOpenSidebar, onOpenHelp }: TopMenuProps) => {
    const { t } = useTranslation();
    const navigate = useNavigate();
@@ -57,7 +66,7 @@ export const TopMenu = ({ title, onOpenSidebar, onOpenHelp }: TopMenuProps) => {
                component="img"
                src="/opclogo.png"
                alt="OPC Foundation"
-               sx={{ height: 32, display: { xs: 'none', sm: 'block' } }}
+               sx={{ height: NAV_PILL_HEIGHT, display: { xs: 'none', sm: 'block' } }}
             />
             <Typography variant="h6" component="div" noWrap sx={{ fontSize: { xs: '1.05rem', md: '1.2rem' } }}>
                {t(title ?? '')}
@@ -74,6 +83,8 @@ export const TopMenu = ({ title, onOpenSidebar, onOpenHelp }: TopMenuProps) => {
                   display: pathname === '/' ? 'none' : { xs: 'none', md: 'flex' },
                   gap: 4,
                   p: 4,
+                  height: NAV_PILL_HEIGHT,
+                  boxSizing: 'border-box',
                   borderRadius: 980,
                   bgcolor: (theme) => alpha(theme.palette.appBar.contrastText, 0.12),
                }}

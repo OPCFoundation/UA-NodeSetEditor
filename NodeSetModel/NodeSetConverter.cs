@@ -249,6 +249,8 @@ namespace NodeSetEditor.Model
                 }
             }
 
+            await StampIconsAsync(db, nodes);
+
             db.Nodes.AddRange(nodes);
             db.References.AddRange(references);
             await db.SaveChangesAsync();
@@ -257,6 +259,91 @@ namespace NodeSetEditor.Model
             await BuildSubTypeHierarchyAsync(db, model.Id, nodes, references);
 
             return model;
+        }
+
+        /// <summary>
+        /// Stamps <see cref="Node.Icon"/> on the type nodes of a freshly parsed NodeSet.
+        ///
+        /// Runs as a post-pass rather than inside the node loop because a NodeSet may
+        /// declare a subtype before its supertype, so the chain is only walkable once
+        /// every node is known. Supertypes that live in another model (a companion spec
+        /// deriving from core) are resolved from the rows already in the database, in one
+        /// query rather than one per node.
+        ///
+        /// Only type nodes get a key; instances are served their TypeDefinition's at read
+        /// time, so stamping them would be a second copy to keep in sync.
+        /// </summary>
+        private static async Task StampIconsAsync(NodeSetEditorDbContext db, List<Node> nodes)
+        {
+            // NodeClass values for the type classes (OPC UA Part 3): ObjectType 8,
+            // VariableType 16, ReferenceType 32, DataType 64.
+            static bool IsTypeNode(int nodeClass) =>
+                nodeClass == 8 || nodeClass == 16 || nodeClass == 32 || nodeClass == 64;
+
+            var incoming = new Dictionary<string, Node>(StringComparer.Ordinal);
+            foreach (var n in nodes)
+            {
+                if (!string.IsNullOrEmpty(n.NodeId) && IsTypeNode(n.NodeClass))
+                    incoming[n.NodeId!] = n;
+            }
+            if (incoming.Count == 0) return;
+
+            // Supertypes referenced by this NodeSet but defined elsewhere.
+            var external = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var n in incoming.Values)
+            {
+                var super = n.SuperTypeId;
+                if (!string.IsNullOrEmpty(super) && !incoming.ContainsKey(super!))
+                    external.Add(super!);
+            }
+
+            // Walking a chain can step outside the NodeSet more than once (A -> core B ->
+            // core C), so fetch the whole stored supertype graph for the ids we may need.
+            var stored = new Dictionary<string, string?>(StringComparer.Ordinal);
+            var storedIcons = new Dictionary<string, string?>(StringComparer.Ordinal);
+            var pending = external;
+            while (pending.Count > 0)
+            {
+                var ids = pending.Where(id => !stored.ContainsKey(id)).ToList();
+                if (ids.Count == 0) break;
+
+                var rows = await db.Nodes
+                    .Where(n => n.NodeId != null && ids.Contains(n.NodeId))
+                    .Select(n => new { n.NodeId, n.SuperTypeId, n.Icon })
+                    .ToListAsync();
+
+                foreach (var id in ids) stored[id] = null;
+                foreach (var r in rows)
+                {
+                    stored[r.NodeId!] = r.SuperTypeId;
+                    storedIcons[r.NodeId!] = r.Icon;
+                }
+
+                pending = new HashSet<string>(
+                    rows.Select(r => r.SuperTypeId)
+                        .Where(s => !string.IsNullOrEmpty(s) && !stored.ContainsKey(s!))
+                        .Select(s => s!),
+                    StringComparer.Ordinal);
+            }
+
+            string? SuperTypeOf(string nodeId) =>
+                incoming.TryGetValue(nodeId, out var local) ? local.SuperTypeId
+                : stored.TryGetValue(nodeId, out var super) ? super
+                : null;
+
+            foreach (var n in incoming.Values)
+            {
+                // An already-stamped stored ancestor short-circuits the walk, which also
+                // means a hand-patched row propagates to anything imported after it.
+                if (!string.IsNullOrEmpty(n.SuperTypeId)
+                    && storedIcons.TryGetValue(n.SuperTypeId!, out var inherited)
+                    && !string.IsNullOrEmpty(inherited))
+                {
+                    n.Icon = inherited;
+                    continue;
+                }
+                n.Icon = NodeIcons.Resolve(n.NodeId, SuperTypeOf);
+            }
         }
 
         /// <summary>

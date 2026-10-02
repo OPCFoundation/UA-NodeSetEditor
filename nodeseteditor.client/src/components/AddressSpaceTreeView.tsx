@@ -158,8 +158,7 @@ const TypeTreeItem: React.FC<TypeTreeItemProps> = ({ node, category, workspaceId
 	  <Box ref={targetRef} onClick={handleLabelClick} sx={treeLabelSx(isTarget, isHighlighted, isDimmed)}>
 		 <NodeIcon
 			nodeClass={nodeClassToNum(node.nodeClass)}
-			nodeId={node.nodeId}
-			typeDefinition={node.typeDefinition}
+			icon={node.icon}
 			size={IconSize.tree}
 			dimmed={isDimmed}
 		 />

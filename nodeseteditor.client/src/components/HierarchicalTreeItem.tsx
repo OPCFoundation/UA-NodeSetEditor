@@ -88,8 +88,7 @@ export const HierarchicalTreeItem: React.FC<HierarchicalTreeItemProps> = ({
    const icon = (
       <NodeIcon
          nodeClass={nodeClassToNum(node.nodeClass)}
-         nodeId={node.nodeId}
-         typeDefinition={node.typeDefinition}
+         icon={node.icon}
          size={IconSize.tree}
          dimmed={!!isDimmed}
       />

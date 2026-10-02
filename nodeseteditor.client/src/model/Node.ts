@@ -41,6 +41,13 @@ export interface Node {
    referenceTypeId?: string;
    typeDefinition?: string;
    typeDefinitionName?: string;
+   /**
+    * Icon concept key from the server (see src/icons/icon-map.json) — a type node's own
+    * stamped key, or an instance's TypeDefinition's. Absent when no rule applies, which
+    * means "use the NodeClass default", so it must be treated as optional rather than
+    * missing data.
+    */
+   icon?: string;
    modellingRule?: string;
    dataType?: string;
    dataTypeName?: string;

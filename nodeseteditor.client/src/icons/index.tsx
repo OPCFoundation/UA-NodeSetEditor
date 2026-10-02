@@ -4,9 +4,8 @@ import Box from '@mui/material/Box';
 import type { SxProps, Theme } from '@mui/material/styles';
 
 import iconMap from './icon-map.json';
-import { IconSize, nodeClassNames, nodeClassValue, type TypeFamilies } from './spec';
+import { IconSize, nodeClassNames, nodeClassValue } from './spec';
 import { resolveNodeIcon, type NodeIconInput } from './resolveNodeIcon';
-import { useTypeFamiliesContext } from './typeFamiliesContext';
 
 /**
  * The single place icons are chosen and rendered.
@@ -171,11 +170,6 @@ export const AccountTreeIcon: React.FC<SymbolProps> = (p) => <Symbol name={ui.ac
 export { default as MicrosoftIcon } from '@mui/icons-material/Microsoft';
 
 export interface NodeIconProps extends NodeIconInput {
-   /**
-    * Subtype closures. Defaults to TypeFamiliesProvider's value, which is what every
-    * call site uses; pass explicitly only to render against a different workspace.
-    */
-   families?: TypeFamilies;
    /** One of IconSize. Defaults to IconSize.inline. */
    size?: number;
    /** Renders at half opacity — used for nodes outside the active namespace. */
@@ -189,13 +183,12 @@ export interface NodeIconProps extends NodeIconInput {
  * tech, since the glyph alone is not self-describing.
  */
 export const NodeIcon: React.FC<NodeIconProps> = ({
-   nodeClass, nodeId, typeDefinition, families, size = IconSize.inline, dimmed = false, sx,
+   nodeClass, icon, size = IconSize.inline, dimmed = false, sx,
 }) => {
    const cls = typeof nodeClass === 'number' ? nodeClass : nodeClassValue(nodeClass);
-   const contextFamilies = useTypeFamiliesContext();
    return (
       <Symbol
-         name={resolveNodeIcon({ nodeClass, nodeId, typeDefinition }, families ?? contextFamilies)}
+         name={resolveNodeIcon({ nodeClass, icon })}
          size={size}
          title={nodeClassNames[cls] ?? 'Unknown'}
          sx={{ opacity: dimmed ? 0.5 : 1, ...sx }}

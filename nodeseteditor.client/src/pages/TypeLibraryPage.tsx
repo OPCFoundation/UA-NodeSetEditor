@@ -429,8 +429,7 @@ const TypeLibraryPage: React.FC = () => {
                                   and Variable onto VariableType. */}
                               <NodeIcon
                                  nodeClass={item.nodeClass}
-                                 nodeId={item.nodeId}
-                                 typeDefinition={item.typeDefinition}
+                                 icon={item.icon}
                                  size={IconSize.inline}
                                  sx={{ color: 'text.secondary' }}
                               />

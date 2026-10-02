@@ -121,6 +121,8 @@ interface NodeChildDto {
    typeDefinitionId?: string;
    dataTypeId?: string;
    modellingRuleId?: string;
+   /** Icon concept key from the server; see Node.icon. */
+   icon?: string;
    valueRank?: number | null;
    browseNameRaw?: string;
    isInherited?: boolean;
@@ -518,6 +520,7 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
             dataType: formatBrowseName(n.dataTypeName, nsMap) || n.dataType,
             modellingRule: n.modellingRule,
             typeDefinitionId: n.typeDefinition,
+            icon: n.icon,
             dataTypeId: n.dataType,
             modellingRuleId: undefined,
             valueRank: n.valueRank,
@@ -1380,8 +1383,7 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
                    and gave the same node a different look from the tree. */}
                <NodeIcon
                   nodeClass={child.nodeClass}
-                  nodeId={child.nodeId}
-                  typeDefinition={child.typeDefinitionId}
+                  icon={child.icon}
                   size={IconSize.inline}
                   sx={{ color: 'text.secondary' }}
                />
@@ -1541,8 +1543,7 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
             </IconButton>
             <NodeIcon
                nodeClass={activeNodeClass}
-               nodeId={activeNodeId}
-               typeDefinition={attributesData?.raw.typeDefinition}
+               icon={attributesData?.raw.icon}
                size={IconSize.header}
                sx={{ color: 'text.secondary' }}
             />

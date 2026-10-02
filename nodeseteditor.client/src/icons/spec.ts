@@ -57,34 +57,3 @@ export function nodeClassValue(nodeClass?: string | null): number {
    const entry = Object.entries(nodeClassNames).find(([, name]) => name.toLowerCase() === wanted);
    return entry ? Number(entry[0]) : 0;
 }
-
-/**
- * Well-known type NodeIds the icon rules branch on (OPC UA Part 6 Annex A). The
- * icon for an instance depends on which of these families its TypeDefinition sits
- * in, so each one needs its subtype closure — see useTypeFamilies().
- */
-export const TypeAnchors = {
-   /** Exact match only: an Object typed directly as BaseObjectType. */
-   baseObjectType: 'i=58',
-   /** Objects under FolderType get the folder glyph. */
-   folderType: 'i=61',
-   /** ObjectTypes under BaseInterfaceType are interfaces. */
-   baseInterfaceType: 'i=17602',
-   /** Variables under PropertyType get the label glyph. */
-   propertyType: 'i=68',
-   /** Variables under BaseDataVariableType (and anything else) get the ticket glyph. */
-   baseDataVariableType: 'i=63',
-} as const;
-
-/** The anchors whose subtype closures the client needs, with their API category. */
-export const TypeFamilyQueries = [
-   { key: 'folderType', nodeId: TypeAnchors.folderType, category: 'object-types' },
-   { key: 'baseInterfaceType', nodeId: TypeAnchors.baseInterfaceType, category: 'object-types' },
-   { key: 'propertyType', nodeId: TypeAnchors.propertyType, category: 'variable-types' },
-   { key: 'dataVariableType', nodeId: TypeAnchors.baseDataVariableType, category: 'variable-types' },
-] as const;
-
-export type TypeFamilyKey = typeof TypeFamilyQueries[number]['key'];
-
-/** Subtype closures, keyed by family. Each Set includes the anchor type itself. */
-export type TypeFamilies = Record<TypeFamilyKey, ReadonlySet<string>>;

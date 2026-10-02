@@ -901,6 +901,39 @@ namespace NodeSetEditor.Server.Services
             return await GetModelFileStreamAsync(Guid.Empty, dbModelId);
         }
 
+        /// <summary>
+        /// Icon key for a newly created node: for a TYPE, the nearest anchor at or above
+        /// its supertype; for an instance, null (instances are served their
+        /// TypeDefinition's icon, so storing a copy would only drift).
+        ///
+        /// The walk reads one row per level of the supertype chain, which is a handful of
+        /// queries on a create — not a read path — and only for type nodes.
+        /// </summary>
+        private async Task<string?> ResolveNewNodeIconAsync(int nodeClass, string? superTypeId)
+        {
+            // ObjectType 8, VariableType 16, ReferenceType 32, DataType 64 (Part 3).
+            var isType = nodeClass == 8 || nodeClass == 16 || nodeClass == 32 || nodeClass == 64;
+            if (!isType || string.IsNullOrEmpty(superTypeId)) return null;
+
+            var current = superTypeId;
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            while (!string.IsNullOrEmpty(current) && seen.Add(current!))
+            {
+                if (NodeSetEditor.Model.NodeIcons.Anchors.TryGetValue(current!, out var anchorIcon))
+                    return anchorIcon;
+
+                var row = await _db.Nodes
+                    .Where(n => n.NodeId == current)
+                    .Select(n => new { n.Icon, n.SuperTypeId })
+                    .FirstOrDefaultAsync();
+                if (row == null) return null;
+                // A stamped ancestor ends the walk — including one patched in by hand.
+                if (!string.IsNullOrEmpty(row.Icon)) return row.Icon;
+                current = row.SuperTypeId;
+            }
+            return null;
+        }
+
         // Each chunk request is bounded to 200 MB at the Kestrel layer ([RequestSizeLimit]); this
         // bounds the assembled total across all chunks of a single multi-chunk upload.
         private const long MaxNodeSetUploadBytes = 200L * 1024 * 1024;
@@ -1322,6 +1355,11 @@ namespace NodeSetEditor.Server.Services
                         ModellingRule = nc.ModellingRule,
                         Attributes = nc.Attributes,
                         Ordinal = maxOrdinal + 100,
+                        // A new type is born with its supertype's icon, which is how
+                        // "...and subtypes" holds without anything walking the hierarchy
+                        // at read time. Instances get null and are served their
+                        // TypeDefinition's icon instead.
+                        Icon = await ResolveNewNodeIconAsync(nc.NodeClass ?? 0, nc.SuperTypeId),
                     });
                 }
             }

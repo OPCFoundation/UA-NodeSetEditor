@@ -426,6 +426,20 @@ namespace NodeSetEditor.Model
         public string? SuperTypeId { get; set; }
         public string? ModellingRule { get; set; }
 
+        /// <summary>
+        /// Icon concept key for this node, from the client's src/icons/icon-map.json
+        /// (e.g. "folder", "property", "interfaceType"). Stamped on TYPE nodes at import
+        /// and at creation by inheriting the nearest anchor in the supertype chain — see
+        /// <see cref="NodeIcons"/>. Null means "no rule applies": the client falls back to
+        /// the NodeClass default, so leaving it unset is always safe.
+        ///
+        /// Instances do not store one; they are served their TypeDefinition's icon.
+        ///
+        /// Stored rather than derived so a new rule can be rolled out by patching rows
+        /// (UPDATE "Nodes" SET "Icon" = ... ) instead of shipping code.
+        /// </summary>
+        public string? Icon { get; set; }
+
         /// <summary>NodeClass-specific attributes stored as JSONB.</summary>
         public JsonObject? Attributes { get; set; }
 
