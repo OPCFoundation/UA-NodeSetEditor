@@ -43,6 +43,29 @@ namespace NodeSetEditor.Model
             };
 
         /// <summary>
+        /// The keys that describe the TYPE node itself, rather than its instances.
+        ///
+        /// Everything else in <see cref="Anchors"/> answers "what does an instance of this
+        /// family look like": a Variable typed by PropertyType is a label, one typed by
+        /// BaseDataVariableType is a ticket. Those glyphs must not land on the type node —
+        /// PropertyType *is* a VariableType and belongs with the other VariableTypes.
+        ///
+        /// InterfaceType is the one exception, and deliberately so: no instances of an
+        /// InterfaceType exist, so the only node that can carry the glyph is the ObjectType
+        /// itself.
+        /// </summary>
+        public static readonly IReadOnlySet<string> TypeLevel =
+            new HashSet<string>(StringComparer.Ordinal) { InterfaceType };
+
+        /// <summary>
+        /// True when <paramref name="icon"/> is a key a TYPE node may wear. A type node
+        /// stamped with any other key falls back to its NodeClass glyph (ObjectType,
+        /// VariableType, ...).
+        /// </summary>
+        public static bool IsTypeLevel(string? icon) =>
+            !string.IsNullOrEmpty(icon) && TypeLevel.Contains(icon!);
+
+        /// <summary>
         /// The icon key for a type node: the icon of the NEAREST anchor at or above it in
         /// the supertype chain, or null if it sits under none.
         ///
