@@ -1359,6 +1359,7 @@ namespace NodeSetEditor.Server.Controllers
 
                 var workspaceId = workspace!.Id!.Value;
                 var addressSpace = await _addressSpace.GetAddressSpaceAsync(workspaceId);
+                var nodeIcons = await _addressSpace.GetNodeIconsAsync(workspaceId);
 
                 var uaNode = addressSpace.Read(nodeId);
                 if (uaNode == null)
@@ -1366,7 +1367,7 @@ namespace NodeSetEditor.Server.Controllers
                     return NotFound(MakeError(Opc.Ua.StatusCodes.BadNotFound, nameof(Opc.Ua.StatusCodes.BadNotFound), $"Node '{nodeId}' not found."));
                 }
 
-                var restNode = UaNodeToRestNode(uaNode, addressSpace);
+                var restNode = UaNodeToRestNode(uaNode, addressSpace, nodeIcons);
 
                 // The structural parent, which the list endpoints each set for themselves
                 // after mapping. A null one is meaningful here: it marks a top-level node
@@ -2666,6 +2667,7 @@ namespace NodeSetEditor.Server.Controllers
 
                 var workspaceId = workspace!.Id!.Value;
                 var addressSpace = await _addressSpace.GetAddressSpaceAsync(workspaceId);
+                var nodeIcons = await _addressSpace.GetNodeIconsAsync(workspaceId);
 
                 var results = new List<Opc.Ua.RestfulApi.Node>();
                 if (!string.IsNullOrEmpty(modelUri))
@@ -2674,7 +2676,7 @@ namespace NodeSetEditor.Server.Controllers
                     // to branches that contain a type in `modelUri` (the type itself
                     // plus its supertype-chain ancestors as scaffolding). `depth`
                     // and `includeSelf` are ignored — the pruned tree is complete.
-                    CollectNamespaceTypeTree(addressSpace, nodeId, modelUri, results);
+                    CollectNamespaceTypeTree(addressSpace, nodeId, modelUri, results, nodeIcons);
                 }
                 else
                 {
@@ -2684,11 +2686,11 @@ namespace NodeSetEditor.Server.Controllers
                         var rootNode = addressSpace.Read(nodeId);
                         if (rootNode == null)
                             return NotFound(MakeError(Opc.Ua.StatusCodes.BadNotFound, nameof(Opc.Ua.StatusCodes.BadNotFound), $"Node '{nodeId}' not found."));
-                        var rootRest = UaNodeToRestNode(rootNode, addressSpace);
+                        var rootRest = UaNodeToRestNode(rootNode, addressSpace, nodeIcons);
                         rootRest.HasNoChildren = ComputeHasNoChildren(addressSpace, nodeId);
                         results.Add(rootRest);
                     }
-                    CollectSubtypes(addressSpace, nodeId, depth, results);
+                    CollectSubtypes(addressSpace, nodeId, depth, results, nodeIcons);
                 }
 
                 if (start < 0) start = 0;
@@ -3375,6 +3377,7 @@ namespace NodeSetEditor.Server.Controllers
 
                 var workspaceId = workspace!.Id!.Value;
                 var addressSpace = await _addressSpace.GetAddressSpaceAsync(workspaceId);
+                var nodeIcons = await _addressSpace.GetNodeIconsAsync(workspaceId);
 
                 var filterTrimmed = filter?.Trim() ?? "";
                 var nsUriFilter = namespaceUri?.Trim();
@@ -3420,7 +3423,7 @@ namespace NodeSetEditor.Server.Controllers
                         !string.Equals(modelUri, nsUriFilter, StringComparison.OrdinalIgnoreCase))
                         continue;
 
-                    var restNode = UaNodeToRestNode(uaNode, addressSpace);
+                    var restNode = UaNodeToRestNode(uaNode, addressSpace, nodeIcons);
 
                     if (!string.IsNullOrEmpty(filterTrimmed) &&
                         !(restNode.DisplayName?.Text?.Contains(filterTrimmed, StringComparison.OrdinalIgnoreCase) ?? false) &&
@@ -3524,6 +3527,7 @@ namespace NodeSetEditor.Server.Controllers
 
                 var workspaceId = workspace!.Id!.Value;
                 var addressSpace = await _addressSpace.GetAddressSpaceAsync(workspaceId);
+                var nodeIcons = await _addressSpace.GetNodeIconsAsync(workspaceId);
 
                 // Namespace filter: return the instance subtree under `nodeId` pruned
                 // to branches containing a node in `modelUri` (as a flat list with
@@ -3531,7 +3535,7 @@ namespace NodeSetEditor.Server.Controllers
                 if (!string.IsNullOrEmpty(modelUri))
                 {
                     var filtered = new List<Opc.Ua.RestfulApi.Node>();
-                    CollectNamespaceInstanceTree(addressSpace, nodeId, modelUri, filtered);
+                    CollectNamespaceInstanceTree(addressSpace, nodeId, modelUri, filtered, nodeIcons);
                     if (start < 0) start = 0;
                     if (count <= 0) count = 1000;
                     return Ok(new PaginatedResponse<Opc.Ua.RestfulApi.Node>
@@ -3546,7 +3550,7 @@ namespace NodeSetEditor.Server.Controllers
 
                 // Collect own children
                 var results = new List<Opc.Ua.RestfulApi.Node>();
-                CollectChildren(addressSpace, nodeId, refType, depth, results, includeSubtypes);
+                CollectChildren(addressSpace, nodeId, refType, depth, results, includeSubtypes, nodeIcons);
 
                 // Collect inherited children from supertype chain (most derived wins)
                 if (full)
@@ -3568,7 +3572,7 @@ namespace NodeSetEditor.Server.Controllers
                     foreach (var ancestorId in superTypeIds)
                     {
                         var inherited = new List<Opc.Ua.RestfulApi.Node>();
-                        CollectChildren(addressSpace, ancestorId, refType, depth, inherited, includeSubtypes);
+                        CollectChildren(addressSpace, ancestorId, refType, depth, inherited, includeSubtypes, nodeIcons);
 
                         foreach (var child in inherited)
                         {
@@ -3738,7 +3742,8 @@ namespace NodeSetEditor.Server.Controllers
             JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace,
             string parentNodeId,
             int remainingDepth,
-            List<Opc.Ua.RestfulApi.Node> results)
+            List<Opc.Ua.RestfulApi.Node> results,
+            IReadOnlyDictionary<string, string>? nodeIcons = null)
         {
             if (remainingDepth <= 0) return;
 
@@ -3750,7 +3755,7 @@ namespace NodeSetEditor.Server.Controllers
                 var uaNode = addressSpace.Read(r.TargetNodeId);
                 if (uaNode == null) continue;
 
-                var restNode = UaNodeToRestNode(uaNode, addressSpace);
+                var restNode = UaNodeToRestNode(uaNode, addressSpace, nodeIcons);
                 restNode.SuperTypeId = parentNodeId;
 
                 // Instance declarations are never prefetched (this walk follows
@@ -3779,7 +3784,7 @@ namespace NodeSetEditor.Server.Controllers
             foreach (var (targetId, node) in children)
             {
                 results.Add(node);
-                CollectSubtypes(addressSpace, targetId, remainingDepth - 1, results);
+                CollectSubtypes(addressSpace, targetId, remainingDepth - 1, results, nodeIcons);
             }
         }
 
@@ -3817,7 +3822,8 @@ namespace NodeSetEditor.Server.Controllers
         private static void CollectNamespaceTypeTree(
             JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace,
             string rootNodeId, string modelUri,
-            List<Opc.Ua.RestfulApi.Node> results)
+            List<Opc.Ua.RestfulApi.Node> results,
+            IReadOnlyDictionary<string, string>? nodeIcons = null)
         {
             var byId = new Dictionary<string, Opc.Ua.RestfulApi.Node>(StringComparer.Ordinal);
 
@@ -3836,7 +3842,7 @@ namespace NodeSetEditor.Server.Controllers
                     var ua = addressSpace.Read(current);
                     if (ua == null) break;
                     var super = GetImmediateSupertype(addressSpace, current);
-                    var rest = UaNodeToRestNode(ua, addressSpace);
+                    var rest = UaNodeToRestNode(ua, addressSpace, nodeIcons);
                     rest.SuperTypeId = super;
                     rest.HasNoChildren = ComputeHasNoChildren(addressSpace, current);
                     byId[current] = rest;
@@ -3877,7 +3883,8 @@ namespace NodeSetEditor.Server.Controllers
         private static void CollectNamespaceInstanceTree(
             JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace,
             string rootNodeId, string modelUri,
-            List<Opc.Ua.RestfulApi.Node> results)
+            List<Opc.Ua.RestfulApi.Node> results,
+            IReadOnlyDictionary<string, string>? nodeIcons = null)
         {
             var byId = new Dictionary<string, Opc.Ua.RestfulApi.Node>(StringComparer.Ordinal);
 
@@ -3917,7 +3924,7 @@ namespace NodeSetEditor.Server.Controllers
                     if (byId.ContainsKey(bid)) continue;
                     var ua = addressSpace.Read(bid);
                     if (ua == null) continue;
-                    var rest = UaNodeToRestNode(ua, addressSpace);
+                    var rest = UaNodeToRestNode(ua, addressSpace, nodeIcons);
                     rest.ParentNodeId = bparent;
                     byId[bid] = rest;
                 }
@@ -4041,7 +4048,8 @@ namespace NodeSetEditor.Server.Controllers
             string referenceTypeId,
             int remainingDepth,
             List<Opc.Ua.RestfulApi.Node> results,
-            bool includeSubtypes = false)
+            bool includeSubtypes = false,
+            IReadOnlyDictionary<string, string>? nodeIcons = null)
         {
             if (remainingDepth <= 0) return;
 
@@ -4072,7 +4080,7 @@ namespace NodeSetEditor.Server.Controllers
                     continue;
                 }
 
-                var restNode = UaNodeToRestNode(uaNode, addressSpace);
+                var restNode = UaNodeToRestNode(uaNode, addressSpace, nodeIcons);
                 restNode.ParentNodeId = parentNodeId;
 
                 // Resolve reference type name
@@ -4102,7 +4110,7 @@ namespace NodeSetEditor.Server.Controllers
             foreach (var (targetId, node) in children)
             {
                 results.Add(node);
-                CollectChildren(addressSpace, targetId, referenceTypeId, remainingDepth - 1, results, includeSubtypes);
+                CollectChildren(addressSpace, targetId, referenceTypeId, remainingDepth - 1, results, includeSubtypes, nodeIcons);
             }
         }
 
@@ -4473,9 +4481,41 @@ namespace NodeSetEditor.Server.Controllers
             return nc;
         }
 
+        /// <summary>
+        /// Resolves the icon key a node should be served with: a TYPE node's own stamped
+        /// key, or for an instance the key stamped on its TypeDefinition. One dictionary
+        /// lookup — the hierarchy was walked once, at write time.
+        /// </summary>
+        private static string? ResolveNodeIcon(
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UANode node,
+            IReadOnlyDictionary<string, string>? nodeIcons)
+        {
+            if (nodeIcons == null || nodeIcons.Count == 0) return null;
+
+            // Only the stamped key is consulted here, and most stamped keys describe the
+            // family's INSTANCES, not the type node carrying them. Serving one to the type
+            // node itself put a "property" label on PropertyType and a "dataVariable" ticket
+            // on BaseDataVariableType, when both are VariableTypes and should look like one.
+            // Returning null hands the node to the client's NodeClass default, which is
+            // exactly the ObjectType/VariableType/DataType/ReferenceType glyph wanted.
+            if (!string.IsNullOrEmpty(node.NodeId) && nodeIcons.TryGetValue(node.NodeId!, out var own))
+                return NodeSetEditor.Model.NodeIcons.IsTypeLevel(own) ? own : null;
+
+            var typeId = node switch
+            {
+                JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAObject o => o.TypeId,
+                JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariable v => v.TypeId,
+                _ => null,
+            };
+            return !string.IsNullOrEmpty(typeId) && nodeIcons.TryGetValue(typeId!, out var fromType)
+                ? fromType
+                : null;
+        }
+
         private static Opc.Ua.RestfulApi.Node UaNodeToRestNode(
             JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UANode node,
-            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace? addressSpace = null)
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace? addressSpace = null,
+            IReadOnlyDictionary<string, string>? nodeIcons = null)
         {
             // An empty DisplayName is "not set", not "named the empty string" — fall back to
             // the BrowseName the same way a missing one does. Nodes saved before the write
@@ -4527,6 +4567,7 @@ namespace NodeSetEditor.Server.Controllers
                 ModellingRule = node.ModellingRuleId,
                 TypeDefinition = node.TypeId,
                 TypeDefinitionName = ResolveBrowseName(addressSpace, node.TypeId),
+                Icon = ResolveNodeIcon(node, nodeIcons),
                 DataType = dataTypeId,
                 DataTypeName = ResolveBrowseName(addressSpace, dataTypeId),
                 // Variables and VariableTypes always have a ValueRank (Scalar = -1
