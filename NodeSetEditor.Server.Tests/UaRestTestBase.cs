@@ -1,5 +1,8 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using NodeSetEditor.Model;
 using NodeSetEditor.Server.Controllers;
 
 namespace NodeSetEditor.Server.Tests;
@@ -24,6 +27,32 @@ public abstract class UaRestTestBase
         Fixture = fixture;
         Client = fixture.Client;
         WorkspaceUrn = fixture.WorkspaceUrn!;
+    }
+
+    /// <summary>
+    /// Deletes the model rows (and their nodes/references/links) for the given namespace URIs.
+    ///
+    /// Deleting a workspace is NOT enough to clean up after a test: that cascades the
+    /// WorkspaceModels links but never runs the orphan collector, so the Model rows survive
+    /// unreachable — and the shared test database is never wiped, so they accumulate run on
+    /// run. Those leftovers are indistinguishable from real data to any lookup, which is how
+    /// a stale row from an earlier run came to be served in place of the one a test had just
+    /// created. Call this from a finally block for every URI the test creates.
+    /// </summary>
+    protected async Task PurgeModelRowsAsync(params string[] uris)
+    {
+        using var scope = Fixture.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NodeSetEditorDbContext>();
+
+        var ids = await db.Models.Where(m => uris.Contains(m.Uri)).Select(m => m.Id).ToListAsync();
+        foreach (var id in ids)
+        {
+            await db.References.Where(r => r.ModelId == id).ExecuteDeleteAsync();
+            await db.Nodes.Where(n => n.ModelId == id).ExecuteDeleteAsync();
+            await db.NodeSetTypes.Where(t => t.ModelId == id).ExecuteDeleteAsync();
+            await db.WorkspaceModels.Where(wm => wm.ModelId == id).ExecuteDeleteAsync();
+        }
+        await db.Models.Where(m => uris.Contains(m.Uri)).ExecuteDeleteAsync();
     }
 
     protected HttpRequestMessage WithServer(HttpMethod method, string url)

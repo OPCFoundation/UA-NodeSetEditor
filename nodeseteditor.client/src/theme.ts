@@ -38,9 +38,12 @@ declare module '@mui/material/styles' {
    // describes it on its own.
    interface Palette {
       appBar: { main: string; contrastText: string };
+      /** Avatar backgrounds for a model's lifecycle state in the model library. */
+      modelState: { unlocked: string; locked: string; shared: string; cloud: string };
    }
    interface PaletteOptions {
       appBar?: { main: string; contrastText: string };
+      modelState?: { unlocked: string; locked: string; shared: string; cloud: string };
    }
 }
 
@@ -92,6 +95,18 @@ const light = {
    // Distinct from the brand accent so an info alert never reads as a warning
    // (dark mode's accent is amber) or as a plain interactive element.
    info: '#0288D1',
+   // Model lifecycle states — see palette.modelState.
+   //
+   // Chosen in OKLCH (perceptual) rather than picked as hex, at chroma 0.10 — just under the
+   // brand's 0.110 — so a status chip never out-shouts the primary action. The earlier set
+   // used iOS system colours at chroma 0.194, nearly twice the brand's, which is what made
+   // them clash. Blues sit at hue 230° rather than the brand's 247°: close enough to read as
+   // blue, far enough not to look like a brighter copy of the accent.
+   //   unlocked L.92  locked L.52  shared L.82 H150  cloud L.82 C.01
+   modelUnlocked: '#C5EBFF',
+   modelLocked: '#0E7397',
+   modelShared: '#95D7A2',
+   modelCloud: '#BEC5C9',
 };
 
 const dark = {
@@ -117,6 +132,14 @@ const dark = {
    green: '#30D158',
    orange: '#FF9F0A',
    info: '#64D2FF',
+   // Same hues and chroma as light mode — a status colour has to mean the same thing in both,
+   // and the brand cannot anchor them here anyway because it is amber in dark mode. Only
+   // lightness differs: the light-mode values are tuned against white and would glare here.
+   //   unlocked L.78  locked L.52  shared L.72  cloud L.68
+   modelUnlocked: '#6EC3EB',
+   modelLocked: '#0E7397',
+   modelShared: '#75B683',
+   modelCloud: '#929A9D',
 };
 
 const bodyText = {
@@ -390,6 +413,14 @@ const palette = (t: Tokens, mode: 'light' | 'dark'): ThemeOptions['palette'] => 
       contrastText: t.onAccent
    },
    appBar: { main: t.appBar, contrastText: t.onAppBar },
+   // Its own green, not the `green` success token: alerts should stay vivid, while a status
+   // chip is deliberately muted to the brand's chroma.
+   modelState: {
+      unlocked: t.modelUnlocked,
+      locked: t.modelLocked,
+      shared: t.modelShared,
+      cloud: t.modelCloud
+   },
    error: { main: t.red },
    success: { main: t.green },
    warning: { main: t.orange },

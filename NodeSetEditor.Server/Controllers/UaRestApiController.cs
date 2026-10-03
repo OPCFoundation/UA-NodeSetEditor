@@ -378,6 +378,20 @@ namespace NodeSetEditor.Server.Controllers
                 if (start < 0) start = 0;
                 if (count <= 0) count = 100;
 
+                // Which of this workspace's namespaces have a Cloud Library copy cached — one
+                // query for the whole page rather than a lookup per row. Best-effort: without
+                // it the dialog simply offers Publish and the server's guard rejects it, which
+                // is the behaviour this flag exists to pre-empt rather than replace.
+                HashSet<string> cloudLibraryUris;
+                try
+                {
+                    cloudLibraryUris = await _storage.GetCloudLibraryNamespaceUrisAsync(workspaceId);
+                }
+                catch
+                {
+                    cloudLibraryUris = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                }
+
                 var nonNullModels = models.Where(m => m != null).ToList()!;
                 var total = nonNullModels.Count;
                 var paged = nonNullModels.Skip(start).Take(count);
@@ -398,6 +412,9 @@ namespace NodeSetEditor.Server.Controllers
                             : null,
                         IsPrivate = modelRef?.IsPrivate,
                         IsEditable = modelRef?.IsEditable,
+                        Origin = m?.Origin,
+                        IsCloudLibraryNamespace =
+                            m?.ModelUri != null && cloudLibraryUris.Contains(m.ModelUri),
                         // Editable only when the model is private AND checked out.
                         IsReadOnly = !(modelRef?.IsPrivate == true && modelRef?.IsEditable == true),
                         RequiredNamespaceUris = m?.ModelUri != null && modelDeps.TryGetValue(m.ModelUri, out var deps) && deps.Count > 0
@@ -600,6 +617,24 @@ namespace NodeSetEditor.Server.Controllers
                 // shared model row and every workspace linked to it sees the result.
                 var isAdmin = _admins.IsAdmin(user?.Email);
                 var mayEditSharedModel = modelRef?.IsPrivate == true || isAdmin;
+
+                // Name, description and version are a property of the shared model ROW, so on a
+                // shared or published model they are not this workspace's to change: one edit
+                // would rename the model for every workspace linked to it. Only the licence,
+                // copyright and profile group were gated before, which left these three
+                // reachable by a direct API call even though the UI renders the dialog
+                // read-only — including on Cloud Library models, whose metadata is a copy of a
+                // public catalog entry and only an admin curates.
+                //
+                // The reserved-namespace rule used to catch some of this, but only for
+                // http://opcfoundation.org/ URIs, so a vendor's published spec was unprotected.
+                if ((request.Name != null || request.Description != null || request.Version != null)
+                    && !mayEditSharedModel)
+                {
+                    return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument, nameof(Opc.Ua.StatusCodes.BadInvalidArgument),
+                        "Name, description and version can only be changed on your own private models. "
+                        + "Check the model out to get a private copy you can edit."));
+                }
 
                 // License/copyright are editable, but only on the user's own private models
                 // (shared/published models stay read-only). Validate when a change is requested.

@@ -4012,6 +4012,10 @@
           "profileGroupName": {
             "type": "string",
             "nullable": true
+          },
+          "origin": {
+            "type": "string",
+            "nullable": true
           }
         }
       },
@@ -4927,6 +4931,14 @@
             "nullable": true
           },
           "isEditable": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "origin": {
+            "type": "string",
+            "nullable": true
+          },
+          "isCloudLibraryNamespace": {
             "type": "boolean",
             "nullable": true
           },

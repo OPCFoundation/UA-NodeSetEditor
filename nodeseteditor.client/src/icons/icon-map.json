@@ -8,6 +8,19 @@
       "Style is outline + rounded throughout. Add a concept here BEFORE using an icon for it."
    ],
    "style": "material-symbols outline rounded",
+   "modelState": {
+      "$comment": [
+         "Where a model stands in its lifecycle: who owns it and whether it can be edited.",
+         "Separate concepts from the 'ui' action icons even where a glyph coincides --",
+         "privateEditable happens to share editDocument's glyph today, and giving each its",
+         "own key means changing one later cannot silently change the other.",
+         "Resolved by resolveModelStateIcon() in ./resolveModelState.ts."
+      ],
+      "privateEditable": "material-symbols:edit-document-outline-rounded",
+      "privateLocked": "material-symbols:lock-outline-rounded",
+      "shared": "material-symbols:document-share-outline-rounded",
+      "cloudLibrary": "material-symbols:cloud-outline-rounded"
+   },
    "nodeIcon": {
       "$comment": [
          "Instance icons depend on the node's TypeDefinition, not just its NodeClass, so",

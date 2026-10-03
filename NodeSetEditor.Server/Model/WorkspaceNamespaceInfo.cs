@@ -20,6 +20,31 @@ namespace NodeSetEditor.Server.Model
         [JsonPropertyName("isEditable")]
         public bool? IsEditable { get; set; }
 
+        /// <summary>
+        /// Where this model's content came from — "CloudLibrary", "Upload", "Authored" or
+        /// "Unknown" (see <see cref="NodeSetEditor.Model.ModelOrigin"/>).
+        ///
+        /// Exposed so the UI can tell a Cloud Library model from one that is merely shared.
+        /// They behave identically for editing (both read-only to a non-admin), but only the
+        /// Cloud Library one can never be published — the namespace is already published
+        /// there — so the two need different wording and a different icon rather than one
+        /// generic "read-only" state.
+        /// </summary>
+        [JsonPropertyName("origin")]
+        public string? Origin { get; set; }
+
+        /// <summary>
+        /// True when this workspace holds a Cloud Library copy of this namespace — so the
+        /// namespace is published there and check-in can never publish it from here.
+        ///
+        /// Keyed on the URI rather than this row's own provenance, because the private working
+        /// copy of a Cloud Library namespace reads as Authored (checkout resets Origin). Use it
+        /// to explain and disable, not to authorize: a namespace can be in the Cloud Library
+        /// with nothing cached here, and the server's publish guard remains the real check.
+        /// </summary>
+        [JsonPropertyName("isCloudLibraryNamespace")]
+        public bool? IsCloudLibraryNamespace { get; set; }
+
         [JsonPropertyName("isReadOnly")]
         public bool? IsReadOnly { get; set; }
 

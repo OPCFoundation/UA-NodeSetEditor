@@ -272,11 +272,21 @@ namespace NodeSetEditor.Server.Services
             // namespace and shadow the Cloud Library for everyone else.
             var dbModel = await _db.Models
                 .Where(m => m.Id == modelId)
-                .Select(m => new { m.Published, m.Origin })
+                .Select(m => new { m.Published, m.Origin, m.Tier })
                 .FirstOrDefaultAsync();
 
             if (dbModel != null)
+            {
+                // A PRIVATE row is one workspace's own copy and is never linkable, whatever else
+                // it looks like. Checking it in only locks it (IsEditable = false) — it does not
+                // make it shared — and the Origin test alone was not enough: a private row can
+                // carry Origin = CloudLibrary (a private copy of a catalog namespace, and every
+                // row the tier migration classified from legacy link flags), which would have
+                // made another workspace's edited copy linkable as though it were the catalog's.
+                if (dbModel.Tier == NodeSetEditor.Model.ModelTier.Private) return false;
+
                 return dbModel.Published || dbModel.Origin == NodeSetEditor.Model.ModelOrigin.CloudLibrary;
+            }
 
             // Not a DB row — permit only a genuine Cloud Library catalog GUID (a deterministic
             // hash of a public catalog identifier), which the link flow imports on demand. A
@@ -481,6 +491,19 @@ namespace NodeSetEditor.Server.Services
             // workspace still references, is left alone.
             foreach (var link in doomed)
                 await DeleteModelIfOrphanedAsync(link.ModelId);
+        }
+
+        public async Task<HashSet<string>> GetCloudLibraryNamespaceUrisAsync(Guid workspaceId)
+        {
+            var uris = await _db.WorkspaceModels
+                .Where(wm => wm.WorkspaceId == workspaceId
+                    && wm.Model!.Uri != null
+                    && wm.Model!.Origin == NodeSetEditor.Model.ModelOrigin.CloudLibrary)
+                .Select(wm => wm.Model!.Uri!)
+                .Distinct()
+                .ToListAsync();
+
+            return new HashSet<string>(uris, StringComparer.OrdinalIgnoreCase);
         }
 
         public async Task DeleteModelIfOrphanedAsync(Guid modelId)
@@ -1913,8 +1936,12 @@ namespace NodeSetEditor.Server.Services
 
         private async Task<DbModel?> GetLatestCoreModelAsync()
         {
+            // Shared only. Every workspace links the SAME Core row, so this must never return
+            // a private copy: a workspace that uploaded or checked out its own edited Core
+            // would otherwise have it linked into the next workspace created.
             var existing = await _db.Models
-                .Where(m => m.Uri == UaCoreNamespace)
+                .Where(m => m.Uri == UaCoreNamespace
+                    && m.Tier == NodeSetEditor.Model.ModelTier.Shared)
                 .OrderByDescending(m => m.VersionNorm)
                 .FirstOrDefaultAsync();
             if (existing != null) return existing;
@@ -2036,7 +2063,7 @@ namespace NodeSetEditor.Server.Services
             //    workspace links it non-privately — see IsModelLinkableAsync.
             var query = _db.Models
                 .Where(m => m.Uri == modelUri)
-                .Where(m => m.Origin == NodeSetEditor.Model.ModelOrigin.CloudLibrary || m.Published);
+                .Where(m => m.Tier != NodeSetEditor.Model.ModelTier.Private && (m.Origin == NodeSetEditor.Model.ModelOrigin.CloudLibrary || m.Published));
 
             if (!string.IsNullOrEmpty(version))
             {
@@ -2085,7 +2112,8 @@ namespace NodeSetEditor.Server.Services
                 License = m.License,
                 LicenseUrl = m.LicenseUrl,
                 CopyrightHolder = m.CopyrightHolder,
-                ProfileGroupName = m.GetProfileGroupName()
+                ProfileGroupName = m.GetProfileGroupName(),
+                Origin = m.Origin.ToString()
             };
         }
 
@@ -2219,6 +2247,7 @@ namespace NodeSetEditor.Server.Services
                 var reqVersionNorm = DbModel.NormalizeVersion(req.ModelVersion ?? req.Version);
                 var cachedMatch = await _db.Models
                     .Where(m => m.Uri == req.ModelUri
+                        && m.Tier != NodeSetEditor.Model.ModelTier.Private
                         && m.Origin == NodeSetEditor.Model.ModelOrigin.CloudLibrary)
                     .OrderByDescending(m => m.VersionNorm)
                     .FirstOrDefaultAsync();
@@ -2439,6 +2468,7 @@ namespace NodeSetEditor.Server.Services
                 // here instead of the Cloud Library content the caller asked for.
                 var cachedByUri = await _db.Models
                     .Where(m => m.Uri == nsUri
+                        && m.Tier != NodeSetEditor.Model.ModelTier.Private
                         && m.Origin == NodeSetEditor.Model.ModelOrigin.CloudLibrary)
                     .OrderByDescending(m => m.VersionNorm)
                     .FirstOrDefaultAsync();

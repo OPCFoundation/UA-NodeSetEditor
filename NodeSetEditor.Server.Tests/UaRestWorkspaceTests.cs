@@ -1763,6 +1763,14 @@ public class UaRestWorkspaceTests : UaRestTestBase
                     $"/api/opcua/v1/servers/{Uri.EscapeDataString(wsUrn)}", userId, email);
                 await Client.SendAsync(del);
             }
+
+            // The URI is deliberately shared by all five cases, each in its OWN workspace --
+            // that is the private-shadow shape (one namespace, a private copy per workspace),
+            // and it is what exposed an address space being built from another workspace copy.
+            // Keeping that coverage means cleaning up properly: deleting the workspace cascades
+            // the links but leaves the Model rows, which then pile up across runs and make a
+            // later failure look like a code defect.
+            await PurgeModelRowsAsync(testModelUri);
         }
     }
 

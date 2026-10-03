@@ -499,14 +499,21 @@ namespace NodeSetEditor.Model
             }
             else if (version != null)
             {
+                // Shared first, then by tier/version, so a URI naming several rows resolves the
+                // same way every time. Callers that mean a specific row pass modelId above.
                 var norm = Model.NormalizeVersion(version);
-                model = await db.Models.FirstOrDefaultAsync(m => m.Uri == modelUri && m.VersionNorm == norm)
-                    ?? await db.Models.FirstOrDefaultAsync(m => m.Uri == modelUri && m.Version == version);
+                model = await db.Models.Where(m => m.Uri == modelUri && m.VersionNorm == norm)
+                        .OrderByDescending(m => m.Tier == ModelTier.Shared)
+                        .FirstOrDefaultAsync()
+                    ?? await db.Models.Where(m => m.Uri == modelUri && m.Version == version)
+                        .OrderByDescending(m => m.Tier == ModelTier.Shared)
+                        .FirstOrDefaultAsync();
             }
             else
             {
                 model = await db.Models.Where(m => m.Uri == modelUri)
-                    .OrderByDescending(m => m.VersionNorm)
+                    .OrderByDescending(m => m.Tier == ModelTier.Shared)
+                    .ThenByDescending(m => m.VersionNorm)
                     .FirstOrDefaultAsync();
             }
 
@@ -1316,10 +1323,17 @@ namespace NodeSetEditor.Model
             {
                 var entry = new Opc.Ua.Export.ModelTableEntry { ModelUri = uri };
 
-                // Try DB lookup first — latest by normalized SemVer
+                // Try DB lookup first — the shared copy, then latest by normalized SemVer.
+                // Shared wins deliberately: this stamps the version and publication date of a
+                // REQUIRED model into the exported file, so it has to name the copy a consumer
+                // of that file can actually obtain. Several rows can share a URI now (a private
+                // copy per workspace beside the shared one), and without the tier ordering the
+                // export could declare a dependency version that only exists inside someone
+                // else's workspace.
                 var dbModel = await db.Models
                     .Where(m => m.Uri == uri)
-                    .OrderByDescending(m => m.VersionNorm)
+                    .OrderByDescending(m => m.Tier == ModelTier.Shared)
+                    .ThenByDescending(m => m.VersionNorm)
                     .FirstOrDefaultAsync();
 
                 if (dbModel != null)

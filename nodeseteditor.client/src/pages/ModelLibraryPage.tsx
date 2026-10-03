@@ -6,7 +6,8 @@ import api, { ApiError } from '../api/axios.api';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { EditDocumentIcon, DescriptionIcon, ErrorOutlineIcon, AccountTreeIcon, DownloadIcon, DeleteIcon, FactCheckIcon, EditIcon, VisibilityIcon, HistoryIcon, LockIcon, LockOpenIcon } from '../icons';
+import { EditDocumentIcon, ErrorOutlineIcon, AccountTreeIcon, DownloadIcon, DeleteIcon, FactCheckIcon, EditIcon, VisibilityIcon, HistoryIcon, LockIcon, LockOpenIcon, ModelStateIcon } from '../icons';
+import { resolveModelState } from '../icons/resolveModelState';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -561,6 +562,44 @@ const ModelLibraryPage: React.FC = () => {
    const canEditModel = (ns: WorkspaceNamespaceInfo): boolean =>
       admin || (canWrite && !!ns.isPrivate);
 
+   /**
+    * Avatar colour and label for a model row's lifecycle state.
+    *
+    * Colour and glyph BOTH carry the state, deliberately. Colour alone cannot: it only ever
+    * separated private from shared, so "checked out" and "locked" looked identical — and a
+    * hue is no use to anyone who cannot distinguish these two. The glyph makes the distinction
+    * and the tooltip states it in words, with colour kept as the at-a-glance grouping.
+    *
+    * An error outranks the state: a model that failed to parse is the thing you need to see.
+    */
+   const modelStateAppearance = (ns: WorkspaceNamespaceInfo) => {
+      if (ns.hasErrors) {
+         const bg = theme.palette.error.main;
+         return {
+            bg,
+            fg: theme.palette.getContrastText(bg),
+            label: ns.errorMessage ?? t('modelLibrary.stateError', 'This model failed to load'),
+         };
+      }
+
+      // Light blue unlocked, dark blue locked, green shared, grey Cloud Library — defined per
+      // mode in theme.palette.modelState rather than here, so dark mode gets its own pair of
+      // blues. The brand accent is deliberately not reused: dark mode flips it to amber, and
+      // the two private states would stop reading as blue at all.
+      const byState = {
+         privateEditable: { bg: theme.palette.modelState.unlocked, labelKey: 'modelLibrary.statePrivateEditable' },
+         privateLocked: { bg: theme.palette.modelState.locked, labelKey: 'modelLibrary.statePrivateLocked' },
+         shared: { bg: theme.palette.modelState.shared, labelKey: 'modelLibrary.stateShared' },
+         cloudLibrary: { bg: theme.palette.modelState.cloud, labelKey: 'modelLibrary.stateCloudLibrary' },
+      } as const;
+
+      const { bg, labelKey } = byState[resolveModelState(ns)];
+
+      // Glyph colour computed per background rather than paired by hand: dark mode's info.main
+      // is a pale #64D2FF that white would vanish against, where light mode's #0288D1 needs it.
+      return { bg, fg: theme.palette.getContrastText(bg), label: t(labelKey) };
+   };
+
    const handleViewTypeDefinitions = (ns: WorkspaceNamespaceInfo) => {
       // Pass the namespace URI in the URL as well as the context. URL is the
       // source of truth on the destination page so we don't depend on the
@@ -980,22 +1019,35 @@ const ModelLibraryPage: React.FC = () => {
                         }}
                      >
                         <ListItemIcon>
-                           <Tooltip title={ns.errorMessage ?? ''} disableHoverListener={!ns.hasErrors}>
-                              <Avatar
-                                 sx={{
-                                    width: 32,
-                                    height: 32,
-                                    bgcolor: ns.hasErrors
-                                       ? theme.palette.error.main
-                                       : ns.isPrivate ? theme.palette.primary.main : theme.palette.grey[600],
-                                    color: ns.hasErrors
-                                       ? theme.palette.error.contrastText
-                                       : ns.isPrivate ? theme.palette.primary.contrastText : theme.palette.grey[200]
-                                 }}
-                              >
-                                 {ns.hasErrors ? <ErrorOutlineIcon /> : <DescriptionIcon />}
-                              </Avatar>
-                           </Tooltip>
+                           {(() => {
+                              const state = modelStateAppearance(ns);
+                              return (
+                                 // The tooltip now always has something to say — the state in
+                                 // words — where before it only appeared for a parse error.
+                                 <Tooltip title={state.label}>
+                                    <Avatar
+                                       sx={{
+                                          width: 32,
+                                          height: 32,
+                                          bgcolor: state.bg,
+                                          color: state.fg,
+                                       }}
+                                    >
+                                       {ns.hasErrors
+                                          ? <ErrorOutlineIcon />
+                                          : (
+                                             <ModelStateIcon
+                                                isPrivate={ns.isPrivate}
+                                                isEditable={ns.isEditable}
+                                                origin={ns.origin}
+                                                title={state.label}
+                                                size={20}
+                                             />
+                                          )}
+                                    </Avatar>
+                                 </Tooltip>
+                              );
+                           })()}
                         </ListItemIcon>
                         <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, overflow: 'hidden' }}>
                            <Typography
@@ -1542,6 +1594,15 @@ const ModelLibraryPage: React.FC = () => {
                      {/* Theme spacing is 1px per unit, so these are pixel values: 12px inside
                          the border and 10px between options. The previous p: 2 / mb: 1 were
                          2px and 1px, which left the choices crammed against the box. */}
+                     {/* The namespace is published in the Cloud Library, so publishing from
+                         here is refused server-side (GuardCloudLibraryNamespaceAsync) — say so
+                         before the user fills in a version and description for a check-in that
+                         cannot succeed. Keeping and discarding are unaffected. */}
+                     {checkinModel.isCloudLibraryNamespace && (
+                        <Alert severity="info" sx={{ mb: 12 }}>
+                           {t('modelLibrary.checkinPublishBlockedCloudLibrary')}
+                        </Alert>
+                     )}
                      <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 12 }}>
                         <RadioGroup
                            value={checkinAction}
@@ -1556,6 +1617,7 @@ const ModelLibraryPage: React.FC = () => {
                               <FormControlLabel
                                  key={opt.value}
                                  value={opt.value}
+                                 disabled={opt.value === 'publish' && !!checkinModel.isCloudLibraryNamespace}
                                  control={<Radio sx={{ pt: 2 }} />}
                                  sx={{ alignItems: 'flex-start' }}
                                  label={(

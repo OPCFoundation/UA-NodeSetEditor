@@ -236,6 +236,21 @@ namespace NodeSetEditor.Server.Services
         Task RemoveModelFromWorkspaceAsync(Guid workspaceId, string modelUri, bool allPrivateVersions = false);
 
         /// <summary>
+        /// The namespace URIs this workspace holds a Cloud Library copy of.
+        ///
+        /// Answers "can this namespace ever be published from here" without a Cloud Library
+        /// round trip: a locally cached CloudLibrary-origin row proves the namespace is
+        /// published there, which is what GuardCloudLibraryNamespaceAsync rejects at check-in.
+        /// Note the private working copy of such a namespace does NOT carry the provenance
+        /// itself — checkout resets Origin to Authored — so this is keyed on the URI, looking
+        /// at every row the workspace links rather than just the one it currently serves.
+        ///
+        /// Incomplete by nature: a namespace can be in the Cloud Library with nothing cached
+        /// here, in which case publishing still fails. Use it to warn, not to authorize.
+        /// </summary>
+        Task<HashSet<string>> GetCloudLibraryNamespaceUrisAsync(Guid workspaceId);
+
+        /// <summary>
         /// List every stored version of the URI behind <paramref name="modelId"/> that this
         /// workspace can see — its own links plus any published releases — annotated with
         /// provenance and whether each one may be deleted from here.
