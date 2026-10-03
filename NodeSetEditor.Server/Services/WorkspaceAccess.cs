@@ -6,20 +6,28 @@ namespace NodeSetEditor.Server.Services
     /// Shared workspace access predicates so controllers enforce the same owner/ACL rules.
     /// Mirrors the checks in <c>UaRestApiController.CanWrite</c> / <c>GetAccessibleWorkspace</c>:
     /// the owner may read and write; ACL (shared) members may read only.
-    /// Identity is email-keyed, so both the owner column and the ACL are lowercased emails.
+    ///
+    /// Identity is email-keyed (<see cref="AuthenticatedUser.FromClaimsPrincipal"/> lowercases
+    /// it), so every comparison here is case-insensitive rather than trusting that each stored
+    /// Owner and ACL entry was written in that form. A row whose Owner differs only in case —
+    /// written before the keying was lowercased, or by any path that skipped it — would
+    /// otherwise silently stop being owned: the real owner is served isOwner/canWrite false and
+    /// the whole workspace turns read-only, with no error to explain it.
     /// </summary>
     public static class WorkspaceAccess
     {
         /// <summary>Owner-only write.</summary>
         public static bool CanWrite(Workspace workspace, AuthenticatedUser user)
-            => !string.IsNullOrEmpty(user.UserId) && workspace.Owner == user.UserId;
+            => !string.IsNullOrEmpty(user.UserId)
+               && string.Equals(workspace.Owner, user.UserId, StringComparison.OrdinalIgnoreCase);
 
-        /// <summary>Owner or an ACL member (by lowercased email) may access.</summary>
+        /// <summary>Owner or an ACL member (by email) may access.</summary>
         public static bool HasAccess(Workspace workspace, AuthenticatedUser user)
         {
-            if (!string.IsNullOrEmpty(user.UserId) && workspace.Owner == user.UserId) return true;
-            var emailLower = user.Email?.ToLowerInvariant();
-            return emailLower != null && workspace.Acl != null && workspace.Acl.Contains(emailLower);
+            if (CanWrite(workspace, user)) return true;
+            var email = user.Email;
+            return !string.IsNullOrEmpty(email) && workspace.Acl != null
+                && workspace.Acl.Contains(email, StringComparer.OrdinalIgnoreCase);
         }
     }
 }

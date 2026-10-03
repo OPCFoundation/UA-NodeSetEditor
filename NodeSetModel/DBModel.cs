@@ -184,6 +184,37 @@ namespace NodeSetEditor.Model
     /// or <see cref="Upload"/> row stays visible in their own workspace but must never
     /// supersede the UA Cloud Library for anyone else.
     /// </summary>
+    /// <summary>
+    /// Who owns a model row, which is what makes its identity unique.
+    ///
+    /// A namespace URI at a given version can exist several times over: once unowned as the
+    /// shared copy everyone resolves against, and once per workspace that holds an edited
+    /// copy of it. That is what lets a workspace work on a fixed version of a published or
+    /// Cloud Library namespace without its edits becoming everyone else's answer for that
+    /// URI — and what stops an import on someone else's behalf overwriting it.
+    ///
+    /// Distinct from <see cref="ModelOrigin"/>: tier is ownership, origin is provenance. An
+    /// unowned row may legitimately have come from an upload rather than the Cloud Library.
+    /// </summary>
+    public enum ModelTier
+    {
+        /// <summary>
+        /// Unowned — the shared copy for this URI and version, whatever its origin.
+        ///
+        /// Deliberately 0, so the CLR default matches the column default (see
+        /// NodeSetEditorDbContext). EF Core treats a property left at its CLR default as "not
+        /// set" when the column has a default value and omits it from the INSERT: with Private
+        /// at 0, a private row was written with the column defaulted to Shared while its owning
+        /// workspace WAS written, producing an unowned row carrying an owner and tripping
+        /// CK_Models_Tier_Owner. Same reason ModelOrigin puts Unknown first.
+        /// </summary>
+        Shared = 0,
+        /// <summary>Owned by one workspace (<see cref="Model.OwnerWorkspaceId"/>); its edits are its own.</summary>
+        Private = 1,
+        /// <summary>Published by a user (<see cref="Model.CreatorUserId"/>) and linkable by others.</summary>
+        Published = 2,
+    }
+
     public enum ModelOrigin
     {
         /// <summary>Provenance not recorded (rows predating this column) — treated as untrusted.</summary>
@@ -231,6 +262,22 @@ namespace NodeSetEditor.Model
         /// previously authored row makes the row a Cloud Library copy (and vice versa).
         /// </summary>
         public ModelOrigin Origin { get; set; }
+
+        /// <summary>
+        /// Which uniqueness scope this row lives in — see <see cref="ModelTier"/>. Together with
+        /// <see cref="Uri"/>, <see cref="VersionNorm"/> and the tier's owner it identifies the row:
+        /// one Shared copy per URI+version, one Private copy per URI+version per workspace, one
+        /// Published copy per URI+version per publisher.
+        /// </summary>
+        public ModelTier Tier { get; set; }
+
+        /// <summary>
+        /// The workspace that owns this row, for <see cref="ModelTier.Private"/> only; null in
+        /// every other tier. Deliberately the workspace rather than the user: the same user can
+        /// hold an edited copy of a namespace in one workspace while another of their workspaces
+        /// has the shared copy pulled in by dependency resolution.
+        /// </summary>
+        public Guid? OwnerWorkspaceId { get; set; }
 
         /// <summary>
         /// True once this model version has been published (check-in "publish"), making it

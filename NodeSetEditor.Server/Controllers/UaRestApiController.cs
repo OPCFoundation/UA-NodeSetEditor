@@ -378,6 +378,20 @@ namespace NodeSetEditor.Server.Controllers
                 if (start < 0) start = 0;
                 if (count <= 0) count = 100;
 
+                // Which of this workspace's namespaces have a Cloud Library copy cached — one
+                // query for the whole page rather than a lookup per row. Best-effort: without
+                // it the dialog simply offers Publish and the server's guard rejects it, which
+                // is the behaviour this flag exists to pre-empt rather than replace.
+                HashSet<string> cloudLibraryUris;
+                try
+                {
+                    cloudLibraryUris = await _storage.GetCloudLibraryNamespaceUrisAsync(workspaceId);
+                }
+                catch
+                {
+                    cloudLibraryUris = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                }
+
                 var nonNullModels = models.Where(m => m != null).ToList()!;
                 var total = nonNullModels.Count;
                 var paged = nonNullModels.Skip(start).Take(count);
@@ -398,6 +412,9 @@ namespace NodeSetEditor.Server.Controllers
                             : null,
                         IsPrivate = modelRef?.IsPrivate,
                         IsEditable = modelRef?.IsEditable,
+                        Origin = m?.Origin,
+                        IsCloudLibraryNamespace =
+                            m?.ModelUri != null && cloudLibraryUris.Contains(m.ModelUri),
                         // Editable only when the model is private AND checked out.
                         IsReadOnly = !(modelRef?.IsPrivate == true && modelRef?.IsEditable == true),
                         RequiredNamespaceUris = m?.ModelUri != null && modelDeps.TryGetValue(m.ModelUri, out var deps) && deps.Count > 0
@@ -601,6 +618,24 @@ namespace NodeSetEditor.Server.Controllers
                 var isAdmin = _admins.IsAdmin(user?.Email);
                 var mayEditSharedModel = modelRef?.IsPrivate == true || isAdmin;
 
+                // Name, description and version are a property of the shared model ROW, so on a
+                // shared or published model they are not this workspace's to change: one edit
+                // would rename the model for every workspace linked to it. Only the licence,
+                // copyright and profile group were gated before, which left these three
+                // reachable by a direct API call even though the UI renders the dialog
+                // read-only — including on Cloud Library models, whose metadata is a copy of a
+                // public catalog entry and only an admin curates.
+                //
+                // The reserved-namespace rule used to catch some of this, but only for
+                // http://opcfoundation.org/ URIs, so a vendor's published spec was unprotected.
+                if ((request.Name != null || request.Description != null || request.Version != null)
+                    && !mayEditSharedModel)
+                {
+                    return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument, nameof(Opc.Ua.StatusCodes.BadInvalidArgument),
+                        "Name, description and version can only be changed on your own private models. "
+                        + "Check the model out to get a private copy you can edit."));
+                }
+
                 // License/copyright are editable, but only on the user's own private models
                 // (shared/published models stay read-only). Validate when a change is requested.
                 var editingLicense = request.License != null || request.CopyrightHolder != null || request.LicenseUrl != null;
@@ -643,9 +678,12 @@ namespace NodeSetEditor.Server.Controllers
                     licenseUrl: editingLicense ? resolvedLicenseUrl : null,
                     copyrightHolder: editingLicense ? request.CopyrightHolder!.Trim() : null,
                     profileGroupName: request.ProfileGroupName,
-                    // The OPC Foundation namespace is read-only to users, but curating exactly
-                    // those standard models is what the admin role is for.
-                    enforceReadOnlyReserved: !isAdmin);
+                    // A private model is the workspace's own: anything goes, the reserved
+                    // namespace included, since authoring a companion spec starts from a private
+                    // copy of one. The reserved rule therefore guards only SHARED rows, where an
+                    // edit would be visible to every workspace linked to them — and curating
+                    // exactly those standard models is what the admin role is for.
+                    enforceReadOnlyReserved: !isAdmin && modelRef?.IsPrivate != true);
 
                 // The profile group is emitted into the generated NodeSet XML (the
                 // ProfileGroup:<Name> conformance unit on the NamespaceMetadata object), and the
@@ -694,7 +732,12 @@ namespace NodeSetEditor.Server.Controllers
                     return NotFound(MakeError(Opc.Ua.StatusCodes.BadNotFound, nameof(Opc.Ua.StatusCodes.BadNotFound), $"Model '{id}' not found."));
                 }
 
-                await _addressSpace.RemoveModelAsync(workspaceId, model.ModelUri);
+                // allPrivateVersions: deleting the model takes the versions this workspace holds
+                // for it — the one in use and the backups checkouts retained — which only exist
+                // to carry this copy. Leaving them behind stranded them permanently: still
+                // linked, so never collected as orphans, and still occupying their slots in the
+                // unique (Uri, VersionNorm) index.
+                await _addressSpace.RemoveModelAsync(workspaceId, model.ModelUri, allPrivateVersions: true);
                 // Rebuild the cached address space from the DB. RemoveModelAsync surgically drops
                 // the model from the in-memory address space by URI; when a private copy of a shared
                 // model is deleted, the shared link still remains in the workspace and must be
@@ -5036,7 +5079,7 @@ namespace NodeSetEditor.Server.Controllers
         /// users are read-only.
         /// </summary>
         private static bool CanWrite(Workspace workspace, AuthenticatedUser user)
-            => workspace.Owner == user.UserId;
+            => WorkspaceAccess.CanWrite(workspace, user);
 
         /// <summary>
         /// Resolves the default workspace: user's selected workspace, or the first accessible one.
@@ -5063,7 +5106,7 @@ namespace NodeSetEditor.Server.Controllers
             if (workspace == null) return null;
 
             // Owner has access
-            if (workspace.Owner == user.UserId) return workspace;
+            if (WorkspaceAccess.CanWrite(workspace, user)) return workspace;
 
             // ACL check
             var emailLower = user.Email?.ToLowerInvariant();
@@ -5084,7 +5127,7 @@ namespace NodeSetEditor.Server.Controllers
             Workspace ws, Guid? selectedId = null, IReadOnlyDictionary<string, string>? ownerNames = null)
         {
             var user = GetCurrentUser();
-            var isOwner = ws.Owner == user.UserId;
+            var isOwner = WorkspaceAccess.CanWrite(ws, user);
 
             // Prefer the owner's chosen display Name; the email-local-part remains
             // the fallback for owners who never provisioned a preference row.

@@ -200,8 +200,10 @@ namespace NodeSetEditor.Server.Services
         // Model metadata
         // license/licenseUrl/copyrightHolder are editable for private models; the caller validates and
         // resolves the URL before passing them, and only sets them when non-null.
-        // enforceReadOnlyReserved=true (the user-facing edit path) rejects edits to models in the
-        // reserved http://opcfoundation.org/ namespace even when private; internal importers leave it false.
+        // enforceReadOnlyReserved=true rejects edits to models in the reserved
+        // http://opcfoundation.org/ namespace. The user-facing edit path sets it only for SHARED
+        // rows: a private copy is the workspace's own and fully editable (publishing is where the
+        // hand-off to other users is policed). Internal importers leave it false.
         // profileGroupName follows the same null-means-leave-alone convention, but an empty string
         // clears it (unlike license/copyright, it stays editable for the life of the model).
         Task<ModelInfo> UpdateModelInfoAsync(Guid workspaceId, Guid modelId, string? name, string? version, string? description,
@@ -216,6 +218,37 @@ namespace NodeSetEditor.Server.Services
         /// workspace so deleted private working copies don't accumulate as unreachable rows.
         /// </summary>
         Task DeleteModelIfOrphanedAsync(Guid modelId);
+
+        /// <summary>
+        /// Unlink a namespace URI from a workspace and collect whatever that leaves unreachable.
+        ///
+        /// With <paramref name="allPrivateVersions"/> (deleting the model) every stored version
+        /// the workspace privately holds goes — the version in use and the backup each checkout
+        /// retained — because they only exist to carry this workspace's copy of the URI. A shared
+        /// link to a published row is kept, since dropping the private copy is what makes the
+        /// shared original reappear; with nothing private held, that shared link is what the
+        /// caller is removing.
+        ///
+        /// Without it (swapping one version for another, e.g. a Cloud Library upgrade) only the
+        /// version currently served is unlinked, so a private working copy of the same namespace
+        /// and its unpublished edits survive.
+        /// </summary>
+        Task RemoveModelFromWorkspaceAsync(Guid workspaceId, string modelUri, bool allPrivateVersions = false);
+
+        /// <summary>
+        /// The namespace URIs this workspace holds a Cloud Library copy of.
+        ///
+        /// Answers "can this namespace ever be published from here" without a Cloud Library
+        /// round trip: a locally cached CloudLibrary-origin row proves the namespace is
+        /// published there, which is what GuardCloudLibraryNamespaceAsync rejects at check-in.
+        /// Note the private working copy of such a namespace does NOT carry the provenance
+        /// itself — checkout resets Origin to Authored — so this is keyed on the URI, looking
+        /// at every row the workspace links rather than just the one it currently serves.
+        ///
+        /// Incomplete by nature: a namespace can be in the Cloud Library with nothing cached
+        /// here, in which case publishing still fails. Use it to warn, not to authorize.
+        /// </summary>
+        Task<HashSet<string>> GetCloudLibraryNamespaceUrisAsync(Guid workspaceId);
 
         /// <summary>
         /// List every stored version of the URI behind <paramref name="modelId"/> that this

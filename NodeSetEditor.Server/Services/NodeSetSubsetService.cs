@@ -275,7 +275,11 @@ namespace NodeSetEditor.Server.Services
             var model = await _db.Models.AsNoTracking().FirstOrDefaultAsync(m => m.Id == modelId);
             if (model?.Uri == null) return null;
 
-            var nodeSet = await NodeSetConverter.CreateNodeSetAsync(_db, model.Uri, model.Version, includeNodeIds);
+            // By id: the caller asked to export THIS row, and (Uri, Version) no longer
+            // identifies one — another workspace may hold its own private copy of the same
+            // namespace at the same version.
+            var nodeSet = await NodeSetConverter.CreateNodeSetAsync(
+                _db, model.Uri, model.Version, includeNodeIds, modelId: model.Id);
 
             MarkAsNamespaceSubset(nodeSet);
             StripTypeDictionaryArtifacts(nodeSet);

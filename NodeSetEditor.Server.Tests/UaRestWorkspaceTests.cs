@@ -820,13 +820,25 @@ public class UaRestWorkspaceTests : UaRestTestBase
             }
 
             // IA lives in the reserved OPC Foundation namespace (http://opcfoundation.org/…),
-            // so its canonical metadata is read-only even though the upload holds it as a
-            // private copy. Both a version edit and a description edit must be rejected.
+            // but the upload holds it as a PRIVATE copy, which is the workspace's own: metadata
+            // edits are unrestricted there, reserved namespace or not. What is policed is the
+            // hand-off to other users, i.e. publishing - not editing in place.
+            //
+            // The version is the exception, and for a mechanical reason rather than a policy
+            // one: rows are deduped on (Uri, VersionNorm) and this copy is checked out, so its
+            // -alpha must stay put until check-in settles it.
             var versionReq = AsUser(HttpMethod.Put, $"/api/opcua/v1/namespaces/info/{iaModelId}", userId, email);
             versionReq.Headers.Add("OpcUa-Server", wsUrn);
             versionReq.Content = JsonContent.Create(new { version = "99.0.0" });
             var versionResp = await Client.SendAsync(versionReq);
             Assert.Equal(System.Net.HttpStatusCode.BadRequest, versionResp.StatusCode);
+
+            // The licence goes through on a private copy, reserved namespace notwithstanding.
+            var licenseReq = AsUser(HttpMethod.Put, $"/api/opcua/v1/namespaces/info/{iaModelId}", userId, email);
+            licenseReq.Headers.Add("OpcUa-Server", wsUrn);
+            licenseReq.Content = JsonContent.Create(new { license = "MIT", copyrightHolder = "Someone Else" });
+            var licenseResp = await Client.SendAsync(licenseReq);
+            licenseResp.EnsureSuccessStatusCode();
 
             var updateReq = AsUser(HttpMethod.Put, $"/api/opcua/v1/namespaces/info/{iaModelId}", userId, email);
             updateReq.Headers.Add("OpcUa-Server", wsUrn);
@@ -835,13 +847,16 @@ public class UaRestWorkspaceTests : UaRestTestBase
                 description = "Updated IA model"
             });
             var updateResp = await Client.SendAsync(updateReq);
-            Assert.Equal(System.Net.HttpStatusCode.BadRequest, updateResp.StatusCode);
+            updateResp.EnsureSuccessStatusCode();
 
             // List models â€” confirm the rejected edit left the imported version untouched.
             var models2 = await ListModels(userId, email, wsUrn);
             var iaUpdated = models2.GetProperty("results").EnumerateArray()
                 .First(m => m.GetProperty("uri").GetString() == iaUri);
             Assert.Equal(iaImportedVersion, iaUpdated.GetProperty("version").GetString());
+            // ...and the Description edit took.
+            Assert.Equal("Updated IA model",
+                iaUpdated.GetProperty("description").GetProperty("text").GetString());
 
             // Delete IA (private model removed â€” shared version should replace it if available)
             var delIaReq = AsUser(HttpMethod.Delete, $"/api/opcua/v1/namespaces/info/{iaModelId}", userId, email);
@@ -1748,6 +1763,14 @@ public class UaRestWorkspaceTests : UaRestTestBase
                     $"/api/opcua/v1/servers/{Uri.EscapeDataString(wsUrn)}", userId, email);
                 await Client.SendAsync(del);
             }
+
+            // The URI is deliberately shared by all five cases, each in its OWN workspace --
+            // that is the private-shadow shape (one namespace, a private copy per workspace),
+            // and it is what exposed an address space being built from another workspace copy.
+            // Keeping that coverage means cleaning up properly: deleting the workspace cascades
+            // the links but leaves the Model rows, which then pile up across runs and make a
+            // later failure look like a code defect.
+            await PurgeModelRowsAsync(testModelUri);
         }
     }
 

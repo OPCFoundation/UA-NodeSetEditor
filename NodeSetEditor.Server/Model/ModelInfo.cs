@@ -50,6 +50,14 @@ namespace NodeSetEditor.Server.Model
         public string? ProfileGroupName { get; set; }
 
         /// <summary>
+        /// Provenance of this version's content — the name of a
+        /// <see cref="NodeSetEditor.Model.ModelOrigin"/> value. Carried so callers can tell a
+        /// Cloud Library copy from one that is merely shared, which read identically otherwise
+        /// but differ in whether the namespace can ever be published from here.
+        /// </summary>
+        public string? Origin { get; set; }
+
+        /// <summary>
         /// Represents a parsed semantic version for comparison.
         /// </summary>
         public class SemVer : IComparable<SemVer>

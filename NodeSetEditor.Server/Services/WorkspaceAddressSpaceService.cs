@@ -309,7 +309,8 @@ namespace NodeSetEditor.Server.Services
             }
         }
 
-        public async Task RemoveModelAsync(Guid workspaceId, string modelUri)
+        public async Task RemoveModelAsync(
+            Guid workspaceId, string modelUri, bool allPrivateVersions = false)
         {
             var result = await GetResultAsync(workspaceId);
             var semaphore = _locks.GetOrAdd(workspaceId, _ => new SemaphoreSlim(1, 1));
@@ -331,27 +332,12 @@ namespace NodeSetEditor.Server.Services
                 using var scope = _scopeFactory.CreateScope();
                 var storage = scope.ServiceProvider.GetRequiredService<INodeSetStorageService>();
 
-                var models = await storage.GetWorkspaceModelsAsync(workspaceId);
-                var workspace = await storage.GetWorkspaceAsync(workspaceId)
-                    ?? throw new KeyNotFoundException($"Workspace '{workspaceId}' not found.");
-
-                var modelRef = workspace.Models?
-                    .Where(mr =>
-                    {
-                        var info = models.FirstOrDefault(m => m?.Id == mr.Id);
-                        return info?.ModelUri == modelUri;
-                    })
-                    .FirstOrDefault();
-
-                if (modelRef != null)
-                {
-                    workspace.Models!.Remove(modelRef);
-                    await storage.UpdateWorkspaceModelsAsync(workspaceId, workspace.Models!);
-                    // A private working copy with no remaining workspace links is unreachable —
-                    // delete it (and its nodes/references) so removed models don't accumulate as
-                    // orphan rows (which also collide on the unique (Uri, VersionNorm) index).
-                    await storage.DeleteModelIfOrphanedAsync(modelRef.Id);
-                }
+                // Unlinks every version of the URI this workspace privately holds and collects
+                // whatever that leaves unreachable. Done in the storage layer against the
+                // junction table: the workspace model list collapses a URI to the one version it
+                // currently serves, so resolving links through it could never reach the backup a
+                // checkout retained — which is how those rows used to survive a delete.
+                await storage.RemoveModelFromWorkspaceAsync(workspaceId, modelUri, allPrivateVersions);
             }
             finally
             {

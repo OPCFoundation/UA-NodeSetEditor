@@ -347,10 +347,14 @@ namespace NodeSetEditor.Model
                 // Normalize the stored required model version for comparison
                 var requiredNorm = Model.NormalizeVersion(modelVersion ?? version);
 
-                // Find the latest version of this model in DB
+                // Find the latest version of this model in DB — the shared copy for preference.
+                // A URI can name several rows (a private copy per workspace beside the shared
+                // one), so without the tier ordering "is my dependency out of date" could be
+                // answered against a version that only exists in another workspace.
                 var latest = await _db.Models
                     .Where(m => m.Uri == uri)
-                    .OrderByDescending(m => m.VersionNorm)
+                    .OrderByDescending(m => m.Tier == ModelTier.Shared)
+                    .ThenByDescending(m => m.VersionNorm)
                     .FirstOrDefaultAsync();
 
                 if (latest == null) continue;

@@ -6,6 +6,7 @@ import type { SxProps, Theme } from '@mui/material/styles';
 import iconMap from './icon-map.json';
 import { IconSize, nodeClassNames, nodeClassValue } from './spec';
 import { resolveNodeIcon, type NodeIconInput } from './resolveNodeIcon';
+import { resolveModelStateIcon, type ModelStateInput } from './resolveModelState';
 
 /**
  * The single place icons are chosen and rendered.
@@ -108,6 +109,19 @@ export const DataVariableIcon: React.FC<SymbolProps> = (p) => <Symbol name={node
 export const PropertyIcon: React.FC<SymbolProps> = (p) => <Symbol name={node.property} {...p} />;
 export const MethodIcon: React.FC<SymbolProps> = (p) => <Symbol name={node.method} {...p} />;
 
+/**
+ * Model lifecycle state, from icon-map.json's `modelState` section. Separate concepts from the
+ * `ui` action icons even where a glyph coincides — ModelPrivateEditableIcon shares
+ * editDocument's glyph today, and the separate keys mean changing one later cannot silently
+ * change the other.
+ */
+const modelState = iconMap.modelState;
+
+export const ModelPrivateEditableIcon: React.FC<SymbolProps> = (p) => <Symbol name={modelState.privateEditable} {...p} />;
+export const ModelPrivateLockedIcon: React.FC<SymbolProps> = (p) => <Symbol name={modelState.privateLocked} {...p} />;
+export const ModelSharedIcon: React.FC<SymbolProps> = (p) => <Symbol name={modelState.shared} {...p} />;
+export const ModelCloudLibraryIcon: React.FC<SymbolProps> = (p) => <Symbol name={modelState.cloudLibrary} {...p} />;
+
 export const AddIcon: React.FC<SymbolProps> = (p) => <Symbol name={ui.add} {...p} />;
 export const ArrowBackIcon: React.FC<SymbolProps> = (p) => <Symbol name={ui.arrowBack} {...p} />;
 export const ArrowBackIosIcon: React.FC<SymbolProps> = (p) => <Symbol name={ui.arrowBackIos} {...p} />;
@@ -168,6 +182,35 @@ export const AccountTreeIcon: React.FC<SymbolProps> = (p) => <Symbol name={ui.ac
  * no brand marks, so the Microsoft sign-in button keeps MUI's logo glyph.
  */
 export { default as MicrosoftIcon } from '@mui/icons-material/Microsoft';
+
+// Types only. The resolver functions stay importable from './resolveModelState' directly --
+// re-exporting them here would make this a mixed module and break fast refresh, which is why
+// resolveNodeIcon is not re-exported either.
+export type { ModelState, ModelStateInput } from './resolveModelState';
+
+export interface ModelStateIconProps extends ModelStateInput {
+   /** One of IconSize. Defaults to IconSize.inline. */
+   size?: number;
+   /** Accessible name — pass the same wording the row's tooltip uses. */
+   title?: string;
+   sx?: SxProps<Theme>;
+}
+
+/**
+ * One model's lifecycle state as an icon — private and editable, private and locked, shared,
+ * or the Cloud Library copy. Titled so the state reaches hover and assistive tech, since the
+ * glyph alone does not say it.
+ */
+export const ModelStateIcon: React.FC<ModelStateIconProps> = ({
+   isPrivate, isEditable, origin, size = IconSize.inline, title, sx,
+}) => (
+   <Symbol
+      name={resolveModelStateIcon({ isPrivate, isEditable, origin })}
+      size={size}
+      title={title}
+      sx={sx}
+   />
+);
 
 export interface NodeIconProps extends NodeIconInput {
    /** One of IconSize. Defaults to IconSize.inline. */
