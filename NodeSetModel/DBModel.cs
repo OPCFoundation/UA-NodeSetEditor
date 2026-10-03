@@ -198,12 +198,21 @@ namespace NodeSetEditor.Model
     /// </summary>
     public enum ModelTier
     {
+        /// <summary>
+        /// Unowned — the shared copy for this URI and version, whatever its origin.
+        ///
+        /// Deliberately 0, so the CLR default matches the column default (see
+        /// NodeSetEditorDbContext). EF Core treats a property left at its CLR default as "not
+        /// set" when the column has a default value and omits it from the INSERT: with Private
+        /// at 0, a private row was written with the column defaulted to Shared while its owning
+        /// workspace WAS written, producing an unowned row carrying an owner and tripping
+        /// CK_Models_Tier_Owner. Same reason ModelOrigin puts Unknown first.
+        /// </summary>
+        Shared = 0,
         /// <summary>Owned by one workspace (<see cref="Model.OwnerWorkspaceId"/>); its edits are its own.</summary>
-        Private = 0,
+        Private = 1,
         /// <summary>Published by a user (<see cref="Model.CreatorUserId"/>) and linkable by others.</summary>
-        Published = 1,
-        /// <summary>Unowned — the shared copy for this URI and version, whatever its origin.</summary>
-        Shared = 2,
+        Published = 2,
     }
 
     public enum ModelOrigin

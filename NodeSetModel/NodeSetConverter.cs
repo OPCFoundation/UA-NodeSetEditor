@@ -53,19 +53,34 @@ namespace NodeSetEditor.Model
         /// skip re-importing. Wrapped in the execution strategy because the DbContext has
         /// EnableRetryOnFailure configured, which disallows ad-hoc transactions otherwise.
         /// </summary>
-        public static async Task<Model> StoreNodeSetAsync(NodeSetEditorDbContext db, Opc.Ua.Export.UANodeSet nodeSet)
+        /// <param name="tier">
+        /// Which ownership scope the content belongs to, which is what decides whether this
+        /// REPLACES an existing row or adds a new one. A URI at a given version exists once per
+        /// scope: unowned as the shared copy, and once per workspace holding an edited copy. So
+        /// importing the Cloud Library's copy of a namespace a workspace has already edited adds
+        /// the shared row beside the private one instead of overwriting it -- which is what used
+        /// to happen, destroying the workspace's content on an import run for someone else.
+        /// </param>
+        /// <param name="ownerWorkspaceId">
+        /// The owning workspace for <see cref="ModelTier.Private"/>; null in every other tier.
+        /// </param>
+        public static async Task<Model> StoreNodeSetAsync(
+            NodeSetEditorDbContext db, Opc.Ua.Export.UANodeSet nodeSet,
+            ModelTier tier = ModelTier.Shared, Guid? ownerWorkspaceId = null)
         {
             var strategy = db.Database.CreateExecutionStrategy();
             return await strategy.ExecuteAsync(async () =>
             {
                 await using var tx = await db.Database.BeginTransactionAsync();
-                var model = await StoreNodeSetCoreAsync(db, nodeSet);
+                var model = await StoreNodeSetCoreAsync(db, nodeSet, tier, ownerWorkspaceId);
                 await tx.CommitAsync();
                 return model;
             });
         }
 
-        private static async Task<Model> StoreNodeSetCoreAsync(NodeSetEditorDbContext db, Opc.Ua.Export.UANodeSet nodeSet)
+        private static async Task<Model> StoreNodeSetCoreAsync(
+            NodeSetEditorDbContext db, Opc.Ua.Export.UANodeSet nodeSet,
+            ModelTier tier, Guid? ownerWorkspaceId)
         {
             if (nodeSet.Models == null || nodeSet.Models.Length == 0)
                 throw new ArgumentException("NodeSet must have at least one Model entry.", nameof(nodeSet));
@@ -97,17 +112,33 @@ namespace NodeSetEditor.Model
                 Uri = modelUri,
                 Version = version,
                 PublicationDate = publicationDate,
+                Tier = tier,
+                OwnerWorkspaceId = ownerWorkspaceId,
             };
             model.SetVersionNorm(modelVersion ?? version);
 
-            // Re-importing a version that already exists (same Uri + normalized
-            // SemVer) replaces the model's CONTENT but must keep the ROW itself:
-            // the Id anchors WorkspaceModels links in every workspace (deleting
-            // the row would cascade them all away), and curated metadata — Name,
-            // Description, Published, Creator — set by users or catalog imports
-            // is never overridden by automatic code.
-            var existing = await db.Models
-                .FirstOrDefaultAsync(m => m.Uri == modelUri && m.VersionNorm == model.VersionNorm);
+            // Re-importing a version that already exists IN THE SAME OWNERSHIP SCOPE (same Uri +
+            // normalized SemVer + tier + owner) replaces the model's CONTENT but must keep the
+            // ROW itself: the Id anchors WorkspaceModels links in every workspace (deleting the
+            // row would cascade them all away), and curated metadata — Name, Description,
+            // Published, Creator — set by users or catalog imports is never overridden by
+            // automatic code.
+            //
+            // The scope is what makes private shadows possible: the same Uri+version in a
+            // DIFFERENT scope is a different row, so a shared import cannot land on a
+            // workspace's private copy.
+            //
+            // Split on HasValue rather than comparing against a nullable parameter directly:
+            // `m.OwnerWorkspaceId == ownerWorkspaceId` with a null value does not reliably
+            // translate to IS NULL, and a null-vs-null comparison that comes back false would
+            // silently add a duplicate shared row instead of finding the existing one.
+            var existing = ownerWorkspaceId.HasValue
+                ? await db.Models.FirstOrDefaultAsync(m =>
+                    m.Uri == modelUri && m.VersionNorm == model.VersionNorm
+                    && m.Tier == tier && m.OwnerWorkspaceId == ownerWorkspaceId.Value)
+                : await db.Models.FirstOrDefaultAsync(m =>
+                    m.Uri == modelUri && m.VersionNorm == model.VersionNorm
+                    && m.Tier == tier && m.OwnerWorkspaceId == null);
 
             if (existing != null)
             {

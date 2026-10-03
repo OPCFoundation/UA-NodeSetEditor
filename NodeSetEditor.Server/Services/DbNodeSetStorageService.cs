@@ -488,19 +488,16 @@ namespace NodeSetEditor.Server.Services
             var model = await _db.Models.FindAsync(modelId);
             if (model == null) return;
 
-            // Published versions live in the shared catalog and may be (re)linked by other
-            // workspaces even when no link currently exists — never delete them here.
-            if (model.Published) return;
-
-            // Nor a Cloud Library copy. It is a cache of a public catalog entry, not anything
-            // this workspace owns: it is the row every other workspace resolves this namespace
-            // against, and the next dependency resolution would only download it again. A
-            // workspace dropping its link says nothing about whether the copy is still wanted.
+            // Only a PRIVATE row is ever collected, because only a private row belongs to one
+            // workspace — so that workspace unlinking it is what makes it unreachable.
             //
-            // Once rows carry a tier (see ModelTier) this becomes the broader and more accurate
-            // "only a Private row is ever collected", which also covers a shared row that
-            // happens to have been uploaded rather than fetched from the Cloud Library.
-            if (model.Origin == NodeSetEditor.Model.ModelOrigin.CloudLibrary) return;
+            // A Published row lives in the catalog and may be (re)linked by other workspaces
+            // even when no link exists right now. A Shared row is the copy every workspace
+            // resolves this namespace against: a Cloud Library cache among them, which must
+            // survive a workspace dropping its link or the next dependency resolution would
+            // only download it again. In neither case does one workspace's link say anything
+            // about whether the row is still wanted.
+            if (model.Tier != NodeSetEditor.Model.ModelTier.Private) return;
 
             // Still referenced by a workspace? Then it isn't orphaned.
             if (await _db.WorkspaceModels.AnyAsync(wm => wm.ModelId == modelId)) return;
@@ -580,7 +577,7 @@ namespace NodeSetEditor.Server.Services
                 nodeSet.Models[0].PublicationDateSpecified = true;
             }
 
-            var clone = await NodeSetEditor.Model.NodeSetConverter.StoreNodeSetAsync(_db, nodeSet);
+            var clone = await NodeSetEditor.Model.NodeSetConverter.StoreNodeSetAsync(_db, nodeSet, NodeSetEditor.Model.ModelTier.Private, workspaceId);
             // A working copy is editor content from here on, even when checked out from a
             // Cloud Library import — it must not inherit the trusted CloudLibrary provenance
             // and start satisfying other workspaces' dependency lookups for this namespace.
@@ -797,6 +794,21 @@ namespace NodeSetEditor.Server.Services
                     model.CreatorUserId = creatorUserId;
                     // Mark the model version as published so other users/workspaces can link it.
                     model.Published = true;
+
+                    // Ownership moves from the workspace to the publisher: this row is no longer
+                    // one workspace's private copy but a catalog entry others may link, so it
+                    // leaves the workspace's uniqueness scope and enters the publisher's. Also
+                    // what CK_Models_Tier_Owner requires -- hence the explicit check on the
+                    // publisher, which otherwise surfaces as a constraint violation rather than
+                    // something the caller can act on.
+                    if (string.IsNullOrEmpty(creatorUserId))
+                    {
+                        throw new InvalidOperationException(
+                            "A publisher is required to publish a model.");
+                    }
+                    model.Tier = NodeSetEditor.Model.ModelTier.Published;
+                    model.OwnerWorkspaceId = null;
+
                     // Make public and lock.
                     link.IsPrivate = false;
                     link.IsEditable = false;
@@ -899,7 +911,7 @@ namespace NodeSetEditor.Server.Services
                 }
             };
 
-            var empty = await NodeSetEditor.Model.NodeSetConverter.StoreNodeSetAsync(_db, emptyNodeSet);
+            var empty = await NodeSetEditor.Model.NodeSetConverter.StoreNodeSetAsync(_db, emptyNodeSet, NodeSetEditor.Model.ModelTier.Private, ws.Id);
             empty.Origin = NodeSetEditor.Model.ModelOrigin.Authored;
             empty.Name = name;
             await _db.SaveChangesAsync();
@@ -1217,7 +1229,14 @@ namespace NodeSetEditor.Server.Services
             await EnsureDependenciesAsync(workspaceId, nodeSet, importing);
 
             // Store via NodeSetConverter (nodes, references, hierarchy — no XML blob)
-            var dbModel = await NodeSetEditor.Model.NodeSetConverter.StoreNodeSetAsync(_db, nodeSet);
+            // A private upload is this workspace's own copy of the URI, so it is stored in the
+            // workspace's scope and can coexist with the shared copy of the same version --
+            // uploading a NodeSet the Cloud Library also publishes no longer overwrites the
+            // shared row (and everyone else's view of that namespace) in place.
+            var dbModel = await NodeSetEditor.Model.NodeSetConverter.StoreNodeSetAsync(
+                _db, nodeSet,
+                isPrivate ? NodeSetEditor.Model.ModelTier.Private : NodeSetEditor.Model.ModelTier.Shared,
+                isPrivate ? workspaceId : null);
             // Provenance follows the CONTENT, so it is re-stamped even when this replaces an
             // existing version's nodes: a Cloud Library import over a previously uploaded row
             // makes it a Cloud Library copy, and an upload over a cached one makes it an upload.
@@ -1529,7 +1548,7 @@ namespace NodeSetEditor.Server.Services
                 .Select(wm => new { wm.WorkspaceId, wm.IsPrivate })
                 .ToListAsync();
 
-            var updatedModel = await NodeSetEditor.Model.NodeSetConverter.StoreNodeSetAsync(_db, nodeSet);
+            var updatedModel = await NodeSetEditor.Model.NodeSetConverter.StoreNodeSetAsync(_db, nodeSet, model.Tier, model.OwnerWorkspaceId);
             // Content supplied by the caller replaces the row's nodes, so the row is no longer
             // a verbatim copy of whatever it was imported from — carry the origin across only
             // when it was already editor content, otherwise drop the trusted CloudLibrary mark.
@@ -1912,7 +1931,8 @@ namespace NodeSetEditor.Server.Services
                 var coreBytes = buffer.ToArray();
                 buffer.Position = 0;
                 var nodeSet = UANodeSet.Read(buffer);
-                var dbModel = await NodeSetEditor.Model.NodeSetConverter.StoreNodeSetAsync(_db, nodeSet);
+                var dbModel = await NodeSetEditor.Model.NodeSetConverter.StoreNodeSetAsync(
+                    _db, nodeSet, NodeSetEditor.Model.ModelTier.Shared);
                 // The embedded Core NodeSet is the published OPC Foundation release — same
                 // standing as a Cloud Library copy for dependency resolution.
                 dbModel.Origin = NodeSetEditor.Model.ModelOrigin.CloudLibrary;
@@ -2434,7 +2454,8 @@ namespace NodeSetEditor.Server.Services
                 var importing = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { nsUri! };
                 await EnsureDependenciesAsync(nodeSet, importing);
 
-                var dbModel = await NodeSetEditor.Model.NodeSetConverter.StoreNodeSetAsync(_db, nodeSet);
+                var dbModel = await NodeSetEditor.Model.NodeSetConverter.StoreNodeSetAsync(
+                    _db, nodeSet, NodeSetEditor.Model.ModelTier.Shared);
                 dbModel.Origin = NodeSetEditor.Model.ModelOrigin.CloudLibrary;
                 // Curated names/descriptions in the DB are never overridden by
                 // automatic imports — only seed them when missing.
@@ -2681,7 +2702,8 @@ namespace NodeSetEditor.Server.Services
 
                 await EnsureDependenciesAsync(nodeSet, importing);
 
-                var dbModel = await NodeSetEditor.Model.NodeSetConverter.StoreNodeSetAsync(_db, nodeSet);
+                var dbModel = await NodeSetEditor.Model.NodeSetConverter.StoreNodeSetAsync(
+                    _db, nodeSet, NodeSetEditor.Model.ModelTier.Shared);
                 dbModel.Origin = NodeSetEditor.Model.ModelOrigin.CloudLibrary;
                 // Curated names/descriptions in the DB are never overridden by
                 // automatic imports — only seed them when missing. This is the
