@@ -562,7 +562,8 @@ namespace NodeSetEditor.Server.Services
             // private checkpoint. The source link is left untouched so it becomes the backup a later
             // Discard restores; the display layer hides it while the working copy exists.
             var newVersion = DbModel.BumpForCheckout(source.Version);
-            var nodeSet = await NodeSetEditor.Model.NodeSetConverter.CreateNodeSetAsync(_db, source.Uri!, source.Version);
+            var nodeSet = await NodeSetEditor.Model.NodeSetConverter.CreateNodeSetAsync(
+                _db, source.Uri!, source.Version, modelId: source.Id);
             if (nodeSet.Models is { Length: > 0 })
             {
                 // Set BOTH the freeform Version and the SemVer ModelVersion. StoreNodeSetAsync
@@ -980,7 +981,8 @@ namespace NodeSetEditor.Server.Services
                 ?? throw new KeyNotFoundException($"Model with Id '{modelId}' not found.");
 
             // Generate XML dynamically from DB nodes/references
-            var nodeSet = await NodeSetEditor.Model.NodeSetConverter.CreateNodeSetAsync(_db, model.Uri!, model.Version);
+            var nodeSet = await NodeSetEditor.Model.NodeSetConverter.CreateNodeSetAsync(
+                _db, model.Uri!, model.Version, modelId: model.Id);
             using var raw = new MemoryStream();
             nodeSet.Write(raw);
             // Emit the SPDX copyright/license/URL headers so they round-trip on every export.
@@ -1194,8 +1196,15 @@ namespace NodeSetEditor.Server.Services
 
         public async Task<UANodeSet> DownloadNodeSetAsync(Guid workspaceId, string modelUri, string? version = null)
         {
+            // Resolve which row this workspace means before generating: a URI can now name
+            // several rows — this workspace's private copy, another workspace's, and the shared
+            // one — and downloading must serve the copy the workspace actually uses.
+            // FindModelForWorkspaceAsync is the precedence: private here, then linked, then shared.
+            var model = await FindModelForWorkspaceAsync(workspaceId, modelUri, version);
+
             // Generate dynamically from DB nodes/references — no stored XML
-            return await NodeSetEditor.Model.NodeSetConverter.CreateNodeSetAsync(_db, modelUri, version);
+            return await NodeSetEditor.Model.NodeSetConverter.CreateNodeSetAsync(
+                _db, modelUri, version, modelId: model?.Id);
         }
 
         public async Task<ModelInfo> UploadNodeSetAsync(Guid workspaceId, UANodeSet nodeSet, bool isPrivate = true, bool isEditable = false,
@@ -1976,24 +1985,17 @@ namespace NodeSetEditor.Server.Services
             return asm.GetManifestResourceStream(resourceName);
         }
 
-        private async Task<DbModel?> FindModelAsync(string modelUri, string? version)
-        {
-            var query = _db.Models.Where(m => m.Uri == modelUri);
-
-            if (!string.IsNullOrEmpty(version))
-            {
-                var norm = DbModel.NormalizeVersion(version);
-                query = query.Where(m => m.VersionNorm == norm);
-            }
-
-            return await query
-                .OrderByDescending(m => m.VersionNorm)
-                .FirstOrDefaultAsync();
-        }
-
         /// <summary>
-        /// Workspace-aware model lookup. Private models in this workspace always win
-        /// regardless of version. Falls back to shared models (excluding other workspaces' privates).
+        /// Workspace-aware model lookup, and the ONLY by-URI lookup there should be. Private
+        /// models in this workspace always win regardless of version. Falls back to shared
+        /// models (excluding other workspaces' privates).
+        ///
+        /// A URI does not identify a row: the same namespace at the same version exists once as
+        /// the shared copy and once per workspace holding an edited copy (see ModelTier). Any
+        /// lookup that drops the workspace returns an arbitrary one of them — which is how an
+        /// address space came to be built from another workspace's content, serving 404 for a
+        /// node the caller had just created. When the row is already in hand, pass its Id
+        /// instead of re-resolving (CreateNodeSetAsync takes a modelId for exactly that).
         /// </summary>
         private async Task<DbModel?> FindModelForWorkspaceAsync(Guid workspaceId, string modelUri, string? version)
         {

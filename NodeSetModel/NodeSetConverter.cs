@@ -483,11 +483,21 @@ namespace NodeSetEditor.Model
         /// </param>
         public static async Task<Opc.Ua.Export.UANodeSet> CreateNodeSetAsync(
             NodeSetEditorDbContext db, string modelUri, string? version = null,
-            IReadOnlySet<string>? includeNodeIds = null)
+            IReadOnlySet<string>? includeNodeIds = null, Guid? modelId = null)
         {
             // Find the model — version param is the freeform Version text for exact match
             Model? model;
-            if (version != null)
+            if (modelId.HasValue)
+            {
+                // Caller already knows WHICH row it wants. Resolving by (Uri, Version) instead
+                // is no longer unambiguous: two workspaces can each hold a private copy of the
+                // same namespace at the same version, so the lookup below would return either
+                // one. A caller holding the row must say so, or it can be served another
+                // workspace's content — which is how a workspace's own node came back 404 from
+                // an address space built out of someone else's copy.
+                model = await db.Models.FindAsync(modelId.Value);
+            }
+            else if (version != null)
             {
                 var norm = Model.NormalizeVersion(version);
                 model = await db.Models.FirstOrDefaultAsync(m => m.Uri == modelUri && m.VersionNorm == norm)
