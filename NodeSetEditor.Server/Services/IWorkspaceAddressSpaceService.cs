@@ -13,7 +13,13 @@ namespace NodeSetEditor.Server.Services
         Task<Dictionary<string, string>> GetNodeIconsAsync(Guid workspaceId);
         Task<Dictionary<string, List<string>>> GetModelDependenciesAsync(Guid workspaceId);
         Task AddModelAsync(Guid workspaceId, Guid modelId, bool isPrivate);
-        Task RemoveModelAsync(Guid workspaceId, string modelUri);
+        /// <summary>
+        /// Drop a namespace from the workspace's address space and unlink it.
+        /// <paramref name="allPrivateVersions"/> additionally takes the stored versions the
+        /// workspace privately holds for the URI (deleting the model, rather than replacing the
+        /// version in use) — see INodeSetStorageService.RemoveModelFromWorkspaceAsync.
+        /// </summary>
+        Task RemoveModelAsync(Guid workspaceId, string modelUri, bool allPrivateVersions = false);
         Task<string> GetNextNodeIdAsync(Guid workspaceId, string modelUri);
         void Invalidate(Guid workspaceId);
     }

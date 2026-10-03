@@ -542,8 +542,24 @@ const ModelLibraryPage: React.FC = () => {
 
    // Models in the reserved OPC Foundation namespace are read-only even when held privately —
    // their canonical license/metadata must not be edited.
-   const isOpcFoundationModel = (ns: WorkspaceNamespaceInfo): boolean =>
-      (ns.uri ?? '').toLowerCase().startsWith('http://opcfoundation.org/');
+   /**
+    * Whether the model dialog will actually let fields be changed.
+    *
+    * The row's Edit/View action and the dialog itself both read this, so an Edit pencil can
+    * never open a dialog with read-only fields and no Save button — they used to be decided
+    * by two separate expressions (`isEditable` for the icon, privacy/ownership for the form)
+    * that could disagree.
+    *
+    * A model is editable when you can write the workspace and the model is this workspace's
+    * own private row — then anything goes, the reserved http://opcfoundation.org/ namespace
+    * included, because authoring a companion spec starts from a private copy of one. Shared
+    * and published rows are read-only to everyone but an admin, since one edit would reach
+    * every workspace linked to them. What stops a local edit becoming everyone else's answer
+    * for a namespace is the publish guard, not this. UpdateNamespace applies the same rules
+    * server-side, so this never offers an edit the save would reject.
+    */
+   const canEditModel = (ns: WorkspaceNamespaceInfo): boolean =>
+      admin || (canWrite && !!ns.isPrivate);
 
    const handleViewTypeDefinitions = (ns: WorkspaceNamespaceInfo) => {
       // Pass the namespace URI in the URL as well as the context. URL is the
@@ -691,10 +707,7 @@ const ModelLibraryPage: React.FC = () => {
       setEditModelVersion(ns.version ?? '');
       setEditModelDescription(ns.description?.text ?? '');
       setEditModelError(null);
-      // Admins curate the standard models for everyone, so neither the private-only rule nor
-      // the read-only OPC Foundation namespace closes the dialog for them. The server applies
-      // the same exemption; this only decides what the form offers.
-      setEditModelReadOnly(!admin && (!ns.isPrivate || !canWrite || isOpcFoundationModel(ns)));
+      setEditModelReadOnly(!canEditModel(ns));
       setEditModelIsShared(!ns.isPrivate);
       setEditModelVersionLocked(!!ns.isEditable);
       setEditModelLicense(ns.license ?? '');
@@ -1019,12 +1032,12 @@ const ModelLibraryPage: React.FC = () => {
                               },
                               {
                                  onAction: () => handleEditModel(ns),
-                                 // An admin gets the editable dialog on every model, so the
-                                 // action reads as Edit rather than View for them — in the
-                                 // glyph, the tooltip and the short label alike.
-                                 icon: (ns.isEditable || admin) ? <EditIcon /> : <VisibilityIcon />,
-                                 tooltipKey: (ns.isEditable || admin) ? 'modelLibrary.editModel' : 'modelLibrary.viewModel',
-                                 labelKey: (ns.isEditable || admin) ? 'modelLibrary.editShort' : 'modelLibrary.viewShort',
+                                 // Reads Edit exactly when the dialog will be editable — see
+                                 // canEditModel. An admin therefore gets Edit on every model,
+                                 // and nobody gets a pencil that opens a read-only form.
+                                 icon: canEditModel(ns) ? <EditIcon /> : <VisibilityIcon />,
+                                 tooltipKey: canEditModel(ns) ? 'modelLibrary.editModel' : 'modelLibrary.viewModel',
+                                 labelKey: canEditModel(ns) ? 'modelLibrary.editShort' : 'modelLibrary.viewShort',
                                  primary: true
                               },
                               {
@@ -1330,6 +1343,8 @@ const ModelLibraryPage: React.FC = () => {
                      label: isSavingModel ? t('common.save') : t('common.ok'),
                      onClick: handleEditModelConfirm,
                      disabled: isSavingModel || !editModelName.trim()
+                        // Only gate Save on licence validity when the licence is actually being
+                        // submitted; a read-only dialog has no Save to disable anyway.
                         || (!editModelReadOnly && (!editModelCopyright.trim()
                            || !isLicenseValid(editModelLicense, editModelLicenseUrl, licenseOptions ?? []))),
                   }

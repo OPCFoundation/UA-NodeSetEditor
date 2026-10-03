@@ -174,9 +174,48 @@ namespace NodeSetEditor.Model
 
                 entity.HasIndex(e => e.Uri);
 
-                // One row per URI + normalized SemVer — also serves as sort index
-                entity.HasIndex(e => new { e.Uri, e.VersionNorm })
-                    .IsUnique();
+                // Sort/lookup index. NOT unique: a URI+version exists once as the shared copy
+                // and once per workspace holding an edited copy of it (see ModelTier).
+                //
+                // Every index below uses the NAMED overload, which is load-bearing rather than
+                // cosmetic: EF identifies an index by its property set, so a second
+                // HasIndex(Uri, VersionNorm) RECONFIGURES this one instead of adding another --
+                // silently turning the lookup index into the unique Shared index and leaving no
+                // plain index at all. Naming them makes them distinct model entities.
+                entity.HasIndex(e => new { e.Uri, e.VersionNorm }, "IX_Models_Uri_VersionNorm");
+
+                // Uniqueness is per tier, expressed as three partial indexes rather than one
+                // composite over the owner columns. A single index would not do: the owner is
+                // null in two of the three tiers, and Postgres treats nulls as DISTINCT in a
+                // unique index — so it would quietly permit unlimited duplicate shared rows,
+                // which is the one invariant most worth keeping.
+                entity.HasIndex(e => new { e.Uri, e.VersionNorm, e.OwnerWorkspaceId }, "UX_Models_Private")
+                    .IsUnique()
+                    .HasFilter($"\"Tier\" = '{nameof(ModelTier.Private)}'");
+
+                entity.HasIndex(e => new { e.Uri, e.VersionNorm, e.CreatorUserId }, "UX_Models_Published")
+                    .IsUnique()
+                    .HasFilter($"\"Tier\" = '{nameof(ModelTier.Published)}'");
+
+                entity.HasIndex(e => new { e.Uri, e.VersionNorm }, "UX_Models_Shared")
+                    .IsUnique()
+                    .HasFilter($"\"Tier\" = '{nameof(ModelTier.Shared)}'");
+
+                // Stored as text like Origin, so the tier is readable in the DB. Defaults to
+                // Shared: an unowned row is the safe reading for any insert that predates the
+                // code setting a tier explicitly, and it satisfies the check constraint below.
+                entity.Property(e => e.Tier)
+                    .HasConversion<string>()
+                    .HasMaxLength(16)
+                    .HasDefaultValue(ModelTier.Shared);
+
+                // Makes an incoherent row unrepresentable rather than merely unlikely: a private
+                // row without its workspace, a published one without a publisher, or an unowned
+                // row still carrying an owner.
+                entity.ToTable(t => t.HasCheckConstraint("CK_Models_Tier_Owner",
+                    "(\"Tier\" = 'Private'   AND \"OwnerWorkspaceId\" IS NOT NULL) OR "
+                  + "(\"Tier\" = 'Published' AND \"OwnerWorkspaceId\" IS NULL AND \"CreatorUserId\" IS NOT NULL) OR "
+                  + "(\"Tier\" = 'Shared'    AND \"OwnerWorkspaceId\" IS NULL)"));
 
                 // Stored as text so the value is readable in the DB and new members can be
                 // added without renumbering. Unknown = rows written before provenance existed.

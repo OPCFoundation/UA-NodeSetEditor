@@ -643,9 +643,12 @@ namespace NodeSetEditor.Server.Controllers
                     licenseUrl: editingLicense ? resolvedLicenseUrl : null,
                     copyrightHolder: editingLicense ? request.CopyrightHolder!.Trim() : null,
                     profileGroupName: request.ProfileGroupName,
-                    // The OPC Foundation namespace is read-only to users, but curating exactly
-                    // those standard models is what the admin role is for.
-                    enforceReadOnlyReserved: !isAdmin);
+                    // A private model is the workspace's own: anything goes, the reserved
+                    // namespace included, since authoring a companion spec starts from a private
+                    // copy of one. The reserved rule therefore guards only SHARED rows, where an
+                    // edit would be visible to every workspace linked to them — and curating
+                    // exactly those standard models is what the admin role is for.
+                    enforceReadOnlyReserved: !isAdmin && modelRef?.IsPrivate != true);
 
                 // The profile group is emitted into the generated NodeSet XML (the
                 // ProfileGroup:<Name> conformance unit on the NamespaceMetadata object), and the
@@ -694,7 +697,12 @@ namespace NodeSetEditor.Server.Controllers
                     return NotFound(MakeError(Opc.Ua.StatusCodes.BadNotFound, nameof(Opc.Ua.StatusCodes.BadNotFound), $"Model '{id}' not found."));
                 }
 
-                await _addressSpace.RemoveModelAsync(workspaceId, model.ModelUri);
+                // allPrivateVersions: deleting the model takes the versions this workspace holds
+                // for it — the one in use and the backups checkouts retained — which only exist
+                // to carry this copy. Leaving them behind stranded them permanently: still
+                // linked, so never collected as orphans, and still occupying their slots in the
+                // unique (Uri, VersionNorm) index.
+                await _addressSpace.RemoveModelAsync(workspaceId, model.ModelUri, allPrivateVersions: true);
                 // Rebuild the cached address space from the DB. RemoveModelAsync surgically drops
                 // the model from the in-memory address space by URI; when a private copy of a shared
                 // model is deleted, the shared link still remains in the workspace and must be
@@ -5036,7 +5044,7 @@ namespace NodeSetEditor.Server.Controllers
         /// users are read-only.
         /// </summary>
         private static bool CanWrite(Workspace workspace, AuthenticatedUser user)
-            => workspace.Owner == user.UserId;
+            => WorkspaceAccess.CanWrite(workspace, user);
 
         /// <summary>
         /// Resolves the default workspace: user's selected workspace, or the first accessible one.
@@ -5063,7 +5071,7 @@ namespace NodeSetEditor.Server.Controllers
             if (workspace == null) return null;
 
             // Owner has access
-            if (workspace.Owner == user.UserId) return workspace;
+            if (WorkspaceAccess.CanWrite(workspace, user)) return workspace;
 
             // ACL check
             var emailLower = user.Email?.ToLowerInvariant();
@@ -5084,7 +5092,7 @@ namespace NodeSetEditor.Server.Controllers
             Workspace ws, Guid? selectedId = null, IReadOnlyDictionary<string, string>? ownerNames = null)
         {
             var user = GetCurrentUser();
-            var isOwner = ws.Owner == user.UserId;
+            var isOwner = WorkspaceAccess.CanWrite(ws, user);
 
             // Prefer the owner's chosen display Name; the email-local-part remains
             // the fallback for owners who never provisioned a preference row.

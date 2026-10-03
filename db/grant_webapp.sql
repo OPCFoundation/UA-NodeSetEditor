@@ -1,4 +1,4 @@
-﻿-- Assigns the minimum privileges the runtime app role needs to operate
+-- Assigns the minimum privileges the runtime app role needs to operate
 -- the NodeSetEditor app: CONNECT on this database, USAGE on schema public,
 -- DML on all tables and sequences, plus default privileges so future objects
 -- created by the admin role (e.g. via EF migrate) inherit the same grants.

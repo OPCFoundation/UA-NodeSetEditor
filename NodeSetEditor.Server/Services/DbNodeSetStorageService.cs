@@ -434,6 +434,55 @@ namespace NodeSetEditor.Server.Services
             await DeleteModelIfOrphanedAsync(versionId);
         }
 
+        public async Task RemoveModelFromWorkspaceAsync(
+            Guid workspaceId, string modelUri, bool allPrivateVersions = false)
+        {
+            // Queried straight off the junction table on purpose. A workspace holds one link per
+            // STORED VERSION of a URI, but GetWorkspaceModelsAsync groups by URI and returns only
+            // the version currently served — so anything resolved through that view can never see
+            // the backup a checkout retained. Removing "the model" through it therefore dropped
+            // one link and left the rest, and because those rows were still linked they never
+            // looked orphaned: they stayed in the database holding their slots in the unique
+            // (Uri, VersionNorm) index.
+            var links = await _db.WorkspaceModels
+                .Include(wm => wm.Model)
+                .Where(wm => wm.WorkspaceId == workspaceId && wm.Model!.Uri == modelUri)
+                .ToListAsync();
+            if (links.Count == 0) return;
+
+            List<NodeSetEditor.Model.WorkspaceModel> doomed;
+            if (allPrivateVersions)
+            {
+                // Deleting the model: the private rows are this workspace's own copies of the URI
+                // and go together. A shared link to the published row is kept so the original
+                // reappears in its place; with nothing private held, that shared link is itself
+                // what is being removed.
+                doomed = links.Where(wm => wm.IsPrivate).ToList();
+                if (doomed.Count == 0) doomed = links;
+            }
+            else
+            {
+                // Swapping one version for another (a Cloud Library upgrade): only the version
+                // currently served goes, by the same precedence the workspace list uses to pick
+                // it. Sweeping here would take a private working copy of the namespace with it —
+                // the user's unpublished edits — which is not what replacing a version means.
+                doomed = links
+                    .OrderByDescending(wm => wm.IsEditable)
+                    .ThenByDescending(wm => wm.Model!.VersionNorm, StringComparer.Ordinal)
+                    .Take(1)
+                    .ToList();
+            }
+
+            _db.WorkspaceModels.RemoveRange(doomed);
+            await _db.SaveChangesAsync();
+
+            // Unlinking is not enough — the rows and their node graphs would linger unreachable.
+            // DeleteModelIfOrphanedAsync re-checks each, so a published row, or one another
+            // workspace still references, is left alone.
+            foreach (var link in doomed)
+                await DeleteModelIfOrphanedAsync(link.ModelId);
+        }
+
         public async Task DeleteModelIfOrphanedAsync(Guid modelId)
         {
             var model = await _db.Models.FindAsync(modelId);
@@ -442,6 +491,16 @@ namespace NodeSetEditor.Server.Services
             // Published versions live in the shared catalog and may be (re)linked by other
             // workspaces even when no link currently exists — never delete them here.
             if (model.Published) return;
+
+            // Nor a Cloud Library copy. It is a cache of a public catalog entry, not anything
+            // this workspace owns: it is the row every other workspace resolves this namespace
+            // against, and the next dependency resolution would only download it again. A
+            // workspace dropping its link says nothing about whether the copy is still wanted.
+            //
+            // Once rows carry a tier (see ModelTier) this becomes the broader and more accurate
+            // "only a Private row is ever collected", which also covers a shared row that
+            // happens to have been uploaded rather than fetched from the Cloud Library.
+            if (model.Origin == NodeSetEditor.Model.ModelOrigin.CloudLibrary) return;
 
             // Still referenced by a workspace? Then it isn't orphaned.
             if (await _db.WorkspaceModels.AnyAsync(wm => wm.ModelId == modelId)) return;
@@ -681,6 +740,30 @@ namespace NodeSetEditor.Server.Services
                     // just stays in the editor's own workspace (add it, then check it out) or
                     // goes back to the Cloud Library. It never becomes the shared answer here.
                     await GuardCloudLibraryNamespaceAsync(model.Uri);
+
+                    // The same reasoning applied to this server's own catalogue: a URI another
+                    // user has already published is theirs, and publishing here would make this
+                    // workspace's copy the shared answer for it. A NEW version does not make it
+                    // acceptable — a later version of someone else's namespace is still a
+                    // takeover — so this is checked before the version is chosen below, not as
+                    // part of the (Uri, VersionNorm) collision check.
+                    //
+                    // Owners are compared case-insensitively: CreatorUserId is an email-keyed
+                    // identity (see AuthenticatedUser.FromClaimsPrincipal) and a row differing
+                    // only in case must not read as a different person. Comparing in memory
+                    // keeps that independent of the database's collation.
+                    var publishedOwners = await _db.Models
+                        .Where(m => m.Id != model.Id && m.Uri == model.Uri
+                            && m.Published && m.CreatorUserId != null)
+                        .Select(m => m.CreatorUserId!)
+                        .ToListAsync();
+                    if (publishedOwners.Any(owner =>
+                        !string.Equals(owner, creatorUserId, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        throw new InvalidOperationException(
+                            $"'{model.Uri}' has already been published by another user, so it cannot " +
+                            "be published from this workspace. Publish it under a namespace URI you own.");
+                    }
 
                     // Version: use the publisher's chosen version when supplied (guarding against a
                     // collision with another published version of the same URI), otherwise strip the
@@ -1256,8 +1339,11 @@ namespace NodeSetEditor.Server.Services
             var model = await _db.Models.FindAsync(modelId)
                 ?? throw new KeyNotFoundException($"Model with Id '{modelId}' not found.");
 
-            // Models in the reserved OPC Foundation namespace are read-only even when held as a
-            // private copy — their canonical license/metadata must not be altered.
+            // Models in the reserved OPC Foundation namespace are read-only here. The caller
+            // only asks for this on a SHARED row (see UpdateNamespace): a private copy is the
+            // workspace's own and is fully editable, because authoring a companion spec begins
+            // by taking exactly such a copy. What stops a local edit from becoming everyone
+            // else's answer for the namespace is the publish guard, not this one.
             if (enforceReadOnlyReserved && model.Uri != null
                 && model.Uri.StartsWith("http://opcfoundation.org/", StringComparison.OrdinalIgnoreCase))
             {

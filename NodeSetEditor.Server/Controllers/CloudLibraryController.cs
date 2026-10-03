@@ -239,7 +239,7 @@ namespace NodeSetEditor.Server.Controllers
                 // Import mutates the workspace (links/replaces models and
                 // rewrites metadata), so it is owner-only — ACL collaborators
                 // have read-only access.
-                if (workspace.Owner != user.UserId)
+                if (!WorkspaceAccess.CanWrite(workspace, user))
                     return StatusCode(StatusCodes.Status403Forbidden,
                         new { error = "This workspace is read-only. Only the owner can import models." });
 
