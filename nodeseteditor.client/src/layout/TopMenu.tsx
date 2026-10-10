@@ -64,7 +64,7 @@ export const TopMenu = ({ title, onOpenSidebar, onOpenHelp }: TopMenuProps) => {
          >
             <Box
                component="img"
-               src="/opclogo.png"
+               src="/opclogo-white.png"
                alt="OPC Foundation"
                sx={{ height: NAV_PILL_HEIGHT, display: { xs: 'none', sm: 'block' } }}
             />
