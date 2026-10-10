@@ -17,7 +17,7 @@ export interface FooterLinkItem {
 export const defaultFooterLinks: FooterLinkItem[] = [
    {
       label: `© OPC Federation AISBL ${new Date().getFullYear()}`,
-      href: 'https://opcfoundation.org/about/what-is-opc/',
+      href: 'https://opcfoundation.org/imprint/',
    },
    { label: 'Contact Us', href: 'https://opcfoundation.org/about/contact-us/' },
    { label: 'Become a Member', href: 'https://opcfoundation.org/membership/become-a-member/step1' },
