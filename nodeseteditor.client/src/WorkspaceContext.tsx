@@ -15,7 +15,8 @@ export interface SelectedType {
    nodeId: string;
    displayName: string;
    nodeClass: number;
-   tab?: string;
+   /** Expanded node-detail sections, as carried in the URL. */
+   sections?: string[];
    /** URL from the NodeSet <Documentation> element, if present. */
    documentation?: string;
 }
@@ -35,11 +36,12 @@ export type WorkspaceContextType = {
    setModelLibraryCategories: (value: string[]) => void,
    selectedType: SelectedType | null,
    setSelectedType: (value: SelectedType | null) => void,
-   /** Sticky node-detail tab: persists across node selections so reviewing
-       e.g. property Values stays on the Value tab. Falls back to attributes
-       per-node when the selected node's NodeClass doesn't support it. */
-   preferredDetailTab: string,
-   setPreferredDetailTab: (value: string) => void,
+   /** Expanded node-detail sections: persists across node selections and page
+       navigation, so a review that works through e.g. Children stays open on
+       Children. Sections the selected node doesn't have are simply not rendered
+       and keep their entry for the next node that does. */
+   openDetailSections: string[],
+   setOpenDetailSections: (value: string[]) => void,
 }
 
 export const WorkspaceContext = React.createContext<WorkspaceContextType>({
@@ -57,6 +59,6 @@ export const WorkspaceContext = React.createContext<WorkspaceContextType>({
    setModelLibraryCategories: () => { },
    selectedType: null,
    setSelectedType: () => { },
-   preferredDetailTab: 'attributes',
-   setPreferredDetailTab: () => { },
+   openDetailSections: ['attributes'],
+   setOpenDetailSections: () => { },
 });

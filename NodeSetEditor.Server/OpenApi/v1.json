@@ -4246,6 +4246,10 @@
             "type": "boolean",
             "nullable": true
           },
+          "isInstanceDeclaration": {
+            "type": "boolean",
+            "nullable": true
+          },
           "dataTypeForm": {
             "type": "string",
             "nullable": true

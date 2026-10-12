@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import api from '../api/axios.api';
+import api, { extractErrorMessage } from '../api/axios.api';
 import { slugifyNodeId } from '../api/slug';
 import { idToUrn } from '../model/WorkspaceDescription';
 import type { PaginatedResponse } from '../model/WorkspaceDescription';
@@ -9,15 +9,23 @@ import type { WorkspaceNamespaceInfo } from '../model/WorkspaceNamespaceInfo';
 import type { Node as RestNode } from '../model/Node';
 
 import Box from '@mui/material/Box';
-import TextField from '@mui/material/TextField';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import MenuItem from '@mui/material/MenuItem';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 
 import { ModelDialog } from './ModelDialog';
 import { NodeIdAutocomplete } from './NodeIdAutocomplete';
 import type { NodeIdOption } from './NodeIdAutocomplete';
-import { formatNodeId, extractBrowseNameNamespace } from '../utils/formatNodeId';
+import { NodeLocationField } from './NodeLocationField';
+import { useHierarchicalReferenceTypes } from '../hooks/useHierarchicalReferenceTypes';
+import { formatNodeId, extractBrowseNameNamespace, extractNamespaceUri } from '../utils/formatNodeId';
 import { getAllowedValueRankOptions, allValueRankOptions } from '../utils/valueRank';
 import { parseConformanceUnits, formatConformanceUnits } from '../utils/conformanceUnits';
+import { cloneNode, resolveParentLink, ORGANIZES } from '../utils/cloneNode';
+import type { ClonedNodeInfo, ParentLink } from '../utils/cloneNode';
+import { getLastModelUri, setLastModelUri } from '../utils/lastModelUri';
 
 interface ChildNodeDetails {
    nodeId?: string;
@@ -54,11 +62,23 @@ interface VariableTypeInfo {
 export interface EditChildDialogProps {
    open: boolean;
    onClose: () => void;
+   /** Something was written — refresh whatever showed the node. */
    onSaved: () => void;
    workspaceId: string;
    childNodeId: string;
    showModellingRule: boolean;
    readOnly?: boolean;
+   /**
+    * 'clone' turns the same form into "create a copy of this node": the attributes come
+    * up prefilled from `childNodeId` and stay editable, plus the writable model the copy
+    * is created in. Its location is the source's own and shown read-only — a clone is a
+    * sibling, so that is not a choice — while the reference type holding it there is.
+    * The source node is left untouched, so it may live in a read-only model (Core
+    * included).
+    */
+   mode?: 'edit' | 'clone';
+   /** Clone mode: the copy that was created, for the caller to navigate to. */
+   onCloned?: (created: ClonedNodeInfo) => void;
    /**
     * The hierarchical reference type connecting this child to its parent. When
     * provided, the ReferenceType field is shown (Object/Variable children only).
@@ -102,10 +122,23 @@ export const EditChildDialog: React.FC<EditChildDialogProps> = ({
    childNodeId,
    showModellingRule,
    readOnly = false,
+   mode = 'edit',
+   onCloned,
    referenceTypeId,
    canEditReferenceType = false,
 }) => {
    const { t } = useTranslation();
+   const isClone = mode === 'clone';
+
+   // Clone-only fields: where the copy goes. `targetModelUri` has to be a writable
+   // (private, checked-out) model — the server refuses node writes anywhere else —
+   // while the source may come from any namespace. The LOCATION is not among them: a
+   // clone lands beside the original, so it is the source's own and read-only.
+   const [targetModelUri, setTargetModelUri] = React.useState('');
+   const [includeChildren, setIncludeChildren] = React.useState(true);
+   // The BrowseName namespace follows the target model until the user picks one
+   // themselves — see the model field below.
+   const browseNameNsEdited = React.useRef(false);
 
    const [browseNameNs, setBrowseNameNs] = React.useState('');
    const [browseName, setBrowseName] = React.useState('');
@@ -180,12 +213,6 @@ export const EditChildDialog: React.FC<EditChildDialogProps> = ({
    // caller supplies the current type (i.e. edited from a parent's child list).
    // Editable only for genuine (non-override, non-inherited) children.
    const isObjectOrVariable = nc === NodeClassValues.UAObject || isVariable;
-   // Conformance units annotate what a specification defines, so among instances they
-   // only make sense on a top-level Object — a child is covered by whatever unit its
-   // owning node belongs to, and has no independent place in a conformance statement.
-   const showConformanceUnits = nc === NodeClassValues.UAObject && !details?.parentNodeId;
-   const showReferenceType = isObjectOrVariable && referenceTypeId !== undefined;
-   const referenceTypeEditable = showReferenceType && canEditReferenceType && !readOnly;
 
    // TypeDefinition options. Objects pick any ObjectType. Variables are
    // constrained to their type family so the picker can't switch a Property to a
@@ -297,32 +324,6 @@ export const EditChildDialog: React.FC<EditChildDialogProps> = ({
       [varTypeInfo?.valueRank],
    );
 
-   // Hierarchical reference types (subtypes of HierarchicalReferences, i=33) for
-   // the ReferenceType picker. Fetched whenever the field is shown so the current
-   // value resolves to a display name even in the read-only case.
-   const { data: refTypes } = useQuery({
-      queryKey: ['hierarchicalRefTypes', workspaceId],
-      queryFn: async () => {
-         const response = await api.get<PaginatedResponse<RestNode>>(
-            `/opcua/v1/types/reference-types/${slugifyNodeId('i=33')}/subtypes`,
-            {
-               params: { depth: 10, count: 10000 },
-               headers: { 'OpcUa-Server': idToUrn(workspaceId) },
-            }
-         );
-         return response.data.results ?? [];
-      },
-      enabled: open && showReferenceType,
-   });
-
-   const refTypeOptions = React.useMemo((): NodeIdOption[] => {
-      return (refTypes ?? []).map((rt): NodeIdOption => ({
-         nodeId: rt.nodeId ?? '',
-         displayName: rt.browseName ?? rt.displayName?.text ?? rt.nodeId ?? '',
-         modelUri: rt.modelUri,
-      }));
-   }, [refTypes]);
-
    const { data: namespacesData } = useQuery({
       queryKey: ['namespaces', workspaceId],
       queryFn: async () => {
@@ -340,6 +341,23 @@ export const EditChildDialog: React.FC<EditChildDialogProps> = ({
          .map(ns => ({ uri: ns.uri, label: ns.name || ns.uri }));
    }, [namespacesData]);
 
+   // Models a node may be written to: private AND checked out. The server enforces
+   // exactly this pair (see PersistModelAsync), so offering anything else would only
+   // produce a "check it out before editing" failure on save.
+   const writableModelOptions = React.useMemo(() => {
+      return (namespacesData?.results ?? [])
+         .filter(ns => ns.isPrivate && ns.isEditable && !!ns.uri)
+         .map(ns => ({ uri: ns.uri as string, label: ns.name ? `${ns.name} (${ns.uri})` : ns.uri as string }));
+   }, [namespacesData]);
+
+   // The source's own parent and the reference type holding it there — the clone's
+   // defaults. Not needed in edit mode, where the caller passes the reference type.
+   const { data: sourceParentLink } = useQuery({
+      queryKey: ['nodeParentLink', workspaceId, childNodeId],
+      queryFn: () => resolveParentLink(workspaceId, childNodeId),
+      enabled: open && isClone && !!childNodeId,
+   });
+
    const modelNameMap = React.useMemo(() => {
       const map = new Map<string, string>();
       for (const ns of (namespacesData?.results ?? [])) {
@@ -352,6 +370,42 @@ export const EditChildDialog: React.FC<EditChildDialogProps> = ({
       () => formatNodeId(childNodeId, modelNameMap),
       [childNodeId, modelNameMap],
    );
+
+   /**
+    * How the clone will attach: whatever relationship the source has, which is what
+    * makes the copy its sibling — an owned child stays owned, a top-level node organized
+    * under something stays top-level and organized rather than silently acquiring a
+    * ParentId. The location is fixed for that reason; only the reference type is the
+    * user's to change.
+    */
+   const cloneLink: ParentLink = React.useMemo(() => ({
+      kind: sourceParentLink?.kind ?? 'none',
+      targetNodeId: sourceParentLink?.targetNodeId,
+      referenceTypeId: referenceType || ORGANIZES,
+   }), [sourceParentLink, referenceType]);
+
+   // The reference type tying the node to the one above it. In edit mode it is shown when
+   // the caller supplies the current value (i.e. the node was opened from a parent's child
+   // list) and editable only for genuine, non-inherited children. A clone resolves the
+   // link itself, so it shows the field whenever there is somewhere to attach to — that
+   // and the read-only location are the two fields describing the placement.
+   const showReferenceType = isObjectOrVariable
+      && (isClone ? !!cloneLink.targetNodeId : referenceTypeId !== undefined);
+   const referenceTypeEditable = showReferenceType && !readOnly
+      && (isClone || canEditReferenceType);
+
+   // Options for that picker — hierarchical types only, so the choice can never describe
+   // a placement no tree could show. Fetched whenever the field is shown, so the current
+   // value resolves to a display name even when read-only.
+   const refTypeOptions = useHierarchicalReferenceTypes(workspaceId, open && showReferenceType);
+
+   // Conformance units annotate what a specification defines, so among instances they
+   // only make sense on a top-level Object — a child is covered by whatever unit its
+   // owning node belongs to, and has no independent place in a conformance statement.
+   // An organized clone IS top-level (it takes no ParentId), so it keeps them; only a
+   // clone created as a child loses them.
+   const showConformanceUnits = nc === NodeClassValues.UAObject
+      && (isClone ? cloneLink.kind !== 'parent' : !details?.parentNodeId);
 
    const modellingRuleDisplayName = React.useMemo(() => {
       const opt = modellingRuleOptions.find(o => o.value === modellingRuleId);
@@ -379,13 +433,14 @@ export const EditChildDialog: React.FC<EditChildDialogProps> = ({
       setArrayDimensions('');
    }, [varTypeInfo, typeDefinitionId]);
 
-   // Initialize form when details load
+   // Initialize form when details load. A clone additionally needs its parent link,
+   // so it waits for that too; everything else is seeded the same way, which is what
+   // makes the clone form read as "this node's attributes, ready to be revised".
    React.useEffect(() => {
-      if (open && details && !initialized) {
-         setBrowseNameNs(details.browseNameNs ?? '');
-         setBrowseName(details.browseName ?? '');
-         setReferenceType(referenceTypeId ?? '');
-         setDisplayName(details.displayName ?? '');
+      const cloneInputsReady = !isClone || (!!sourceParentLink && !!namespacesData);
+      if (open && details && cloneInputsReady && !initialized) {
+         setBrowseName(isClone ? `${details.browseName ?? ''}Copy` : (details.browseName ?? ''));
+         setDisplayName(isClone ? `${details.displayName ?? ''}Copy` : (details.displayName ?? ''));
          setDescription(details.description ?? '');
          setTypeDefinitionId(details.typeDefinitionId ?? '');
          setModellingRuleId(details.modellingRuleId ?? '');
@@ -394,17 +449,89 @@ export const EditChildDialog: React.FC<EditChildDialogProps> = ({
          setArrayDimensions(details.arrayDimensions ?? '');
          setConformanceUnits(formatConformanceUnits(details.conformanceUnits));
          setSaveError(null);
+
+         if (isClone) {
+            // Target model: the source's own if it can be written to (cloning inside a
+            // private model is the common case), else the one last used for a create,
+            // else the first writable model. Taken from the NodeId, which always
+            // carries the namespace.
+            const writable = writableModelOptions.map(o => o.uri);
+            const candidates = [extractNamespaceUri(childNodeId), getLastModelUri()];
+            const target = candidates.find(uri => uri && writable.includes(uri))
+               ?? writable[0] ?? '';
+            setTargetModelUri(target);
+            // The clone is a node the user authors in their own model, so its BrowseName
+            // belongs in that namespace by default — not in the source's, which for a
+            // Core node would mint a new name in the OPC UA namespace. Overridable below.
+            setBrowseNameNs(target);
+            browseNameNsEdited.current = false;
+            // Default to the reference type the source is held by, so the copy starts out
+            // as its sibling in every respect; the user can pick another.
+            setReferenceType(sourceParentLink?.referenceTypeId ?? '');
+            setIncludeChildren(true);
+         } else {
+            setBrowseNameNs(details.browseNameNs ?? '');
+            setReferenceType(referenceTypeId ?? '');
+         }
          setInitialized(true);
       }
       if (!open) {
          setInitialized(false);
       }
-   }, [open, details, initialized, referenceTypeId]);
+   }, [open, details, initialized, referenceTypeId, isClone, sourceParentLink,
+      namespacesData, writableModelOptions, childNodeId]);
 
    const canSave = browseName.trim() !== ''
-      && (!showTypeDefinition || typeDefinitionId !== '');
+      && (!showTypeDefinition || typeDefinitionId !== '')
+      // A clone has nowhere to go without a writable model, and a Method must be created
+      // as a child: only Objects and Variables may be top-level nodes, which rules out
+      // both the standalone and the organized shapes for one.
+      && (!isClone || (targetModelUri !== '' && (!isMethod || cloneLink.kind === 'parent')));
 
    const clearError = () => { if (saveError) setSaveError(null); };
+
+   const handleModelChange = (uri: string) => {
+      setTargetModelUri(uri);
+      // Keep the BrowseName namespace on the model the clone is created in, unless the
+      // user has deliberately pointed it somewhere else.
+      if (!browseNameNsEdited.current) setBrowseNameNs(uri);
+      clearError();
+   };
+
+   const handleClone = async () => {
+      if (!canSave) return;
+      setIsSaving(true);
+      setSaveError(null);
+      try {
+         const created = await cloneNode({
+            workspaceId,
+            sourceNodeId: childNodeId,
+            nodeClass: nc,
+            modelUri: targetModelUri,
+            link: cloneLink,
+            browseName: browseName.trim(),
+            browseNameModelUri: browseNameNs || undefined,
+            displayName: displayName.trim(),
+            description: description || undefined,
+            typeDefinitionId: showTypeDefinition ? (typeDefinitionId || undefined) : undefined,
+            modellingRuleId: showModellingRule ? (modellingRuleId || undefined) : undefined,
+            dataType: isVariable ? dataType : undefined,
+            valueRank: isVariable ? valueRank : undefined,
+            arrayDimensions: isVariable ? arrayDimensions : undefined,
+            designToolOnly: details?.designToolOnly,
+            category: showConformanceUnits ? parseConformanceUnits(conformanceUnits) : undefined,
+            includeChildren,
+         });
+         setLastModelUri(targetModelUri);
+         onSaved();
+         onCloned?.(created);
+         onClose();
+      } catch (e) {
+         setSaveError(extractErrorMessage(e, 'Failed to clone node'));
+      } finally {
+         setIsSaving(false);
+      }
+   };
 
    const handleSave = async () => {
       if (!canSave) return;
@@ -463,27 +590,89 @@ export const EditChildDialog: React.FC<EditChildDialogProps> = ({
       <ModelDialog
          open={open}
          onClose={onClose}
-         title={readOnly ? t('typeDetail.viewChild') : t('typeDetail.editChild')}
-         isLoading={isSaving || detailsLoading}
+         title={isClone
+            ? t('typeDetail.cloneTitle', 'Clone Node')
+            : readOnly ? t('typeDetail.viewChild') : t('typeDetail.editChild')}
+         // A clone also waits on its parent link and the namespace list, so the form
+         // appears already filled in rather than blank-then-populated.
+         isLoading={isSaving || detailsLoading || (isClone && !initialized)}
          isError={!!saveError}
          error={saveError ? new Error(saveError) : null}
+         disableClose={isClone && isSaving}
          actions={readOnly ? [] : [
             {
                label: t('common.ok'),
-               onClick: handleSave,
+               onClick: isClone ? handleClone : handleSave,
                disabled: !canSave || isSaving || detailsLoading,
             },
          ]}
       >
          <Box sx={{ pt: 10, px: 6, pb: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {/* NodeId (read-only) */}
-            <TextField
-               label="NodeId"
-               value={formattedNodeId}
-               fullWidth
-               size="small"
-               slotProps={{ inputLabel: { shrink: true }, input: { readOnly: true } }}
-            />
+            {isClone ? (
+               <>
+                  {/* Reads top to bottom as the sentence it is: a copy OF this node, INTO
+                      this model, AT this location, held BY this reference type. */}
+                  <TextField
+                     label={t('typeDetail.cloneSource', 'Copy of')}
+                     value={formattedNodeId}
+                     fullWidth
+                     size="small"
+                     slotProps={{ inputLabel: { shrink: true }, input: { readOnly: true } }}
+                  />
+
+                  {/* Restricted to writable models, so a node from any namespace — Core
+                      included — can be cloned into one of the user's own. */}
+                  <TextField
+                     label={t('typeDetail.model')}
+                     value={targetModelUri}
+                     onChange={(e) => handleModelChange(e.target.value)}
+                     select
+                     required
+                     fullWidth
+                     size="small"
+                     disabled={writableModelOptions.length === 0}
+                     helperText={writableModelOptions.length === 0
+                        ? t('typeDetail.cloneNoWritableModel',
+                           'No writable model in this workspace. Create a private model, or check one out, first.')
+                        : undefined}
+                     slotProps={{ inputLabel: { shrink: true } }}
+                  >
+                     {writableModelOptions.map((opt) => (
+                        <MenuItem key={opt.uri} value={opt.uri}>
+                           {opt.label}
+                        </MenuItem>
+                     ))}
+                  </TextField>
+
+                  {/* The source's own location, read-only: a clone is a sibling of the
+                      node it was taken from, so this is not a choice. The reference type
+                      next to it is — and the pair describes the placement the same way
+                      the Create dialog's does. */}
+                  <NodeLocationField
+                     workspaceId={workspaceId}
+                     value={cloneLink.targetNodeId ?? ''}
+                  />
+                  {showReferenceType && (
+                     <NodeIdAutocomplete
+                        options={refTypeOptions}
+                        value={referenceType}
+                        onChange={(v) => { setReferenceType(v); clearError(); }}
+                        workspaceId={workspaceId}
+                        label={t('typeDetail.referenceType')}
+                        recentContext="referenceType"
+                     />
+                  )}
+               </>
+            ) : (
+               /* NodeId (read-only) */
+               <TextField
+                  label="NodeId"
+                  value={formattedNodeId}
+                  fullWidth
+                  size="small"
+                  slotProps={{ inputLabel: { shrink: true }, input: { readOnly: true } }}
+               />
+            )}
 
             {/* NodeClass (read-only) */}
             <TextField
@@ -494,9 +683,10 @@ export const EditChildDialog: React.FC<EditChildDialogProps> = ({
                slotProps={{ inputLabel: { shrink: true }, input: { readOnly: true } }}
             />
 
-            {/* Reference Type (Object/Variable children) — restricted to subtypes
-                of HierarchicalReferences. Read-only for overrides/inherited. */}
-            {showReferenceType && (
+            {/* Reference Type (Object/Variable children) — restricted to subtypes of
+                HierarchicalReferences. Read-only for overrides/inherited. A clone shows
+                it above instead, next to the location it belongs with. */}
+            {showReferenceType && !isClone && (
                <NodeIdAutocomplete
                   options={refTypeOptions}
                   value={referenceType}
@@ -504,6 +694,7 @@ export const EditChildDialog: React.FC<EditChildDialogProps> = ({
                   workspaceId={workspaceId}
                   label={t('typeDetail.referenceType')}
                   readOnly={!referenceTypeEditable}
+                  recentContext="referenceType"
                />
             )}
 
@@ -523,7 +714,12 @@ export const EditChildDialog: React.FC<EditChildDialogProps> = ({
                <TextField
                   label={t('typeDetail.browseNameNs')}
                   value={browseNameNs}
-                  onChange={(e) => { setBrowseNameNs(e.target.value); clearError(); }}
+                  onChange={(e) => {
+                     setBrowseNameNs(e.target.value);
+                     // Stop following the target model once the user has had their say.
+                     browseNameNsEdited.current = true;
+                     clearError();
+                  }}
                   select
                   fullWidth
                   size="small"
@@ -567,6 +763,7 @@ export const EditChildDialog: React.FC<EditChildDialogProps> = ({
                   workspaceId={workspaceId}
                   label={t('typeDetail.typeDefinition')}
                   readOnly={readOnly || designToolOnly}
+                  recentContext="typeDefinition"
                />
             )}
 
@@ -609,6 +806,7 @@ export const EditChildDialog: React.FC<EditChildDialogProps> = ({
                      workspaceId={workspaceId}
                      label={t('typeDetail.dataType')}
                      readOnly={readOnly}
+                     recentContext="dataType"
                   />
                   {readOnly ? (
                      <TextField
@@ -673,6 +871,25 @@ export const EditChildDialog: React.FC<EditChildDialogProps> = ({
                   minRows={3}
                   slotProps={{ inputLabel: { shrink: true }, input: { readOnly } }}
                />
+            )}
+
+            {isClone && (
+               <>
+                  <FormControlLabel
+                     control={
+                        <Checkbox
+                           size="small"
+                           checked={includeChildren}
+                           onChange={(e) => setIncludeChildren(e.target.checked)}
+                        />
+                     }
+                     label={t('typeDetail.cloneChildren', 'Clone the children as well')}
+                  />
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: -4 }}>
+                     {t('typeDetail.cloneDescription',
+                        'Attributes and values are copied. References outside the containment hierarchy (e.g. interfaces) are not.')}
+                  </Typography>
+               </>
             )}
          </Box>
       </ModelDialog>

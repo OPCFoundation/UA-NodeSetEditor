@@ -62,6 +62,13 @@ export interface Node {
    isInherited?: boolean;
    sourceTypeNodeId?: string;
    isOverride?: boolean;
+   /**
+    * Object/Variable/Method only: the node lives inside a type tree, so it is an instance
+    * DECLARATION rather than an instance. Server-computed — a ParentNodeId may not cross
+    * models, so walking parents here would stop at the first cross-model link. Absent for
+    * type nodes, where the question doesn't apply.
+    */
+   isInstanceDeclaration?: boolean;
    dataTypeForm?: string;
    value?: unknown;
    documentation?: string;

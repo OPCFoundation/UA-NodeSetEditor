@@ -61,6 +61,7 @@
       "check": "material-symbols:check-outline-rounded",
       "chevronRight": "material-symbols:chevron-right-outline-rounded",
       "close": "material-symbols:close-outline-rounded",
+      "clone": "material-symbols:file-copy-outline-rounded",
       "contentCopy": "material-symbols:content-copy-outline-rounded",
       "darkMode": "material-symbols:dark-mode-outline-rounded",
       "delete": "material-symbols:delete-outline-rounded",

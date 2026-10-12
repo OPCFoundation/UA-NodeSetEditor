@@ -720,6 +720,7 @@ export const EditTypeDialog: React.FC<EditTypeDialogProps> = ({
                workspaceId={workspaceId}
                label="SuperType"
                readOnly={!isCreateMode || !!superTypeNodeIdProp}
+               recentContext="superType"
             />
             {isReferenceType && (
                <>
@@ -793,6 +794,7 @@ export const EditTypeDialog: React.FC<EditTypeDialogProps> = ({
                      onChange={(id) => { setVtDataType(id); clearError(); }}
                      workspaceId={workspaceId}
                      label={t('typeDetail.dataType')}
+                     recentContext="dataType"
                   />
                   <TextField
                      label={t('typeDetail.valueRank')}

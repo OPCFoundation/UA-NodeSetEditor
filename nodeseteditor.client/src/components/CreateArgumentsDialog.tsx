@@ -373,6 +373,7 @@ export const CreateArgumentsDialog: React.FC<CreateArgumentsDialogProps> = ({
                               onChange={(id) => updateRow(idx, { dataType: id })}
                               workspaceId={workspaceId}
                               label={t('typeDetail.dataType')}
+                              recentContext="dataType"
                            />
                         </Box>
                         <TextField

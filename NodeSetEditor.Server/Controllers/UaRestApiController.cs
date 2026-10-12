@@ -1418,6 +1418,17 @@ namespace NodeSetEditor.Server.Controllers
                 // parent is too), which is where conformance units belong.
                 restNode.ParentNodeId = uaNode.ParentId;
 
+                // Instance or instance declaration? Object/Variable/Method cover both roles,
+                // and the client gates per-role actions on this (an instance can be organized
+                // under another node and cloned; a declaration belongs to its type). Only
+                // reported for those NodeClasses — on a type node the question is meaningless.
+                if (uaNode.NodeClass is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAObject
+                    or JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAVariable
+                    or JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.NodeClass.UAMethod)
+                {
+                    restNode.IsInstanceDeclaration = addressSpace.IsInsideTypeTree(uaNode);
+                }
+
                 // Add supertype chain
                 restNode.SuperTypeIds = GetSuperTypeIds(addressSpace, nodeId);
                 if (restNode.SuperTypeIds.Count > 0)

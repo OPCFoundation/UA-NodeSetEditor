@@ -304,6 +304,51 @@ const components = (t: Tokens): ThemeOptions['components'] => ({
          indicator: { height: 2, borderRadius: 2 }
       }
    },
+   // The node-detail sections (Attributes, Children, References, ...). Each section is a
+   // hairline-bordered card rather than MUI's default elevated, flush-stacked panel: the
+   // sections sit in a gapped column, so an expanded one reads as its own surface and the
+   // collapsed ones as a list of headers.
+   MuiAccordion: {
+      defaultProps: { elevation: 0, disableGutters: true },
+      styleOverrides: {
+         root: {
+            border: `1px solid ${t.separator}`,
+            borderRadius: 12,
+            backgroundColor: t.background,
+            // The bodies are full-bleed tables; without this their corners square off
+            // the card's rounded ones.
+            overflow: 'hidden',
+            // MUI's divider pseudo-element belongs to the flush stack we are not using.
+            '&:before': { display: 'none' },
+            '&.Mui-expanded': { margin: 0 },
+         }
+      }
+   },
+   MuiAccordionSummary: {
+      styleOverrides: {
+         root: {
+            minHeight: 48,
+            padding: '0 12px',
+            borderRadius: 12,
+            '&.Mui-expanded': { minHeight: 48 },
+            '&:hover': { backgroundColor: t.surface },
+         },
+         content: {
+            margin: 0,
+            alignItems: 'center',
+            '&.Mui-expanded': { margin: 0 },
+         },
+         expandIconWrapper: { color: t.textSecondary },
+      }
+   },
+   MuiAccordionDetails: {
+      // No padding of its own: the section bodies are full-bleed tables, which line up
+      // with the header only when nothing insets them. Content that needs a gutter
+      // (notes, the value editor) brings its own.
+      styleOverrides: {
+         root: { padding: 0, borderTop: `1px solid ${t.separator}` }
+      }
+   },
    MuiOutlinedInput: {
       styleOverrides: {
          root: {

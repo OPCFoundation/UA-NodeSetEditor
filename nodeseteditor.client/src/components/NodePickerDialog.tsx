@@ -154,8 +154,7 @@ export const NodePickerDialog: React.FC<NodePickerDialogProps> = ({
                         highlightNodeId={selectedNodeId}
                         onNodeSelect={(n) => setSelectedNodeId(n.nodeId)}
                         expandedItems={expandedItems}
-                        onExpandedItemsChange={(_e, ids) => setExpandedItems(ids)}
-                        selectableObjectsFolder
+                        onExpandedItemsChange={(_e, ids) => setExpandedItems(ids)}
                         // Types own instance declarations, and those are legal
                         // reference targets — so the tree has to reach them.
                         // Not in rootType mode: there the caller wants one

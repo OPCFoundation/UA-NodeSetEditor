@@ -3,9 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 
 import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
-import { alpha } from '@mui/material/styles';
 import { SimpleTreeView } from '@mui/x-tree-view/SimpleTreeView';
 import { NodeIcon } from '../icons';
 import { IconSize } from '../icons/spec';
@@ -35,12 +33,40 @@ const OBJECTS_FOLDER_NODE_ID = 'i=85';
 // creating a subtype directly off it is valid and common; the other root
 // base types (BaseVariableType/BaseDataType/References) can't be subtyped
 // directly, so their folders list concrete subtypes instead.
+// `nodeClass` / `browseName` describe the base type the folder row stands for, so the
+// row can be selected like any other node (see RootRowLabel).
 export const ROOT_TYPES = [
-   { category: 'object-types', nodeId: 'i=58', treeId: 'object-types', label: 'ObjectTypes', showBaseTypeNode: true },
-   { category: 'variable-types', nodeId: 'i=62', treeId: 'i=62', label: 'VariableTypes', showBaseTypeNode: false },
-   { category: 'data-types', nodeId: 'i=24', treeId: 'i=24', label: 'DataTypes', showBaseTypeNode: false },
-   { category: 'reference-types', nodeId: 'i=31', treeId: 'i=31', label: 'ReferenceTypes', showBaseTypeNode: false },
+   { category: 'object-types', nodeId: 'i=58', treeId: 'object-types', label: 'ObjectTypes', nodeClass: 'ObjectType', browseName: 'BaseObjectType', showBaseTypeNode: true },
+   { category: 'variable-types', nodeId: 'i=62', treeId: 'i=62', label: 'VariableTypes', nodeClass: 'VariableType', browseName: 'BaseVariableType', showBaseTypeNode: false },
+   { category: 'data-types', nodeId: 'i=24', treeId: 'i=24', label: 'DataTypes', nodeClass: 'DataType', browseName: 'BaseDataType', showBaseTypeNode: false },
+   { category: 'reference-types', nodeId: 'i=31', treeId: 'i=31', label: 'ReferenceTypes', nodeClass: 'ReferenceType', browseName: 'References', showBaseTypeNode: false },
 ] as const;
+
+/**
+ * Label for one of the tree's top-level rows.
+ *
+ * These rows are nodes, not headings: "Objects" is i=85, and each type category is its
+ * base type (BaseObjectType, BaseVariableType, BaseDataType, References). They used to
+ * render as bold text with no click handler, so clicking one only expanded it and there
+ * was no way to open it — hence this carries the same label treatment every other row
+ * has (glyph, full-width click target, hover tint, accent fill when selected). Bold is
+ * kept so the top level still reads as the top level.
+ */
+const RootRowLabel: React.FC<{
+   node: Node;
+   label: string;
+   selected: boolean;
+   onSelect: (node: Node) => void;
+}> = ({ node, label, selected, onSelect }) => (
+   <Box
+      // The row still expands via the toggle icon; this click only selects.
+      onClick={(e) => { e.stopPropagation(); onSelect(node); }}
+      sx={treeLabelSx(selected, true, false)}
+   >
+      <NodeIcon nodeClass={node.nodeClass} icon={node.icon} size={IconSize.tree} />
+      <span className="tree-label-text">{label}</span>
+   </Box>
+);
 
 async function fetchSubtypes(workspaceId: string, category: string, nodeId: string, includeSelf = false, modelUri?: string): Promise<Node[]> {
    const params: Record<string, unknown> = { depth: 3, count: 10000, includeSelf };
@@ -238,6 +264,11 @@ const TypeTreeItem: React.FC<TypeTreeItemProps> = ({ node, category, workspaceId
 interface CategoryItemProps {
    category: string;
    rootNodeId: string;
+   /**
+    * The base type the folder row stands for (BaseObjectType, BaseVariableType,
+    * BaseDataType, References), so the row selects it like any other node.
+    */
+   rootNode: Node;
    folderId: string;
    showBaseTypeNode: boolean;
    categoryLabel: string;
@@ -252,7 +283,7 @@ interface CategoryItemProps {
    showTypeChildren?: boolean;
 }
 
-const CategoryItem: React.FC<CategoryItemProps> = ({ category, rootNodeId, folderId, showBaseTypeNode, categoryLabel, workspaceId, expandedSet, targetNodeId, highlightModelUri, onNodeSelect, filterModelUri, showTypeChildren }) => {
+const CategoryItem: React.FC<CategoryItemProps> = ({ category, rootNodeId, rootNode, folderId, showBaseTypeNode, categoryLabel, workspaceId, expandedSet, targetNodeId, highlightModelUri, onNodeSelect, filterModelUri, showTypeChildren }) => {
    const expanded = expandedSet.has(folderId);
    const filterMode = !!filterModelUri;
 
@@ -283,7 +314,20 @@ const CategoryItem: React.FC<CategoryItemProps> = ({ category, rootNodeId, folde
    if (filterMode && (!tree || tree.length === 0)) return null;
 
    return (
-      <TreeItem itemId={folderId} label={<Typography variant="body2" sx={{ fontWeight: 'bold' }}>{categoryLabel}</Typography>}>
+      <TreeItem
+         itemId={folderId}
+         label={
+            <RootRowLabel
+               node={rootNode}
+               label={categoryLabel}
+               // ObjectTypes also lists BaseObjectType as a row of its own
+               // (showBaseTypeNode), so both rows light up for the same node — they
+               // are the same node, reached two ways.
+               selected={targetNodeId === rootNodeId}
+               onSelect={onNodeSelect}
+            />
+         }
+      >
          {!expanded && <TreeItem itemId={`${folderId}__placeholder`} label="" />}
          {expanded && isLoading && (
             <TreeItem
@@ -374,8 +418,6 @@ interface ObjectsCategoryProps {
    categoryLabel: string;
    /** When set, prune the instance tree to branches containing a node in this namespace. */
    filterModelUri?: string;
-   /** When true, the Objects folder row itself is selectable (clicking its label picks i=85). */
-   selectableFolder?: boolean;
 }
 
 /**
@@ -391,38 +433,24 @@ const ObjectsCategory: React.FC<ObjectsCategoryProps> = ({
    onNodeSelect,
    categoryLabel,
    filterModelUri,
-   selectableFolder = false,
 }) => {
    const expanded = expandedSet.has(OBJECTS_FOLDER_NODE_ID);
    const filterMode = !!filterModelUri;
    const isSelected = selectedNodeId === OBJECTS_FOLDER_NODE_ID;
 
-   // The Objects folder is a real node (i=85); when selection is allowed, clicking its
-   // label picks it (stopPropagation so the row still expands via the toggle icon).
    const folderLabel = (
-      <Typography
-         variant="body2"
-         onClick={selectableFolder ? (e) => {
-            e.stopPropagation();
-            onNodeSelect({
-               nodeId: OBJECTS_FOLDER_NODE_ID,
-               nodeClass: 'Object',
-               browseName: 'Objects',
-               displayName: { text: categoryLabel },
-            } as Node);
-         } : undefined}
-         sx={{
-            fontWeight: 'bold',
-            cursor: selectableFolder ? 'pointer' : undefined,
-            color: isSelected ? 'primary.main' : undefined,
-            backgroundColor: isSelected
-               ? (theme) => alpha(theme.palette.primary.main, 0.16) : undefined,
-            borderRadius: isSelected ? '4px' : undefined,
-            px: isSelected ? 0.5 : 0,
-         }}
-      >
-         {categoryLabel}
-      </Typography>
+      <RootRowLabel
+         node={{
+            nodeId: OBJECTS_FOLDER_NODE_ID,
+            nodeClass: 'Object',
+            browseName: 'Objects',
+            displayName: { text: categoryLabel },
+            icon: 'folder',
+         } as Node}
+         label={categoryLabel}
+         selected={isSelected}
+         onSelect={onNodeSelect}
+      />
    );
 
    // Non-filter: lazy depth-1 children (Node[]); each row fetches its own
@@ -493,12 +521,6 @@ interface AddressSpaceTreeViewProps {
     */
    rootType?: { category: string; nodeId: string };
    /**
-    * When true, the top-level "Objects" folder (i=85) is itself selectable
-    * (it's a real node). Used by the node picker so a reference can target it;
-    * the sidebar leaves it as a non-selectable header.
-    */
-   selectableObjectsFolder?: boolean;
-   /**
     * When true, each type row also lists the instance declarations it owns
     * (Properties/Components/Methods) below its subtypes, so the tree can reach
     * a child of a type — a legal reference target. The sidebar leaves this off
@@ -523,7 +545,6 @@ export const AddressSpaceTreeView: React.FC<AddressSpaceTreeViewProps> = ({
    expandedItems,
    onExpandedItemsChange,
    rootType,
-   selectableObjectsFolder = false,
    showTypeChildren = false,
 }) => {
    const { t } = useTranslation();
@@ -563,13 +584,13 @@ export const AddressSpaceTreeView: React.FC<AddressSpaceTreeViewProps> = ({
             onNodeSelect={onNodeSelect}
             categoryLabel={t('addressSpaceTree.objects', 'Objects')}
             filterModelUri={filterModelUri}
-            selectableFolder={selectableObjectsFolder}
          />
-         {ROOT_TYPES.map(({ category, nodeId, treeId, label, showBaseTypeNode }) => (
+         {ROOT_TYPES.map(({ category, nodeId, treeId, label, nodeClass, browseName, showBaseTypeNode }) => (
             <CategoryItem
                key={nodeId}
                category={category}
                rootNodeId={nodeId}
+               rootNode={{ nodeId, nodeClass, browseName } as Node}
                folderId={treeId}
                showBaseTypeNode={showBaseTypeNode}
                categoryLabel={label}

@@ -197,6 +197,7 @@ export const AddReferenceDialog: React.FC<AddReferenceDialogProps> = ({
                onChange={setReferenceTypeId}
                workspaceId={workspaceId}
                label={t('typeDetail.referenceType')}
+               recentContext="referenceType"
             />
 
             <FormControlLabel

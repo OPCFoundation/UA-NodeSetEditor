@@ -8,7 +8,7 @@ import type { PaginatedResponse } from '../model/WorkspaceDescription';
 import { getNodePlainName } from '../model/Node';
 import type { Node as RestNode, ReferenceDescription } from '../model/Node';
 import { formatModellingRule, formatValueRank } from '../model/NodeFormatting';
-import { extractNamespaceUri, extractBrowseNameNamespace, formatBrowseName, formatNodeId, buildNamespaceMap } from '../utils/formatNodeId';
+import { extractNamespaceUri, extractBrowseNameNamespace, formatBrowseName, formatNodeId, buildNamespaceMap, OPC_UA_CORE_URI } from '../utils/formatNodeId';
 import type { WorkspaceNamespaceInfo } from '../model/WorkspaceNamespaceInfo';
 import { WorkspaceContext } from '../WorkspaceContext';
 import { useCanWriteWorkspace } from '../hooks/useCurrentWorkspace';
@@ -33,8 +33,6 @@ interface DataTypeDefinitionResponse {
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
-import Tabs from '@mui/material/Tabs';
-import Tab from '@mui/material/Tab';
 import Tooltip from '@mui/material/Tooltip';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Link from '@mui/material/Link';
@@ -44,10 +42,13 @@ import {
    KeyboardArrowUpIcon, KeyboardArrowDownIcon, VisibilityIcon, VisibilityOffIcon,
    SubdirectoryArrowRightIcon, ObjectIcon, DataVariableIcon, PropertyIcon, MethodIcon,
    InterfaceIcon, AccountTreeIcon, ContentCopyIcon, CallSplitIcon, PlaylistAddIcon,
-   ListAltIcon,
+   ListAltIcon, CloneIcon,
 } from '../icons';
 import type { SxProps, Theme } from '@mui/material/styles';
 
+import { ActionBar } from './ActionBar';
+import type { ActionBarItem } from './ActionBar';
+import { DetailSection } from './DetailSection';
 import { StripedTable } from './StripedTable';
 import type { StripedTableColumn } from './StripedTable';
 import { ModelDialog } from './ModelDialog';
@@ -65,6 +66,8 @@ import { EditChildDialog } from './EditChildDialog';
 import { InstantiateDialog } from './InstantiateDialog';
 import { AddReferenceDialog } from './AddReferenceDialog';
 import type { AddReferenceData } from './AddReferenceDialog';
+import { ViewNodeDialog } from './ViewNodeDialog';
+import { refreshAddressSpace as refreshAddressSpaceCaches } from '../utils/refreshAddressSpace';
 import { NodeIdLink } from './NodeIdLink';
 import { DataTypeCell } from './DataTypeCell';
 import { ValueEditor } from './ValueEditor';
@@ -162,8 +165,13 @@ interface TypeDetailViewProps {
    isEditable: boolean;
    onBack: () => void;
    workspaceId: string;
-   initialTab?: string;
-   onTabChange?: (tab: string) => void;
+   /**
+    * Sections open when the view mounts. Undefined falls back to Attributes only;
+    * an empty array is honoured as "everything collapsed".
+    */
+   initialSections?: string[];
+   /** Fires on every expand/collapse so the page can persist the set. */
+   onSectionsChange?: (sections: string[]) => void;
 }
 
 interface BreadcrumbNode {
@@ -174,7 +182,13 @@ interface BreadcrumbNode {
    typeDefinitionId?: string;
 }
 
-type TabId = 'attributes' | 'fields' | 'value' | 'children' | 'references';
+type SectionId = 'attributes' | 'fields' | 'value' | 'children' | 'references';
+
+const SECTION_IDS: SectionId[] = ['attributes', 'fields', 'value', 'children', 'references'];
+
+/** Keep only known section ids, in the order the sections are rendered. */
+const sanitizeSections = (sections: string[]): SectionId[] =>
+   SECTION_IDS.filter((id) => sections.includes(id));
 
 /** Strip a leading "[Model]:" or bare "Model:" prefix added by formatBrowseName. */
 function stripModelPrefix(value: string): string {
@@ -202,22 +216,31 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
    isEditable,
    onBack,
    workspaceId,
-   initialTab,
-   onTabChange,
+   initialSections,
+   onSectionsChange,
 }) => {
    const { t } = useTranslation();
    const queryClient = useQueryClient();
    const { setSelectedType, setNavigateToNode } = React.useContext(WorkspaceContext);
-   const validTabs: TabId[] = ['attributes', 'fields', 'value', 'children', 'references'];
-   // The tab the user picked, which is sticky across node selections and may name a
-   // tab the newly selected node doesn't have. Read `activeTab` below, never this.
-   const [selectedTab, setSelectedTabRaw] = React.useState<TabId>(
-      initialTab && validTabs.includes(initialTab as TabId) ? initialTab as TabId : 'attributes'
+
+   // Which sections are expanded. Sticky across node selections — a review that works
+   // through Children stays on Children as the user walks the tree — so the set may name
+   // a section the newly selected node doesn't have; those simply aren't rendered, and
+   // the entry survives for the next node that does have it.
+   const [openSections, setOpenSectionsRaw] = React.useState<SectionId[]>(
+      () => initialSections ? sanitizeSections(initialSections) : ['attributes']
    );
-   const setActiveTab = React.useCallback((tab: TabId) => {
-      setSelectedTabRaw(tab);
-      onTabChange?.(tab);
-   }, [onTabChange]);
+   const isOpen = React.useCallback(
+      (id: SectionId) => openSections.includes(id),
+      [openSections],
+   );
+   const toggleSection = React.useCallback((id: string) => {
+      const next = openSections.includes(id as SectionId)
+         ? openSections.filter((s) => s !== id)
+         : sanitizeSections([...openSections, id]);
+      setOpenSectionsRaw(next);
+      onSectionsChange?.(next);
+   }, [openSections, onSectionsChange]);
 
    // Drill-down navigation stack
    const [drillStack, setDrillStack] = React.useState<BreadcrumbNode[]>([]);
@@ -253,13 +276,18 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
       [namespacesData],
    );
 
-   // Reset drill stack when top-level nodeId changes
+   // Reset drill stack when top-level nodeId changes. The open sections are
+   // deliberately left alone — they are the user's standing preference.
    React.useEffect(() => {
       setDrillStack([]);
-      setSelectedTabRaw(
-         initialTab && validTabs.includes(initialTab as TabId) ? initialTab as TabId : 'attributes'
-      );
-   }, [nodeId]); // eslint-disable-line react-hooks/exhaustive-deps
+   }, [nodeId]);
+
+   // Called after anything that changes a node's name or place in the hierarchy — see
+   // the util for why it invalidates whole families rather than this node's keys.
+   const refreshAddressSpace = React.useCallback(
+      () => refreshAddressSpaceCaches(queryClient),
+      [queryClient],
+   );
 
    // Field dialog state
    const [fieldDialogOpen, setFieldDialogOpen] = React.useState(false);
@@ -280,6 +308,15 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
 
    // Edit method arguments dialog state
    const [argumentsOpen, setArgumentsOpen] = React.useState(false);
+
+   // Clone (copy node) dialog state
+   const [cloneOpen, setCloneOpen] = React.useState(false);
+
+   // "Create": a new top-level Object organized under this one.
+   const [createOrganizedOpen, setCreateOrganizedOpen] = React.useState(false);
+
+   // Read-only attribute popup, used by View on a node whose model is not editable.
+   const [viewNodeId, setViewNodeId] = React.useState<string | null>(null);
 
    // Child dialog state
    const [childDialogOpen, setChildDialogOpen] = React.useState(false);
@@ -445,32 +482,27 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
       enabled: true,
    });
 
-   // Derive DataTypeForm from attributes (needed early for tab visibility)
+   // Derive DataTypeForm from attributes (needed early for section visibility)
    const dataTypeForm = React.useMemo(() => {
       const attrs = attributesData?.attrs ?? [];
       const attrMap = new Map(attrs.map((a) => [a.name, a.value ?? '']));
       return attrMap.get('DataTypeForm') ?? '';
    }, [attributesData]);
 
-   // Only show Fields tab for DataTypes that support fields (Structure, Union, Enumeration, OptionSet)
-   const showFieldsTab = isDataType && !!dataTypeForm;
+   // Only show the Fields section for DataTypes that support fields (Structure, Union,
+   // Enumeration, OptionSet)
+   const showFieldsSection = isDataType && !!dataTypeForm;
 
-   // Show Value tab for Variables and VariableTypes (anything that carries a Value attribute).
-   const showValueTab = activeNodeClass === NodeClassValues.UAVariable
+   // Show the Value section for Variables and VariableTypes (anything that carries a
+   // Value attribute).
+   const showValueSection = activeNodeClass === NodeClassValues.UAVariable
       || activeNodeClass === NodeClassValues.UAVariableType;
 
-   // If the sticky tab is one the active node doesn't have, fall back to attributes for
-   // DISPLAY only — `selectedTab` keeps the user's preference, so selecting another
-   // Variable returns to Value. Only an explicit tab click changes the preference.
-   //
-   // Derived during render rather than corrected in an effect: an effect only fires after
-   // MUI has already been handed a `value` with no matching Tab, and it logs "None of the
-   // Tabs' children match with …" for that frame. Selecting an Object right after editing
-   // a Variable's value hit exactly that.
-   const activeTab: TabId =
-      (selectedTab === 'fields' && !showFieldsTab) || (selectedTab === 'value' && !showValueTab)
-         ? 'attributes'
-         : selectedTab;
+   // A section's data is fetched only while the section is actually expanded, and only
+   // when the active node has that section at all.
+   const fieldsOpen = showFieldsSection && isOpen('fields');
+   const childrenOpen = isOpen('children');
+   const referencesOpen = isOpen('references');
 
    const { data: fieldsData, isLoading: fieldsLoading, isError: fieldsError, error: fieldsErrorObj } = useQuery({
       queryKey: ['nodeDataTypeFields', workspaceId, activeNodeId],
@@ -497,7 +529,7 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
             sourceTypeName: f.sourceTypeNodeId,
          })) as DataTypeFieldDto[];
       },
-      enabled: showFieldsTab && activeTab === 'fields',
+      enabled: fieldsOpen,
    });
 
    const { data: childrenData, isLoading: childrenLoading, isError: childrenError, error: childrenErrorObj } = useQuery({
@@ -529,7 +561,7 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
             isOverride: n.isOverride ?? false,
          })) as NodeChildDto[];
       },
-      enabled: activeTab === 'children',
+      enabled: childrenOpen,
    });
 
    // When drilled down, fetch the type definition's own (non-inherited)
@@ -550,7 +582,7 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
          );
          return (response.data.results ?? []) as unknown as TemplateChildDto[];
       },
-      enabled: isDrilledDown && !!activeTypeDefId && activeTab === 'children',
+      enabled: isDrilledDown && !!activeTypeDefId && childrenOpen,
    });
 
    const typeDerivedNames = React.useMemo(() => {
@@ -580,7 +612,7 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
             isCanonicalParent: r.isCanonicalParent,
          })) as NodeReferenceDto[];
       },
-      enabled: activeTab === 'references',
+      enabled: referencesOpen,
    });
 
    // Add/Edit Field handler
@@ -759,9 +791,7 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
          }
 
          setChildDialogOpen(false);
-         queryClient.invalidateQueries({ queryKey: ['nodeChildren', workspaceId, activeNodeId] });
-         queryClient.invalidateQueries({ queryKey: ['nodeReferences', workspaceId, activeNodeId] });
-         queryClient.invalidateQueries({ queryKey: ['subtypes'] });
+         refreshAddressSpace();
       } catch (e) {
          setAddChildError(extractErrorMessage(e, 'Failed to create child'));
       } finally {
@@ -774,9 +804,7 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
          `/opcua/v1/nodes/${slugifyNodeId(childNodeId)}`,
          { headers: { 'OpcUa-Server': idToUrn(workspaceId) } }
       );
-      queryClient.invalidateQueries({ queryKey: ['nodeChildren', workspaceId, activeNodeId] });
-      queryClient.invalidateQueries({ queryKey: ['nodeReferences', workspaceId, activeNodeId] });
-      queryClient.invalidateQueries({ queryKey: ['subtypes'] });
+      refreshAddressSpace();
    };
 
    const handleEditChild = (
@@ -792,9 +820,9 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
    };
 
    const handleChildSaved = () => {
-      queryClient.invalidateQueries({ queryKey: ['nodeChildren', workspaceId, activeNodeId] });
-      queryClient.invalidateQueries({ queryKey: ['nodeReferences', workspaceId, activeNodeId] });
-      queryClient.invalidateQueries({ queryKey: ['subtypes'] });
+      // A save can change the BrowseName/DisplayName, which is what the tree shows —
+      // hence the full refresh rather than this node's children.
+      refreshAddressSpace();
       // EditChildDialog also serves as the editor for the active node itself
       // (instance edit), so refresh its attributes/header too.
       queryClient.invalidateQueries({ queryKey: ['nodeAttributes', workspaceId, editChildNodeId] });
@@ -875,9 +903,7 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
             }
          }
 
-         queryClient.invalidateQueries({ queryKey: ['nodeChildren', workspaceId, activeNodeId] });
-         queryClient.invalidateQueries({ queryKey: ['nodeReferences', workspaceId, activeNodeId] });
-         queryClient.invalidateQueries({ queryKey: ['subtypes'] });
+         refreshAddressSpace();
       } catch (e) {
          console.error('Failed to override child:', e);
       }
@@ -911,7 +937,9 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
          await queryClient.resetQueries({ queryKey: ['nodeReferences', workspaceId, instantiateTargetNodeId] });
          await queryClient.resetQueries({ queryKey: ['instantiateExistingChildren', workspaceId, instantiateTargetNodeId] });
       }
-      queryClient.invalidateQueries({ queryKey: ['subtypes'] });
+      // The resets above drop this view's own caches outright (the dialog has to see the
+      // new state, not a background refetch); the tree still needs its listings refreshed.
+      refreshAddressSpace();
    };
 
    // Drill-down into a child node
@@ -939,16 +967,9 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
       }
    };
 
-   // "+" button click handler. Children get their own per-NodeClass create
-   // buttons (see openCreateChild); the generic "+" only serves fields and
-   // references now.
-   const handleAddClick = () => {
-      if (activeTab === 'fields') {
-         openFieldDialog('add');
-      } else if (activeTab === 'references') {
-         setAddRefError(null);
-         setRefDialogOpen(true);
-      }
+   const openAddReference = () => {
+      setAddRefError(null);
+      setRefDialogOpen(true);
    };
 
    // Open the Add Child dialog pre-configured for a specific NodeClass kind.
@@ -967,9 +988,7 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
             { headers: { 'OpcUa-Server': idToUrn(workspaceId) } },
          );
          setDeleteConfirmOpen(false);
-         queryClient.invalidateQueries({ queryKey: ['queryTypes'] });
-         queryClient.invalidateQueries({ queryKey: ['subtypes'] });
-         queryClient.invalidateQueries({ queryKey: ['nodeChildren'] });
+         refreshAddressSpace();
          // Leave the now-deleted node: pop the drill stack, or return to the
          // type library if we're at the top level.
          if (drillStack.length > 0) {
@@ -987,18 +1006,13 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
    // Design-tool-only nodes take no children and no new references; Properties
    // (Variables typed PropertyType) may not be the source of hierarchical
    // references, so they take no children. The backend enforces both; here we
-   // hide the "+" actions and explain why on the Children/References tabs.
+   // hide the create actions and explain why in the Children/References sections.
    const activeDesignToolOnly = attributesData?.raw?.designToolOnly === true;
    const activeIsProperty = attributesData?.raw?.isProperty === true;
    const childrenLocked = activeDesignToolOnly || activeIsProperty;
    const referencesLocked = activeDesignToolOnly;
 
-   // The "+" button adds a field/reference depending on the active tab.
-   // Hidden on the References tab for design-tool-only nodes.
-   const showAddButton = activeIsEditable
-      && (activeTab === 'fields' || (activeTab === 'references' && !referencesLocked));
-
-   // Per-NodeClass child-create buttons (children tab, private nodes).
+   // Per-NodeClass child-create actions (private nodes).
    const childCreateKinds: ChildKind[] =
       (activeNodeClass === NodeClassValues.UAObject || activeNodeClass === NodeClassValues.UAObjectType)
          ? ['object', 'datavariable', 'property', 'method']
@@ -1007,11 +1021,9 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
       : ['property'];
    const showAddInterface = activeNodeClass === NodeClassValues.UAObject
       || activeNodeClass === NodeClassValues.UAObjectType;
-   const showChildCreateButtons = activeIsEditable && activeTab === 'children' && !childrenLocked;
-   // Instantiate-children button: an instance Object/Variable with a TypeDefinition, on the
-   // children tab. Rendered right after Add Interface so it sits next to it for Objects and at
-   // the end for Variables (which have no Add Interface).
-   const showInstantiateChildren = activeIsEditable && activeTab === 'children'
+   const showChildCreateActions = activeIsEditable && !childrenLocked;
+   // Instantiate Children: an instance Object/Variable with a TypeDefinition.
+   const showInstantiateChildren = activeIsEditable
       && (activeNodeClass === NodeClassValues.UAObject || activeNodeClass === NodeClassValues.UAVariable)
       && !!attributesData?.raw?.typeDefinition
       && !childrenLocked;
@@ -1023,52 +1035,153 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
    const isInstanceNode = activeNodeClass === NodeClassValues.UAObject
       || activeNodeClass === NodeClassValues.UAVariable
       || activeNodeClass === NodeClassValues.UAMethod;
-   // Edit (attributes tab, private): types use EditTypeDialog; instances reuse
-   // EditChildDialog (it edits any node by NodeId).
-   const showEditButton = activeIsEditable && activeTab === 'attributes'
-      && (isTypeNode || isInstanceNode);
-   // Delete is available for every private node on the attributes tab.
-   const showDeleteButton = activeIsEditable && activeTab === 'attributes';
 
+   // Object/Variable/Method cover two roles: a real instance in the address space, and an
+   // instance DECLARATION owned by a type. Server-computed, because the parent chain can
+   // cross models by reference where no ParentNodeId can follow.
+   const isInstanceDeclaration = attributesData?.raw?.isInstanceDeclaration === true;
+   const isRealInstance = isInstanceNode && !isInstanceDeclaration;
+   // Core-namespace instances are the spec's own well-known nodes (Server, Objects, …).
+   // Copying one would mint a second node with a well-known BrowseName's meaning
+   // somewhere it doesn't belong, so they are not cloneable.
+   const isCoreInstance = isInstanceNode
+      && extractNamespaceUri(activeNodeId) === OPC_UA_CORE_URI;
+
+   // Edit/View, the one action every node has. Editable types open EditTypeDialog;
+   // instances reuse EditChildDialog (it edits any node by NodeId, and has a read-only
+   // mode); anything else read-only falls back to the attribute popup.
    const handleEditClick = () => {
-      if (isTypeNode) {
+      if (activeIsEditable && isTypeNode) {
          setEditDataTypeOpen(true);
+      } else if (isInstanceNode) {
+         handleEditChild(activeNodeId, !activeIsEditable);
       } else {
-         handleEditChild(activeNodeId, false);
+         setViewNodeId(activeNodeId);
       }
    };
 
-   // Show Extend Type button for the top-level type (not when drilled into a child),
-   // and only on the Attributes tab where type-level actions are contextually relevant.
-   // Extend/Instantiate create new nodes in the current workspace, so they
-   // require write access just like the in-place edit actions.
-   const isExtendableType = canWrite && !isDrilledDown && activeTab === 'attributes' && (
-      nodeClass === NodeClassValues.UAObjectType
-      || nodeClass === NodeClassValues.UAVariableType
-      || nodeClass === NodeClassValues.UADataType
-      || nodeClass === NodeClassValues.UAReferenceType
+   // Extend/Instantiate create new nodes in the current workspace, so they require
+   // write access just like the in-place edit actions. Both read the ACTIVE node:
+   // drilling down only ever reaches instances, so neither offers itself there.
+   const isExtendableType = canWrite && isTypeNode;
+
+   // Create Instance applies to ObjectType and VariableType only.
+   const isInstantiableType = canWrite && (
+      activeNodeClass === NodeClassValues.UAObjectType
+      || activeNodeClass === NodeClassValues.UAVariableType
    );
 
-   // Show Create Instance button for ObjectType and VariableType only, on Attributes tab.
-   const isInstantiableType = canWrite && !isDrilledDown && activeTab === 'attributes' && (
-      nodeClass === NodeClassValues.UAObjectType
-      || nodeClass === NodeClassValues.UAVariableType
-   );
+   // Methods carry their arguments as InputArguments/OutputArguments properties, which
+   // the arguments dialog edits as a pair of lists.
+   const isMethodNode = activeIsEditable && activeNodeClass === NodeClassValues.UAMethod;
 
-   // Show Edit Arguments button on a Method node's Attributes and Children tabs.
-   // Methods are reached by drilling in, so (unlike Create Instance) this does
-   // not require being at the top level — just an editable Method.
-   const isMethodNode = activeIsEditable
-      && (activeTab === 'attributes' || activeTab === 'children')
-      && activeNodeClass === NodeClassValues.UAMethod;
+   // Everything that can be done to this node, in ONE list — the same control the Model
+   // Library gives each model row. The actions marked primary show as labelled buttons
+   // (which ones depends on the NodeClass); the create/add actions and Delete live in the
+   // "More" menu. They are deliberately not split across the section headers: several
+   // sections can be open at once, so "the + of the section you are looking at" is no
+   // longer a thing the user can point at.
+   const nodeActions: ActionBarItem[] = [
+      {
+         onAction: handleEditClick,
+         icon: activeIsEditable ? <EditIcon /> : <VisibilityIcon />,
+         tooltipKey: activeIsEditable ? 'typeDetail.edit' : 'typeDetail.view',
+         primary: true,
+      },
+      {
+         onAction: () => setExtendTypeOpen(true),
+         icon: <CallSplitIcon />,
+         tooltipKey: 'typeDetail.extendType',
+         hidden: !isExtendableType,
+         primary: true,
+      },
+      {
+         onAction: () => setCreateInstanceOpen(true),
+         icon: <PlaylistAddIcon />,
+         tooltipKey: 'typeDetail.createInstance',
+         hidden: !isInstantiableType,
+         primary: true,
+      },
+      {
+         onAction: () => setArgumentsOpen(true),
+         icon: <ListAltIcon />,
+         tooltipKey: 'typeDetail.editArguments',
+         labelKey: 'typeDetail.arguments',
+         hidden: !isMethodNode,
+         primary: true,
+      },
+      {
+         // Create: a new top-level Object organized under this one. Objects only, and
+         // only real instances — a declaration belongs to its type, and nothing can be
+         // organized under it. Variables get the Create Data Variable / Create Property
+         // child actions instead, which set a ParentId.
+         onAction: () => setCreateOrganizedOpen(true),
+         icon: <AddIcon />,
+         tooltipKey: 'typeDetail.createOrganized',
+         hidden: !(isRealInstance && activeNodeClass === NodeClassValues.UAObject),
+         disabled: !canWrite,
+         primary: true,
+      },
+      {
+         onAction: () => setCloneOpen(true),
+         icon: <CloneIcon />,
+         tooltipKey: 'typeDetail.clone',
+         // Cloning never touches the source, so it may come from any namespace EXCEPT
+         // ns=0 — those are the spec's well-known instances (see isCoreInstance). The
+         // copy goes into a writable model the dialog asks for; all that is needed here
+         // is write access to the workspace.
+         hidden: !isInstanceNode || isCoreInstance,
+         disabled: !canWrite,
+         primary: true,
+      },
+      // Create a child of a given NodeClass. One entry per kind the active node accepts,
+      // each with the glyph the created row will show in the tree.
+      ...childCreateKinds.map((kind): ActionBarItem => ({
+         onAction: () => openCreateChild(kind),
+         icon: CHILD_KIND_META[kind].icon,
+         tooltipKey: CHILD_KIND_META[kind].labelKey,
+         hidden: !showChildCreateActions,
+      })),
+      {
+         onAction: () => setAddInterfaceOpen(true),
+         // The BaseInterfaceType glyph — the same one an interface ObjectType
+         // shows in the tree.
+         icon: <InterfaceIcon />,
+         tooltipKey: 'typeDetail.addInterface',
+         hidden: !showChildCreateActions || !showAddInterface,
+      },
+      {
+         onAction: handleInstantiateNode,
+         icon: <AccountTreeIcon />,
+         tooltipKey: 'typeDetail.instantiate',
+         hidden: !showInstantiateChildren,
+      },
+      {
+         onAction: () => openFieldDialog('add'),
+         icon: <AddIcon />,
+         tooltipKey: 'typeDetail.addField',
+         hidden: !activeIsEditable || !showFieldsSection,
+      },
+      {
+         onAction: openAddReference,
+         icon: <AddIcon />,
+         tooltipKey: 'typeDetail.addReference',
+         hidden: !activeIsEditable || referencesLocked,
+      },
+      {
+         onAction: () => { setDeleteNodeError(null); setDeleteConfirmOpen(true); },
+         icon: <DeleteIcon />,
+         tooltipKey: 'typeDetail.deleteNode',
+         hidden: !activeIsEditable,
+         destructive: true,
+      },
+   ];
 
    const handleDataTypeSaved = () => {
       queryClient.invalidateQueries({ queryKey: ['nodeAttributes', workspaceId, activeNodeId] });
       queryClient.invalidateQueries({ queryKey: ['nodeDataTypeFields', workspaceId, activeNodeId] });
-      queryClient.invalidateQueries({ queryKey: ['nodeChildren', workspaceId, activeNodeId] });
-      queryClient.invalidateQueries({ queryKey: ['nodeReferences', workspaceId, activeNodeId] });
-      queryClient.invalidateQueries({ queryKey: ['queryTypes'] });
-      queryClient.invalidateQueries({ queryKey: ['subtypes'] });
+      // A type edit can rename it, which the tree shows.
+      refreshAddressSpace();
    };
 
    const handleSaveReference = async (data: AddReferenceData) => {
@@ -1084,14 +1197,10 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
             },
             { headers: { 'OpcUa-Server': idToUrn(workspaceId) } }
          );
-         queryClient.invalidateQueries({ queryKey: ['nodeReferences', workspaceId, activeNodeId] });
-         queryClient.invalidateQueries({ queryKey: ['subtypes'] });
-         // Hierarchical refs change tree membership: an inverse ref from the
-         // Objects folder (i=85) means this node becomes a child of Objects
-         // and must appear there. Either endpoint may gain or lose a child,
-         // and the cache key shape varies by caller (3- vs 4-element), so
-         // invalidate the whole 'nodeChildren' family.
-         queryClient.invalidateQueries({ queryKey: ['nodeChildren'] });
+         // Hierarchical refs change tree membership: an inverse ref from the Objects
+         // folder (i=85) means this node becomes a child of Objects and must appear
+         // there. Either endpoint may gain or lose a child, so the whole family goes.
+         refreshAddressSpace();
          setRefDialogOpen(false);
       } catch (e) {
          setAddRefError(extractErrorMessage(e, 'Failed to add reference'));
@@ -1110,12 +1219,9 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
             headers: { 'OpcUa-Server': idToUrn(workspaceId) },
          }
       );
-      queryClient.invalidateQueries({ queryKey: ['nodeReferences', workspaceId, activeNodeId] });
-      // Same reasoning as handleSaveReference: hierarchical refs can be
-      // hierarchical-children of either endpoint, and the cache key shape
-      // varies by caller (3- vs 4-element). Invalidate the whole family.
-      queryClient.invalidateQueries({ queryKey: ['nodeChildren'] });
-      queryClient.invalidateQueries({ queryKey: ['subtypes'] });
+      // Same reasoning as handleSaveReference: a hierarchical reference can be the link
+      // that puts either endpoint in the tree.
+      refreshAddressSpace();
    };
 
    const attributeColumns: StripedTableColumn[] = [
@@ -1535,9 +1641,15 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
    }));
 
    return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, flex: 1 }}>
-         {/* Header */}
-         <Box sx={{ display: 'flex', alignItems: 'center', gap: 8, mb: 8 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
+         {/* Header: where you are, then everything you can do to this node */}
+         <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            mb: 8,
+            flexWrap: { xs: 'wrap', sm: 'nowrap' },
+         }}>
             <IconButton onClick={handleBackClick} title={t('typeDetail.back')}>
                <ArrowBackIosIcon />
             </IconButton>
@@ -1577,123 +1689,27 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
                   {attributesData?.attrs.find(a => a.name === 'BrowseName')?.value ?? displayName}
                </Typography>
             )}
-            {activeIsEditable && (
-               <EditIcon fontSize="small" color="action" />
-            )}
+            {/* Pushes the actions to the right edge. The breadcrumb trail already
+                flexes; a plain title does not. */}
+            <Box sx={{ flexGrow: 1 }} />
+            <ActionBar actions={nodeActions} />
          </Box>
 
-         {/* Tabs with "+" button */}
-         <Box sx={{ display: 'flex', alignItems: 'center', mb: 8 }}>
-            <Tabs value={activeTab} onChange={(_, v: TabId) => setActiveTab(v)} sx={{ flexGrow: 1 }}>
-               <Tab value="attributes" label={t('typeDetail.attributes')} />
-               {showFieldsTab && <Tab value="fields" label={t('typeDetail.fields')} />}
-               {showValueTab && <Tab value="value" label={t('typeDetail.value', 'Value')} />}
-               <Tab value="children" label={t('typeDetail.children')} />
-               <Tab value="references" label={t('typeDetail.references')} />
-            </Tabs>
-            {activeTab === 'children' && (
-               <Tooltip title={hideInherited ? t('typeDetail.showInherited') : t('typeDetail.hideInherited')}>
-                  <IconButton onClick={() => setHideInherited(!hideInherited)} size="small">
-                     {hideInherited ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                  </IconButton>
-               </Tooltip>
-            )}
-            {activeTab === 'fields' && (
-               <Tooltip title={hideInheritedFields ? t('typeDetail.showInherited') : t('typeDetail.hideInherited')}>
-                  <IconButton onClick={() => setHideInheritedFields(!hideInheritedFields)} size="small">
-                     {hideInheritedFields ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                  </IconButton>
-               </Tooltip>
-            )}
-            {activeTab === 'references' && (
-               <Tooltip title={hideParentChildRefs
-                  ? t('typeDetail.showParentChildRefs', 'Show parent/child references')
-                  : t('typeDetail.hideParentChildRefs', 'Hide parent/child references')}>
-                  <IconButton onClick={() => setHideParentChildRefs(!hideParentChildRefs)} size="small">
-                     {hideParentChildRefs ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                  </IconButton>
-               </Tooltip>
-            )}
-            {showChildCreateButtons && childCreateKinds.map((kind) => (
-               <Tooltip key={kind} title={t(CHILD_KIND_META[kind].labelKey)}>
-                  <IconButton onClick={() => openCreateChild(kind)} size="small">
-                     {CHILD_KIND_META[kind].icon}
-                  </IconButton>
-               </Tooltip>
-            ))}
-            {showChildCreateButtons && showAddInterface && (
-               <Tooltip title={t('typeDetail.addInterface', 'Add Interface')}>
-                  <IconButton onClick={() => setAddInterfaceOpen(true)} size="small">
-                     {/* The BaseInterfaceType glyph — the same one an interface
-                         ObjectType shows in the tree. */}
-                     <InterfaceIcon />
-                  </IconButton>
-               </Tooltip>
-            )}
-            {showInstantiateChildren && (
-               <Tooltip title={t('typeDetail.instantiate', 'Instantiate Children')}>
-                  <IconButton onClick={handleInstantiateNode} size="small">
-                     <AccountTreeIcon />
-                  </IconButton>
-               </Tooltip>
-            )}
-            {showAddButton && (
-               <IconButton
-                  onClick={handleAddClick}
-                  size="small"
-                  title={activeTab === 'references' ? t('typeDetail.addReference') : t('typeDetail.addField')}
-               >
-                  <AddIcon />
-               </IconButton>
-            )}
-            {showEditButton && (
-               <Tooltip title={t('typeDetail.edit')}>
-                  <IconButton onClick={handleEditClick} size="small">
-                     <EditIcon />
-                  </IconButton>
-               </Tooltip>
-            )}
-            {showDeleteButton && (
-               <Tooltip title={t('typeDetail.deleteNode', 'Delete')}>
-                  <IconButton
-                     onClick={() => { setDeleteNodeError(null); setDeleteConfirmOpen(true); }}
-                     size="small"
-                  >
-                     <DeleteIcon />
-                  </IconButton>
-               </Tooltip>
-            )}
-            {isExtendableType && (
-               <Tooltip title={t('typeDetail.extendType')}>
-                  <IconButton onClick={() => setExtendTypeOpen(true)} size="small">
-                     <CallSplitIcon />
-                  </IconButton>
-               </Tooltip>
-            )}
-            {isInstantiableType && (
-               <Tooltip title={t('typeDetail.createInstance', 'Create Instance')}>
-                  <IconButton onClick={() => setCreateInstanceOpen(true)} size="small">
-                     <PlaylistAddIcon />
-                  </IconButton>
-               </Tooltip>
-            )}
-            {isMethodNode && (
-               <Tooltip title={t('typeDetail.editArguments', 'Edit Arguments')}>
-                  <IconButton onClick={() => setArgumentsOpen(true)} size="small">
-                     <ListAltIcon />
-                  </IconButton>
-               </Tooltip>
-            )}
-         </Box>
-
-         {/* Tab panels */}
-         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            {activeTab === 'attributes' && (
+         {/* Sections. Each one opens and closes on its own — the set that is open is
+             remembered as the user moves between nodes and pages. Only the view filters
+             live in the section headers; every command is in the action bar above. */}
+         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <DetailSection
+               id="attributes"
+               title={t('typeDetail.attributes')}
+               expanded={isOpen('attributes')}
+               onToggle={toggleSection}
+            >
                <ContentLoader isLoading={attrsLoading} isError={attrsError} error={attrsErrorObj}>
                   <>
                      <StripedTable columns={attributeColumns} rows={attributeRows} />
                      {activeDesignToolOnly && (
-                        <Box sx={{ px: 3, pb: 3, mt: 8 }}>
+                        <Box sx={{ px: 12, py: 8 }}>
                            <Typography variant="body2" color="text.secondary">
                               {t('typeDetail.designToolOnlyAttributesNote',
                                  'This {{kind}} is used to define a well-known BrowseName.',
@@ -1703,35 +1719,72 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
                      )}
                   </>
                </ContentLoader>
+            </DetailSection>
+
+            {showFieldsSection && (
+               <DetailSection
+                  id="fields"
+                  title={t('typeDetail.fields')}
+                  expanded={isOpen('fields')}
+                  onToggle={toggleSection}
+                  toolbar={
+                     <Tooltip title={hideInheritedFields ? t('typeDetail.showInherited') : t('typeDetail.hideInherited')}>
+                        <IconButton onClick={() => setHideInheritedFields(!hideInheritedFields)} size="small">
+                           {hideInheritedFields ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                        </IconButton>
+                     </Tooltip>
+                  }
+               >
+                  <ContentLoader isLoading={fieldsLoading} isError={fieldsError} error={fieldsErrorObj}>
+                     <StripedTable columns={fieldColumns} rows={fieldRows} rowSx={fieldRowSx} />
+                  </ContentLoader>
+               </DetailSection>
             )}
 
-            {showFieldsTab && activeTab === 'fields' && (
-               <ContentLoader isLoading={fieldsLoading} isError={fieldsError} error={fieldsErrorObj}>
-                  <StripedTable columns={fieldColumns} rows={fieldRows} rowSx={fieldRowSx} />
-               </ContentLoader>
+            {showValueSection && (
+               <DetailSection
+                  id="value"
+                  title={t('typeDetail.value', 'Value')}
+                  expanded={isOpen('value')}
+                  onToggle={toggleSection}
+               >
+                  <ContentLoader isLoading={attrsLoading} isError={attrsError} error={attrsErrorObj}>
+                     {attributesData?.raw && (
+                        // The JSON editor inside sizes itself to its container, which an
+                        // accordion body does not bound — hence the explicit height.
+                        <Box sx={{ height: 480, display: 'flex', flexDirection: 'column' }}>
+                           <ValueEditor
+                              key={activeNodeId + '|' + JSON.stringify(attributesData.raw.value ?? null)}
+                              workspaceId={workspaceId}
+                              nodeId={activeNodeId}
+                              dataType={attributesData.raw.dataType}
+                              valueRank={attributesData.raw.valueRank}
+                              value={attributesData.raw.value}
+                              isEditable={activeIsEditable}
+                           />
+                        </Box>
+                     )}
+                  </ContentLoader>
+               </DetailSection>
             )}
 
-            {showValueTab && activeTab === 'value' && (
-               <ContentLoader isLoading={attrsLoading} isError={attrsError} error={attrsErrorObj}>
-                  {attributesData?.raw && (
-                     <ValueEditor
-                        key={activeNodeId + '|' + JSON.stringify(attributesData.raw.value ?? null)}
-                        workspaceId={workspaceId}
-                        nodeId={activeNodeId}
-                        dataType={attributesData.raw.dataType}
-                        valueRank={attributesData.raw.valueRank}
-                        value={attributesData.raw.value}
-                        isEditable={activeIsEditable}
-                     />
-                  )}
-               </ContentLoader>
-            )}
-
-            {activeTab === 'children' && (
+            <DetailSection
+               id="children"
+               title={t('typeDetail.children')}
+               expanded={isOpen('children')}
+               onToggle={toggleSection}
+               toolbar={
+                  <Tooltip title={hideInherited ? t('typeDetail.showInherited') : t('typeDetail.hideInherited')}>
+                     <IconButton onClick={() => setHideInherited(!hideInherited)} size="small">
+                        {hideInherited ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                     </IconButton>
+                  </Tooltip>
+               }
+            >
                <ContentLoader isLoading={childrenLoading} isError={childrenError} error={childrenErrorObj}>
                   <>
                      {childrenLocked && (
-                        <Box sx={{ p: 3 }}>
+                        <Box sx={{ px: 12, py: 8 }}>
                            <Typography variant="body2" color="text.secondary">
                               {activeDesignToolOnly
                                  ? t('typeDetail.childrenNotPermitted', 'Adding children is not permitted.')
@@ -1742,7 +1795,7 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
                      {childRows.length > 0 ? (
                         <StripedTable columns={childColumns} rows={childRows} rowSx={childRowSx} />
                      ) : !childrenLocked && (
-                        <Box sx={{ p: 3 }}>
+                        <Box sx={{ px: 12, py: 8 }}>
                            <Typography variant="body2" color="text.secondary">
                               {t('typeDetail.noChildren', 'No children defined.')}
                            </Typography>
@@ -1750,13 +1803,27 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
                      )}
                   </>
                </ContentLoader>
-            )}
+            </DetailSection>
 
-            {activeTab === 'references' && (
+            <DetailSection
+               id="references"
+               title={t('typeDetail.references')}
+               expanded={isOpen('references')}
+               onToggle={toggleSection}
+               toolbar={
+                  <Tooltip title={hideParentChildRefs
+                     ? t('typeDetail.showParentChildRefs', 'Show parent/child references')
+                     : t('typeDetail.hideParentChildRefs', 'Hide parent/child references')}>
+                     <IconButton onClick={() => setHideParentChildRefs(!hideParentChildRefs)} size="small">
+                        {hideParentChildRefs ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                     </IconButton>
+                  </Tooltip>
+               }
+            >
                <ContentLoader isLoading={refsLoading} isError={refsError} error={refsErrorObj}>
                   <>
                      {referencesLocked && (
-                        <Box sx={{ p: 3 }}>
+                        <Box sx={{ px: 12, py: 8 }}>
                            <Typography variant="body2" color="text.secondary">
                               {t('typeDetail.referencesNotPermitted', 'Adding references is not permitted.')}
                            </Typography>
@@ -1765,7 +1832,7 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
                      {refRows.length > 0 ? (
                         <StripedTable columns={refColumns} rows={refRows} />
                      ) : !referencesLocked && (
-                        <Box sx={{ p: 3 }}>
+                        <Box sx={{ px: 12, py: 8 }}>
                            <Typography variant="body2" color="text.secondary">
                               {t('typeDetail.noReferences', 'No references defined.')}
                            </Typography>
@@ -1773,7 +1840,7 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
                      )}
                   </>
                </ContentLoader>
-            )}
+            </DetailSection>
          </Box>
 
          {/* Add Field Dialog */}
@@ -1817,13 +1884,11 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
                mode="create"
                nodeId=""
                attributes={[]}
-               superTypeNodeId={nodeId}
-               superTypeModelUri={extractNamespaceUri(nodeId)}
-               nodeClass={nodeClass}
+               superTypeNodeId={activeNodeId}
+               superTypeModelUri={extractNamespaceUri(activeNodeId)}
+               nodeClass={activeNodeClass}
                onSaved={(created?: CreatedNodeInfo) => {
-                  queryClient.invalidateQueries({ queryKey: ['queryTypes'] });
-                  queryClient.invalidateQueries({ queryKey: ['subtypes'] });
-                  queryClient.invalidateQueries({ queryKey: ['nextNodeId'] });
+                  refreshAddressSpace();
                   if (created) {
                      setSelectedType({
                         nodeId: created.nodeId,
@@ -1848,10 +1913,10 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
                open={createInstanceOpen}
                onClose={() => setCreateInstanceOpen(false)}
                workspaceId={workspaceId}
-               typeDefinitionNodeId={nodeId}
-               nodeClass={nodeClass}
+               typeDefinitionNodeId={activeNodeId}
+               nodeClass={activeNodeClass}
                onSaved={(created) => {
-                  queryClient.invalidateQueries({ queryKey: ['queryTypes'] });
+                  refreshAddressSpace();
                   setSelectedType({
                      nodeId: created.nodeId,
                      displayName: created.displayName,
@@ -1876,11 +1941,78 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
                workspaceId={workspaceId}
                methodNodeId={activeNodeId}
                onSaved={() => {
-                  queryClient.invalidateQueries({ queryKey: ['nodeChildren', workspaceId, activeNodeId] });
-                  queryClient.invalidateQueries({ queryKey: ['nodeReferences', workspaceId, activeNodeId] });
+                  // Arguments live as InputArguments/OutputArguments properties, so the
+                  // Method gains children the tree has to show.
+                  refreshAddressSpace();
                }}
             />
          )}
+
+         {/* Create — a new top-level Object organized under this one. Mounted on demand so
+             its fields reset each time; the type is picked in the dialog. */}
+         {createOrganizedOpen && (
+            <CreateInstanceDialog
+               open
+               onClose={() => setCreateOrganizedOpen(false)}
+               workspaceId={workspaceId}
+               nodeClass={NodeClassValues.UAObjectType}
+               organizesUnderNodeId={activeNodeId}
+               onSaved={(created) => {
+                  refreshAddressSpace();
+                  setSelectedType({
+                     nodeId: created.nodeId,
+                     displayName: created.displayName,
+                     nodeClass: created.nodeClass,
+                  });
+                  setNavigateToNode({
+                     nodeId: created.nodeId,
+                     superTypeIds: [],
+                     nodeClass: created.nodeClass,
+                     displayName: created.displayName,
+                     enterFocusMode: true,
+                  });
+               }}
+            />
+         )}
+
+         {/* Clone — the node's own edit form, prefilled, plus the writable model and the
+             parent the copy goes under. Mounted on demand so its fields reseed each time,
+             and separate from the edit instance above so neither clears the other. */}
+         {cloneOpen && isInstanceNode && (
+            <EditChildDialog
+               open
+               mode="clone"
+               onClose={() => setCloneOpen(false)}
+               workspaceId={workspaceId}
+               childNodeId={activeNodeId}
+               showModellingRule={showModellingRule}
+               onSaved={() => {
+                  refreshAddressSpace();
+               }}
+               onCloned={(created) => {
+                  // Land on the copy, the same way a newly created type/instance does.
+                  setSelectedType({
+                     nodeId: created.nodeId,
+                     displayName: created.displayName,
+                     nodeClass: created.nodeClass,
+                  });
+                  setNavigateToNode({
+                     nodeId: created.nodeId,
+                     superTypeIds: [],
+                     nodeClass: created.nodeClass,
+                     displayName: created.displayName,
+                     enterFocusMode: true,
+                  });
+               }}
+            />
+         )}
+
+         {/* Read-only attributes popup, for View on a node that cannot be edited. */}
+         <ViewNodeDialog
+            workspaceId={workspaceId}
+            nodeId={viewNodeId}
+            onClose={() => setViewNodeId(null)}
+         />
 
          {/* Add Child Dialog */}
          <AddChildDialog

@@ -41,6 +41,7 @@ import { getNodePlainName } from '../model/Node';
 import type { Node } from '../model/Node';
 import { nodeClassToNum } from '../model/NodeFormatting';
 import { extractNamespaceUri } from '../utils/formatNodeId';
+import { refreshAddressSpace } from '../utils/refreshAddressSpace';
 
 const nodeClassOptions = [
    { value: '', label: 'All Types' },
@@ -69,7 +70,7 @@ const TypeLibraryPage: React.FC = () => {
    const { t } = useTranslation();
    const theme = useTheme();
    const queryClient = useQueryClient();
-   const { selectedWorkspaceId, selectedModelUri, setSelectedModelUri, selectedNodeClass, setSelectedNodeClass, selectedType, setSelectedType, setNavigateToNode, preferredDetailTab, setPreferredDetailTab } = React.useContext(WorkspaceContext);
+   const { selectedWorkspaceId, selectedModelUri, setSelectedModelUri, selectedNodeClass, setSelectedNodeClass, selectedType, setSelectedType, setNavigateToNode, openDetailSections, setOpenDetailSections } = React.useContext(WorkspaceContext);
    // Owner-only write permission; shared workspaces are read-only.
    const canWrite = useCanWriteWorkspace();
    const [searchParams, setSearchParams] = useSearchParams();
@@ -92,12 +93,17 @@ const TypeLibraryPage: React.FC = () => {
       if (typeNodeId) {
          const name = searchParams.get('name') ?? typeNodeId;
          const nc = Number(searchParams.get('nc') ?? '0');
-         const tab = searchParams.get('tab') ?? undefined;
-         if (selectedType?.nodeId !== typeNodeId || selectedType?.tab !== tab) {
+         const sectionsParam = searchParams.get('sections');
+         const sections = sectionsParam !== null
+            ? sectionsParam.split(',').filter(Boolean)
+            : undefined;
+         if (selectedType?.nodeId !== typeNodeId
+            || (sections ?? []).join(',') !== (selectedType?.sections ?? []).join(',')) {
             skipNextPush.current = true;
-            setSelectedType({ nodeId: typeNodeId, displayName: name, nodeClass: nc, tab });
-            // A deep-link / back-forward with an explicit tab seeds the sticky preference.
-            if (tab) setPreferredDetailTab(tab);
+            setSelectedType({ nodeId: typeNodeId, displayName: name, nodeClass: nc, sections });
+            // A deep-link / back-forward that names the open sections seeds the
+            // sticky set, so it carries on to the next node the user selects.
+            if (sections) setOpenDetailSections(sections);
          }
       } else if (selectedType) {
          skipNextPush.current = true;
@@ -117,7 +123,10 @@ const TypeLibraryPage: React.FC = () => {
             name: selectedType.displayName,
             nc: String(selectedType.nodeClass),
          };
-         if (selectedType.tab) params.tab = selectedType.tab;
+         // Selections made elsewhere (the sidebar tree, a NodeId link) carry no sections
+         // of their own; they land in the detail view with the sticky set still open, so
+         // that is what the URL has to say for a reload to come back to the same place.
+         params.sections = (selectedType.sections ?? openDetailSections).join(',');
          setSearchParams(params, { replace: false });
       } else {
          if (searchParams.has('type')) {
@@ -126,16 +135,19 @@ const TypeLibraryPage: React.FC = () => {
       }
    }, [selectedType]); // eslint-disable-line react-hooks/exhaustive-deps
 
-   // Called by TypeDetailView when user switches tabs — update URL in-place (replace, not push)
-   const handleTabChange = React.useCallback((tab: string) => {
+   // Called by TypeDetailView when the user expands/collapses a section. Replaces the
+   // current history entry rather than pushing: opening a section is not a navigation
+   // step, but it does belong in the URL so a reload or a shared link reopens the same
+   // sections. An empty set is written as an empty value, which is distinct from the
+   // param being absent (= "use the default").
+   const handleSectionsChange = React.useCallback((sections: string[]) => {
       if (!selectedType) return;
-      const params: Record<string, string> = {
+      setSearchParams({
          type: selectedType.nodeId,
          name: selectedType.displayName,
          nc: String(selectedType.nodeClass),
-         tab,
-      };
-      setSearchParams(params, { replace: true });
+         sections: sections.join(','),
+      }, { replace: true });
    }, [selectedType, setSearchParams]);
 
    // Fetch namespace info for model ownership and namespace dropdown
@@ -173,9 +185,7 @@ const TypeLibraryPage: React.FC = () => {
    // Shared by every "create a type" path on this page.
    const focusCreatedType = React.useCallback(
       (nodeId: string, displayName: string, nodeClass: number, superTypeIds: string[] = []) => {
-         queryClient.invalidateQueries({ queryKey: ['queryTypes'] });
-         queryClient.invalidateQueries({ queryKey: ['subtypes'] });
-         queryClient.invalidateQueries({ queryKey: ['nextNodeId'] });
+         refreshAddressSpace(queryClient);
          setSelectedType({ nodeId, displayName, nodeClass });
          setNavigateToNode({ nodeId, superTypeIds, nodeClass, displayName, enterFocusMode: true });
       }, [queryClient, setSelectedType, setNavigateToNode]);
@@ -266,7 +276,7 @@ const TypeLibraryPage: React.FC = () => {
       next.delete('type');
       next.delete('name');
       next.delete('nc');
-      next.delete('tab');
+      next.delete('sections');
       setSearchParams(next);
    };
 
@@ -285,8 +295,7 @@ const TypeLibraryPage: React.FC = () => {
             { headers: { 'OpcUa-Server': idToUrn(selectedWorkspaceId) } }
          );
          setDeleteType(null);
-         queryClient.invalidateQueries({ queryKey: ['queryTypes'] });
-         queryClient.invalidateQueries({ queryKey: ['subtypes'] });
+         refreshAddressSpace(queryClient);
       } catch (e) {
          const msg = e instanceof ApiError ? e.message : (e instanceof Error ? e.message : 'Failed to delete');
          setDeleteError(msg);
@@ -297,8 +306,10 @@ const TypeLibraryPage: React.FC = () => {
 
    // If a type is selected, show the detail view
    if (selectedType && selectedWorkspaceId) {
+      // No fixed height: the detail view is a stack of collapsible sections that grows
+      // with whatever is open, and the layout's content area provides the scrolling.
       return (
-         <Box sx={{ p: 8, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+         <Box sx={{ p: 8, display: 'flex', flexDirection: 'column' }}>
             {/* Row 1: Title */}
             <PageHeader
                icon={<WidgetsIcon />}
@@ -314,8 +325,11 @@ const TypeLibraryPage: React.FC = () => {
                isEditable={isModelUriPrivate(extractNamespaceUri(selectedType.nodeId))}
                onBack={handleBack}
                workspaceId={selectedWorkspaceId}
-               initialTab={preferredDetailTab}
-               onTabChange={(tab) => { setPreferredDetailTab(tab); handleTabChange(tab); }}
+               initialSections={openDetailSections}
+               onSectionsChange={(sections) => {
+                  setOpenDetailSections(sections);
+                  handleSectionsChange(sections);
+               }}
             />
          </Box>
       );
@@ -523,9 +537,7 @@ const TypeLibraryPage: React.FC = () => {
                   if (created) {
                      focusCreatedType(created.nodeId, created.displayName, created.nodeClass);
                   } else {
-                     queryClient.invalidateQueries({ queryKey: ['queryTypes'] });
-                     queryClient.invalidateQueries({ queryKey: ['subtypes'] });
-                     queryClient.invalidateQueries({ queryKey: ['nextNodeId'] });
+                     refreshAddressSpace(queryClient);
                   }
                }}
             />
@@ -539,7 +551,9 @@ const TypeLibraryPage: React.FC = () => {
                typeDefinitionNodeId={createInstanceType.nodeId}
                nodeClass={nodeClassToNum(createInstanceType.nodeClass)}
                onSaved={(created: CreatedInstanceInfo) => {
-                  queryClient.invalidateQueries({ queryKey: ['queryTypes'] });
+                  // A new instance shows up in the tree's Objects branch, not just in
+                  // this page's list — hence the full refresh.
+                  refreshAddressSpace(queryClient);
                   setSelectedType({
                      nodeId: created.nodeId,
                      displayName: created.displayName,

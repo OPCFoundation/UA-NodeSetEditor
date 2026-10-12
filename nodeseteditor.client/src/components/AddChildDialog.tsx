@@ -429,6 +429,7 @@ export const AddChildDialog: React.FC<AddChildDialogProps> = ({
                   onChange={setReferenceTypeId}
                   workspaceId={workspaceId}
                   label={t('typeDetail.referenceType')}
+                  recentContext="referenceType"
                />
             )}
 
@@ -508,6 +509,7 @@ export const AddChildDialog: React.FC<AddChildDialogProps> = ({
                   label={t('typeDetail.typeDefinition')}
                   placeholder={t('typeDetail.fieldDataTypePlaceholder')}
                   readOnly={kindConfig?.lockTypeDef}
+                  recentContext="typeDefinition"
                />
             )}
 
@@ -521,6 +523,7 @@ export const AddChildDialog: React.FC<AddChildDialogProps> = ({
                      onChange={setDataType}
                      workspaceId={workspaceId}
                      label={t('typeDetail.dataType')}
+                     recentContext="dataType"
                   />
                   <TextField
                      label={t('typeDetail.valueRank')}

@@ -3,9 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import {
    Box,
-   Button,
    Card,
-   CardActions,
    CardContent,
    Typography
 } from '@mui/material';
@@ -20,6 +18,11 @@ export type ContentBlock =
    | { type: 'paragraph'; textKey: string }
    | { type: 'bullets'; items: string[] };
 
+/**
+ * A feature highlight on the welcome page. Deliberately has no action of its own — the
+ * page offers a single Start button — so the only interactive element is the "learn more"
+ * popover holding `content`.
+ */
 export interface WizardActionCardProps {
    /** Translation key for the card title */
    titleKey: string;
@@ -27,30 +30,15 @@ export interface WizardActionCardProps {
    summaryKey?: string;
    /** Detailed explanation, shown in a popover behind the (i) button */
    content: ContentBlock[];
-   /** Translation key for the button text */
-   buttonKey: string;
-   /** Click handler for the button */
-   onButtonClick?: () => void;
    /** Optional icon shown above the title */
    icon?: React.ReactNode;
-   /** Optional: theme-aware background color for the button (e.g. 'primary.light') */
-   buttonColor?: string;
-   /** Optional: theme-aware text color for the button (e.g. 'primary.dark') */
-   buttonTextColor?: string;
-   /** Optional: disables the button, e.g. while the action it starts is still resolving. */
-   buttonDisabled?: boolean;
 }
 
 export const WizardActionCard: React.FC<WizardActionCardProps> = ({
    titleKey,
    summaryKey,
    content,
-   buttonKey,
-   onButtonClick,
-   icon,
-   buttonColor,
-   buttonTextColor,
-   buttonDisabled
+   icon
 }) => {
    const { t } = useTranslation();
 
@@ -105,19 +93,6 @@ export const WizardActionCard: React.FC<WizardActionCardProps> = ({
                </Typography>
             )}
          </CardContent>
-         <CardActions sx={{ px: 24, pb: 24, pt: 0 }}>
-            <Button
-               variant="contained"
-               onClick={onButtonClick}
-               disabled={buttonDisabled}
-               sx={{
-                  ...(buttonColor && { bgcolor: buttonColor }),
-                  ...(buttonTextColor && { color: buttonTextColor })
-               }}
-            >
-               {t(buttonKey)}
-            </Button>
-         </CardActions>
       </Card>
    );
 };

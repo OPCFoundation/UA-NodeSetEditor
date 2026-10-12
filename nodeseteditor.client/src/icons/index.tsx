@@ -133,6 +133,7 @@ export const CategoryIcon: React.FC<SymbolProps> = (p) => <Symbol name={ui.categ
 export const CheckIcon: React.FC<SymbolProps> = (p) => <Symbol name={ui.check} {...p} />;
 export const ChevronRightIcon: React.FC<SymbolProps> = (p) => <Symbol name={ui.chevronRight} {...p} />;
 export const CloseIcon: React.FC<SymbolProps> = (p) => <Symbol name={ui.close} {...p} />;
+export const CloneIcon: React.FC<SymbolProps> = (p) => <Symbol name={ui.clone} {...p} />;
 export const ContentCopyIcon: React.FC<SymbolProps> = (p) => <Symbol name={ui.contentCopy} {...p} />;
 export const DarkModeIcon: React.FC<SymbolProps> = (p) => <Symbol name={ui.darkMode} {...p} />;
 export const DeleteIcon: React.FC<SymbolProps> = (p) => <Symbol name={ui.delete} {...p} />;

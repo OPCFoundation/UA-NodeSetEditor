@@ -469,6 +469,7 @@ export const EditDataTypeDialog: React.FC<EditDataTypeDialogProps> = ({
                workspaceId={workspaceId}
                label="SuperType"
                readOnly={!isCreateMode}
+               recentContext="superType"
             />
             {showIsOptionSet && (
                <FormControlLabel

@@ -14,7 +14,7 @@ export const WorkspaceProvider = ({ children }: WorkspaceProviderProps) => {
    const [navigateToNode, setNavigateToNode] = React.useState<NavigateToNode | null>(null);
    const [modelLibraryCategories, setModelLibraryCategories] = React.useState<string[]>(['private', 'shared']);
    const [selectedType, setSelectedType] = React.useState<SelectedType | null>(null);
-   const [preferredDetailTab, setPreferredDetailTab] = React.useState<string>('attributes');
+   const [openDetailSections, setOpenDetailSections] = React.useState<string[]>(['attributes']);
 
    // Setting selectedModelUri also updates highlightModelUri to keep them in sync
    const setSelectedModelUri = React.useCallback((uri: string) => {
@@ -37,8 +37,8 @@ export const WorkspaceProvider = ({ children }: WorkspaceProviderProps) => {
       setModelLibraryCategories,
       selectedType,
       setSelectedType,
-      preferredDetailTab,
-      setPreferredDetailTab,
+      openDetailSections,
+      setOpenDetailSections,
    } as WorkspaceContextType;
 
    return (

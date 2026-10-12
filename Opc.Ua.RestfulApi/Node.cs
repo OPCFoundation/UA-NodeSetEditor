@@ -174,6 +174,20 @@ namespace Opc.Ua.RestfulApi
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public bool? IsOverride { get; set; }
 
+        /// <summary>
+        /// The node lives inside a type tree — it (or an ancestor) hangs off an ObjectType or
+        /// VariableType — so it is an instance <i>declaration</i> rather than an instance.
+        /// The same NodeClass covers both roles, and the two take different actions: only a
+        /// real instance can be organized under another node or cloned as a sibling of one.
+        ///
+        /// <para>Computed, not stored, and not something a client can work out for itself: a
+        /// ParentNodeId may never cross model boundaries (the reference is stored on the
+        /// child), so walking parents client-side stops at the first cross-model link.</para>
+        /// </summary>
+        [JsonPropertyName("isInstanceDeclaration")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? IsInstanceDeclaration { get; set; }
+
         [JsonPropertyName("dataTypeForm")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? DataTypeForm { get; set; }
