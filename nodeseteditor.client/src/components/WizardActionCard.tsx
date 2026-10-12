@@ -3,7 +3,9 @@ import { useTranslation } from 'react-i18next';
 
 import {
    Box,
+   Button,
    Card,
+   CardActions,
    CardContent,
    Typography
 } from '@mui/material';
@@ -19,9 +21,8 @@ export type ContentBlock =
    | { type: 'bullets'; items: string[] };
 
 /**
- * A feature highlight on the welcome page. Deliberately has no action of its own — the
- * page offers a single Start button — so the only interactive element is the "learn more"
- * popover holding `content`.
+ * A feature highlight on the welcome page: a summary, a "learn more" popover holding
+ * `content`, and a button that starts the feature it describes.
  */
 export interface WizardActionCardProps {
    /** Translation key for the card title */
@@ -30,15 +31,24 @@ export interface WizardActionCardProps {
    summaryKey?: string;
    /** Detailed explanation, shown in a popover behind the (i) button */
    content: ContentBlock[];
+   /** Translation key for the button text */
+   buttonKey: string;
+   /** Click handler for the button */
+   onButtonClick?: () => void;
    /** Optional icon shown above the title */
    icon?: React.ReactNode;
+   /** Optional: disables the button, e.g. while the action it starts is still resolving. */
+   buttonDisabled?: boolean;
 }
 
 export const WizardActionCard: React.FC<WizardActionCardProps> = ({
    titleKey,
    summaryKey,
    content,
-   icon
+   buttonKey,
+   onButtonClick,
+   icon,
+   buttonDisabled
 }) => {
    const { t } = useTranslation();
 
@@ -93,6 +103,15 @@ export const WizardActionCard: React.FC<WizardActionCardProps> = ({
                </Typography>
             )}
          </CardContent>
+         <CardActions sx={{ px: 24, pb: 24, pt: 0 }}>
+            <Button
+               variant="contained"
+               onClick={onButtonClick}
+               disabled={buttonDisabled}
+            >
+               {t(buttonKey)}
+            </Button>
+         </CardActions>
       </Card>
    );
 };

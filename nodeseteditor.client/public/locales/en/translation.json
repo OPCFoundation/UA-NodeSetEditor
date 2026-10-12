@@ -171,7 +171,6 @@
     "shortName": "Welcome Wizard",
     "title": "Welcome to the OPC UA NodeSet Editor",
     "tagline": "Describe your machines and processes in a common language that any OPC UA system understands.",
-    "start": "Start",
     "summary": "The editor allows users to create an information model (a.k.a. a NodeSet) for a manufacturing asset or process, with the goal of arriving at common, reusable interfaces for accessing data. As a key design principle, all NodeSets should derive from (extend or reuse) other NodeSets. You can start with core and standardized building blocks provided by the OPC Foundation, or import a starting point created by another designer, standards group, or organization."
   },
   "aboutModelLibraryWizard": {

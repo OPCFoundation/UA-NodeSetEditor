@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid';
 import Alert from '@mui/material/Alert';
 import Typography from '@mui/material/Typography';
@@ -11,6 +10,7 @@ import { CategoryIcon as CategoryOutlinedIcon, FolderIcon as FolderOutlinedIcon,
 
 import { WizardActionCard, type ContentBlock } from '../components/WizardActionCard';
 import { InfoPopover } from '../components/InfoPopover';
+import { ImportCsvFlow } from '../components/ImportCsvFlow';
 
 const aboutModelLibraryContent: ContentBlock[] = [
     { type: 'paragraph', textKey: 'aboutModelLibraryWizard.intro' },
@@ -61,8 +61,7 @@ const WelcomeWizardPage: React.FC = () => {
             <a href="mailto:webmaster@opcfoundation.org?subject=OPC%20UA%20NodeSetEditor%20Feedback">webmaster@opcfoundation.org</a>
          </Alert>
 
-         {/* Feature highlights. Each card explains itself through its "learn more" popover;
-             the page has a single call to action below. */}
+         {/* Four cards at md: 6 — a 2x2 grid. */}
          <Grid container spacing={20} sx={{ mt: 32 }}>
             <Grid size={{ xs: 12, md: 6 }}>
                <WizardActionCard
@@ -70,6 +69,8 @@ const WelcomeWizardPage: React.FC = () => {
                   titleKey="aboutTypeLibraryWizard.title"
                   summaryKey="aboutTypeLibraryWizard.summary"
                   content={aboutTypeLibraryContent}
+                  buttonKey="aboutTypeLibraryWizard.action"
+                  onButtonClick={() => navigate('/type_library')}
                />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -78,6 +79,8 @@ const WelcomeWizardPage: React.FC = () => {
                   titleKey="aboutModelLibraryWizard.title"
                   summaryKey="aboutModelLibraryWizard.summary"
                   content={aboutModelLibraryContent}
+                  buttonKey="aboutModelLibraryWizard.action"
+                  onButtonClick={() => navigate('/model_library')}
                />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -86,24 +89,28 @@ const WelcomeWizardPage: React.FC = () => {
                   titleKey="aboutModelValidationWizard.title"
                   summaryKey="aboutModelValidationWizard.summary"
                   content={aboutModelValidationContent}
+                  buttonKey="aboutModelValidationWizard.action"
+                  onButtonClick={() => navigate('/model_library')}
                />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
-               <WizardActionCard
-                  icon={<UploadFileIcon />}
-                  titleKey="aboutCsvImportWizard.title"
-                  summaryKey="aboutCsvImportWizard.summary"
-                  content={aboutCsvImportContent}
-               />
+               {/* The flow owns the sign-in / create-model / file-picker steps that have to
+                   happen before the wizard can open, and hands the card a start(). */}
+               <ImportCsvFlow>
+                  {({ start, busy }) => (
+                     <WizardActionCard
+                        icon={<UploadFileIcon />}
+                        titleKey="aboutCsvImportWizard.title"
+                        summaryKey="aboutCsvImportWizard.summary"
+                        content={aboutCsvImportContent}
+                        buttonKey="aboutCsvImportWizard.action"
+                        onButtonClick={start}
+                        buttonDisabled={busy}
+                     />
+                  )}
+               </ImportCsvFlow>
             </Grid>
          </Grid>
-
-         {/* The page's one action: everything starts from picking a workspace. */}
-         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 32 }}>
-            <Button variant='contained' size='large' onClick={() => navigate('/model_library')}>
-               {t('welcomeWizard.start')}
-            </Button>
-         </Box>
       </Box>
    );
 };
