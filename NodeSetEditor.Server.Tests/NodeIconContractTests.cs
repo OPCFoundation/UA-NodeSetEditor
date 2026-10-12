@@ -28,6 +28,12 @@ public class NodeIconContractTests
     private const string BaseInterfaceType = "i=17602";
     private const string PropertyType = "i=68";
     private const string BaseDataVariableType = "i=63";
+    private const string BaseEventType = "i=2041";
+    /// <summary>SystemEventType — an event type that is not a Condition.</summary>
+    private const string SystemEventType = "i=2130";
+    private const string ConditionType = "i=2782";
+    /// <summary>ExclusiveLevelAlarmType — a Condition three levels below ConditionType.</summary>
+    private const string ExclusiveLevelAlarmType = "i=9482";
     /// <summary>The Server object, whose children include PropertyType-typed properties
     /// (ServerArray, NamespaceArray, ...).</summary>
     private const string ServerObject = "i=2253";
@@ -118,5 +124,35 @@ public class NodeIconContractTests
 
         Assert.NotEmpty(properties);
         Assert.All(properties, p => Assert.Equal("property", Icon(p)));
+    }
+
+    /// <summary>
+    /// Event types are the case where two anchors sit on one chain: BaseEventType is under
+    /// BaseObjectType, so "object" is what these nodes resolved to — and are still stamped
+    /// with in any database that predates the re-stamp — before the nearer anchor existed.
+    /// </summary>
+    [Theory]
+    [InlineData(BaseEventType)]
+    [InlineData(SystemEventType)]
+    public async Task EventTypes_AreServedTheEventTypeIcon(string nodeId)
+    {
+        var results = await SelfAndSubtypesAsync("object-types", nodeId);
+
+        Assert.Equal("eventType", Icon(ById(results, nodeId)));
+    }
+
+    /// <summary>
+    /// Nearest-anchor-wins, through three anchors on one chain: BaseObjectType, then
+    /// BaseEventType, then ConditionType. A Condition must come back "condition", not the
+    /// "eventType" of the anchor above it.
+    /// </summary>
+    [Theory]
+    [InlineData(ConditionType)]
+    [InlineData(ExclusiveLevelAlarmType)]
+    public async Task ConditionTypes_AreServedTheConditionIcon(string nodeId)
+    {
+        var results = await SelfAndSubtypesAsync("object-types", nodeId);
+
+        Assert.Equal("condition", Icon(ById(results, nodeId)));
     }
 }

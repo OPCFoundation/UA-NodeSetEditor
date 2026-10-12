@@ -23,6 +23,8 @@ namespace NodeSetEditor.Model
         public const string Property = "property";
         public const string DataVariable = "dataVariable";
         public const string InterfaceType = "interfaceType";
+        public const string EventType = "eventType";
+        public const string Condition = "condition";
 
         /// <summary>
         /// Anchor type NodeId -> icon key. Namespace-0 NodeIds are stored bare (see
@@ -40,6 +42,8 @@ namespace NodeSetEditor.Model
                 ["i=17602"] = InterfaceType, // BaseInterfaceType
                 ["i=68"] = Property,         // PropertyType
                 ["i=63"] = DataVariable,     // BaseDataVariableType
+                ["i=2041"] = EventType,      // BaseEventType
+                ["i=2782"] = Condition,      // ConditionType
             };
 
         /// <summary>
@@ -52,10 +56,12 @@ namespace NodeSetEditor.Model
         ///
         /// InterfaceType is the one exception, and deliberately so: no instances of an
         /// InterfaceType exist, so the only node that can carry the glyph is the ObjectType
-        /// itself.
+        /// itself. EventType and Condition are exceptions for the same reason in reverse:
+        /// an event type's identity as "a thing that is raised" is what the glyph says, and
+        /// that is a statement about the TYPE.
         /// </summary>
         public static readonly IReadOnlySet<string> TypeLevel =
-            new HashSet<string>(StringComparer.Ordinal) { InterfaceType };
+            new HashSet<string>(StringComparer.Ordinal) { InterfaceType, EventType, Condition };
 
         /// <summary>
         /// True when <paramref name="icon"/> is a key a TYPE node may wear. A type node
@@ -64,6 +70,32 @@ namespace NodeSetEditor.Model
         /// </summary>
         public static bool IsTypeLevel(string? icon) =>
             !string.IsNullOrEmpty(icon) && TypeLevel.Contains(icon!);
+
+        /// <summary>
+        /// Keys that a TYPE node wears but its instances do NOT inherit — the mirror of
+        /// <see cref="TypeLevel"/>, which governs the type node instead.
+        ///
+        /// Only EventType is here, and the reason is a modelling asymmetry. Events are
+        /// transient notifications, not nodes: nothing in a well-formed address space is an
+        /// Object typed by BaseEventType. Conditions are the exception — they are stateful
+        /// and DO exist as Objects — so Condition is absent from this set and its instances
+        /// keep the glyph.
+        ///
+        /// Without this, an Object typed by some non-Condition event type would inherit
+        /// "eventType" and be drawn as a notification, which says the node is an event when
+        /// it is really just an oddly-typed object.
+        /// </summary>
+        public static readonly IReadOnlySet<string> NotInheritedByInstances =
+            new HashSet<string>(StringComparer.Ordinal) { EventType };
+
+        /// <summary>
+        /// True when an INSTANCE may be served <paramref name="icon"/>, the key stamped on
+        /// its TypeDefinition. False only for the type-only keys in
+        /// <see cref="NotInheritedByInstances"/>, where the instance falls back to its
+        /// NodeClass glyph instead.
+        /// </summary>
+        public static bool IsInheritedByInstances(string? icon) =>
+            string.IsNullOrEmpty(icon) || !NotInheritedByInstances.Contains(icon!);
 
         /// <summary>
         /// The icon key for a type node: the icon of the NEAREST anchor at or above it in

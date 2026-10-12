@@ -81,8 +81,11 @@ static void PrintHelp()
       status                       Show database statistics
       backfill-icons              Stamp Nodes."Icon" on type nodes that have none, by
                                     inheriting the nearest anchor in each supertype chain.
-                                    Run once after db/add_node_icon.sql; safe to re-run,
-                                    and re-run after adding an anchor to NodeIcons.
+                                    Run once after db/add_node_icon.sql; safe to re-run.
+                                    Rolls out a new anchor ONLY if it does not shadow one
+                                    already above it: stamped rows are left alone, so an
+                                    anchor added below an existing one needs a re-stamp
+                                    script (see migrations/) rather than this.
       script                       Print the full EF Core CREATE script for the current model
                                     (no DB connection needed — useful for diffing an additive
                                     patch against a live database before running it)
@@ -119,6 +122,11 @@ static void PrintCreateScript(string connectionString)
 ///
 /// Idempotent: nodes that already have an icon are left alone, so this is also how you
 /// roll out a NEW anchor — add it to NodeIcons.Anchors and re-run.
+///
+/// That works only for an anchor with no anchor already ABOVE it in the chain. One added
+/// below an existing anchor (BaseEventType under BaseObjectType, say) finds its subtree
+/// already stamped with the outer anchor's key, and skips every row of it. Those need a
+/// re-stamp that overwrites — see migrations/2026-10-12-event-condition-icons.sql.txt.
 /// </summary>
 static async Task BackfillIcons(string connectionString)
 {

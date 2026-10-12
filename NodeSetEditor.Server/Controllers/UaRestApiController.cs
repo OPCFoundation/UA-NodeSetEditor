@@ -4561,9 +4561,14 @@ namespace NodeSetEditor.Server.Controllers
                 JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariable v => v.TypeId,
                 _ => null,
             };
-            return !string.IsNullOrEmpty(typeId) && nodeIcons.TryGetValue(typeId!, out var fromType)
-                ? fromType
-                : null;
+            if (string.IsNullOrEmpty(typeId) || !nodeIcons.TryGetValue(typeId!, out var fromType))
+                return null;
+
+            // A few keys describe the TYPE and nothing below it, so they stop here rather
+            // than flowing down to instances: an Object typed by a non-Condition event type
+            // would otherwise be drawn as a notification. See NodeIcons for why Conditions
+            // are exempt and keep theirs.
+            return NodeSetEditor.Model.NodeIcons.IsInheritedByInstances(fromType) ? fromType : null;
         }
 
         private static Opc.Ua.RestfulApi.Node UaNodeToRestNode(

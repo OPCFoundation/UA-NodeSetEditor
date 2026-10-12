@@ -26,11 +26,17 @@
          "Instance icons depend on the node's TypeDefinition, not just its NodeClass, so",
          "these are resolved by resolveNodeIcon() in ./resolveNodeIcon.ts -- see that file",
          "for the precedence rules. 'object' and 'dataVariable' double as the defaults for",
-         "instances whose TypeDefinition is outside the listed families."
+         "instances whose TypeDefinition is outside the listed families.",
+         "'eventType' and 'condition' share one glyph today but stay separate keys: a",
+         "Condition is an event type that also exists as an Object, so the server has to",
+         "tell them apart (only 'condition' is inherited by instances -- see NodeIcons.cs)",
+         "and splitting them later must not require a server change."
       ],
       "object": "material-symbols:widgets-outline-rounded",
       "folder": "material-symbols:folder-outline-rounded",
       "property": "material-symbols:label-outline-rounded",
+      "eventType": "material-symbols:circle-notifications-outline-rounded",
+      "condition": "material-symbols:circle-notifications-outline-rounded",
       "dataVariable": "material-symbols:confirmation-number-outline-rounded",
       "method": "material-symbols:function-outline-rounded",
       "view": "material-symbols:folder-eye-outline-rounded",
