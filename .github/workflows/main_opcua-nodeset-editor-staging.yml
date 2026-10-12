@@ -16,21 +16,68 @@ jobs:
       contents: read #This is required for actions/checkout
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+        with:
+          # The NodeSetSerializer submodule holds Opc.Ua.NodeSetSerializer, which the server,
+          # the model library and the database tool all ProjectReference. Without it the
+          # restore fails outright on the missing project file.
+          submodules: recursive
+          # Full history for two reasons: Nerdbank.GitVersioning (inside the submodule) computes
+          # a version from it, and a shallow submodule fetch leaves it unable to.
+          fetch-depth: 0
 
       - name: Set up .NET Core
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.x'
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: nodeseteditor.client/package-lock.json
+
+      # The SPA is built here rather than through nodeseteditor.client.esproj, which needs the
+      # Visual Studio JavaScript SDK, and whose ShouldRunBuildScript is false in any case. This
+      # mirrors what docker/Dockerfile does for the container image.
+      - name: Install SPA dependencies
+        working-directory: nodeseteditor.client
+        run: npm ci
+
+      - name: Build SPA
+        working-directory: nodeseteditor.client
+        run: npm run build:staging
+
+      # Must land in wwwroot BEFORE the dotnet build: MapStaticAssets serves from a manifest
+      # generated during build, so anything added to wwwroot afterwards is not served.
+      - name: Copy SPA into wwwroot
+        run: |
+          New-Item -ItemType Directory -Force -Path NodeSetEditor.Server/wwwroot | Out-Null
+          Copy-Item -Path nodeseteditor.client/dist/* -Destination NodeSetEditor.Server/wwwroot -Recurse -Force
+
+      # Build/publish the web project only. Pointing at the solution would drag in the test
+      # projects, the database tool and the SPA's .esproj, and `dotnet publish` does not accept
+      # -o for a solution.
+      #
+      # SkipSpaProjectReference drops the .esproj reference — the SPA is already built above. It
+      # has to be passed to every step, including restore, or restore and build disagree about
+      # the project graph.
+      #
+      # OpenApiGenerateDocumentsOnBuild is off because generating the document runs the app's
+      # entry point on the build agent. OpenApi/v1.json is generated on a developer machine and
+      # checked in, and that checked-in file is what the app serves.
+      - name: Restore
+        run: dotnet restore NodeSetEditor.Server/NodeSetEditor.Server.csproj -p:SkipSpaProjectReference=true
+
       - name: Build with dotnet
-        run: dotnet build --configuration Release
+        run: dotnet build NodeSetEditor.Server/NodeSetEditor.Server.csproj --configuration Release --no-restore -p:SkipSpaProjectReference=true -p:OpenApiGenerateDocumentsOnBuild=false
 
       - name: dotnet publish
-        run: dotnet publish -c Release -o "${{env.DOTNET_ROOT}}/myapp"
+        run: dotnet publish NodeSetEditor.Server/NodeSetEditor.Server.csproj --configuration Release --no-build --output "${{env.DOTNET_ROOT}}/myapp" -p:SkipSpaProjectReference=true -p:OpenApiGenerateDocumentsOnBuild=false
 
       - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: .net-app
           path: ${{env.DOTNET_ROOT}}/myapp
@@ -44,12 +91,12 @@ jobs:
 
     steps:
       - name: Download artifact from build job
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: .net-app
-      
+
       - name: Login to Azure
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_69FFCD9B8A2844DFA0C486CA2A77F106 }}
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_9FCCF6987D604346B2BFFFDE1B31C23A }}
@@ -62,4 +109,4 @@ jobs:
           app-name: 'opcua-nodeset-editor-staging'
           slot-name: 'Production'
           package: .
-          
+
