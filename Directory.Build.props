@@ -1,0 +1,21 @@
+<Project>
+
+  <!--
+    Nerdbank.GitVersioning derives the version from version.json plus the git height, and
+    generates the ThisAssembly class that /api/config reports to the SPA footer. It replaces
+    incrementbuildverision.ps1, which rewrote counter.txt and src/version.ts on every build.
+
+    Excluded for .esproj: nodeseteditor.client.esproj uses the Visual Studio JavaScript SDK and
+    is not NuGet-restorable. A PackageReference makes NuGet treat it as a restore input, which
+    fails with NU1105 "Invalid target framework ''" outside Visual Studio.
+
+    This does not reach the NodeSetSerializer submodule. MSBuild stops at the first
+    Directory.Build.props walking up from a project, and the submodule has its own - so it keeps
+    versioning independently from its own version.json, as the comment in that file explains.
+  -->
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' != '.esproj'">
+    <!-- Kept in step with the version the submodule pins, so one NB.GV builds the whole tree. -->
+    <PackageReference Include="Nerdbank.GitVersioning" Version="3.7.115" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

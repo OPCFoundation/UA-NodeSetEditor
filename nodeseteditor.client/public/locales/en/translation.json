@@ -239,6 +239,9 @@
     "workspaces": "Workspaces",
     "models": "Models"
   },
+  "footer": {
+    "commitTooltip": "Commit {{commit}}, committed {{date}}"
+  },
   "typeLibrary": {
     "shortName": "Models",
     "title": "Models",

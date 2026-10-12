@@ -25,6 +25,5 @@ UANodeSetSerializer/**/bin/
 # Local developer state
 **/*.user
 **/appsettings.Development.json
-NodeSetEditor.Server/counter.txt
 NodeSetEditor.Server/cloudlib-diagnostics/
 tools/

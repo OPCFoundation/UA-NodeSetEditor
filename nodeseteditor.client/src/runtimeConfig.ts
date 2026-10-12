@@ -13,6 +13,16 @@ export interface RuntimeConfig {
    testMode: boolean;
    /** True when a Cloud Library URL is configured; the UI hides the feature otherwise. */
    cloudLibraryEnabled: boolean;
+   /**
+    * Build identity of the server answering, from Nerdbank.GitVersioning. Reported rather than
+    * compiled into the bundle so the footer names the deployment, not the build that made the
+    * JavaScript. Empty when the server was built without git history (the container image).
+    */
+   buildVersion: string;
+   /** Full commit SHA the server was built from, or '' when unavailable. */
+   commitId: string;
+   /** Commit timestamp in ISO 8601 ("O"), or '' when unavailable. */
+   commitDate: string;
 }
 
 // Until /api/config answers, assume the most restricted shape: email-only sign-in, no test
@@ -21,6 +31,10 @@ const DEFAULT_CONFIG: RuntimeConfig = {
    authProviders: ['email'],
    testMode: false,
    cloudLibraryEnabled: false,
+   // The footer renders nothing at all rather than a misleading version it cannot stand behind.
+   buildVersion: '',
+   commitId: '',
+   commitDate: '',
 };
 
 let current: RuntimeConfig = DEFAULT_CONFIG;

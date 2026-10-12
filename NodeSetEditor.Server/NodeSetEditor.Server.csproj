@@ -83,12 +83,6 @@
     <EmbeddedResource Include="Data\UNECE_to_OPCUA.csv" />
   </ItemGroup>
 
-  <!-- Windows-only: the script is PowerShell and there is no build counter to bump on a
-       Linux build agent or inside the container image build. -->
-  <Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition="'$(OS)' == 'Windows_NT'">
-    <Exec Command="powershell .\incrementbuildverision.ps1" />
-  </Target>
-
   <!-- GenerateOpenApiDocuments decides whether to re-run from its own file-list cache, not from the
        document, so deleting OpenApi\v1.json otherwise leaves the build happily skipping the step and
        the app with no spec to serve. Drop the cache when the document is missing so it comes back. -->

@@ -378,11 +378,18 @@ app.MapGet("/swagger/{file}", (string file) =>
 // deployment with Azure AD and one without: the client cannot know at build time which features
 // exist, so it asks. Anonymous by necessity — it is read before anyone has signed in — and it
 // names only which features are switched on, never any credential or endpoint.
+// The build identity comes from here rather than from a constant compiled into the SPA bundle, so
+// the footer reports the server that is actually answering. Nerdbank.GitVersioning generates these
+// from version.json and the git commit; the commit of a public repository is not a secret, which is
+// what lets them ride along on this anonymous endpoint. "O" is culture-invariant by definition.
 app.MapGet("/api/config", (TestModeOptions testModeOptions, IConfiguration configuration) => Results.Ok(new
 {
     authProviders = azureAdEnabled ? new[] { "email", "azuread" } : new[] { "email" },
     testMode = testModeOptions.Enabled,
     cloudLibraryEnabled = !string.IsNullOrEmpty(configuration["CloudLibraryUrl"]),
+    buildVersion = ThisAssembly.AssemblyInformationalVersion,
+    commitId = ThisAssembly.GitCommitId,
+    commitDate = ThisAssembly.GitCommitDate.ToString("O"),
 })).AllowAnonymous().ExcludeFromDescription();
 
 // Liveness + readiness for container orchestrators: the process is up and the database answers.
