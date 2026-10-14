@@ -20,6 +20,7 @@ import { NodeIdAutocomplete } from './NodeIdAutocomplete';
 import type { NodeIdOption } from './NodeIdAutocomplete';
 import { validateNodeIdValue, type NodeIdPrefix } from '../utils/nodeIdValidation';
 import { formatWithModelPrefix } from '../utils/formatNodeId';
+import { resolveExtendSuperTypeId } from '../utils/extendSuperType';
 import { getAllowedValueRankOptions } from '../utils/valueRank';
 import { getLastModelUri, setLastModelUri } from '../utils/lastModelUri';
 import { parseConformanceUnits, formatConformanceUnits } from '../utils/conformanceUnits';
@@ -151,6 +152,13 @@ export const EditTypeDialog: React.FC<EditTypeDialogProps> = ({
    const isDataType = nodeClass === 64;
    const isVariableType = nodeClass === 16;
    const isReferenceType = nodeClass === 32;
+
+   // Extend normally locks the base type to the node it was invoked on. The one exception is
+   // a substituted category root: the author picked the root, not the concrete type we put in
+   // its place, so the field stays open for them to choose a sibling (e.g. HierarchicalReferences
+   // instead of NonHierarchicalReferences).
+   const superTypeIsFixed = !!superTypeNodeIdProp
+      && resolveExtendSuperTypeId(superTypeNodeIdProp) === superTypeNodeIdProp;
 
    const [browseName, setBrowseName] = React.useState('');
    const [displayName, setDisplayName] = React.useState('');
@@ -402,9 +410,11 @@ export const EditTypeDialog: React.FC<EditTypeDialogProps> = ({
                setSelectedModelUri(privateModels[0].modelUri);
             }
 
-            // Set SuperType from prop
+            // Set SuperType from prop. Extending an abstract category root substitutes the
+            // concrete base type authors actually derive from (see resolveExtendSuperTypeId),
+            // and leaves the field editable so another base can still be picked.
             if (superTypeNodeIdProp) {
-               setSelectedSuperTypeId(superTypeNodeIdProp);
+               setSelectedSuperTypeId(resolveExtendSuperTypeId(superTypeNodeIdProp));
             }
          } else {
             // Edit mode initialization
@@ -719,7 +729,7 @@ export const EditTypeDialog: React.FC<EditTypeDialogProps> = ({
                onChange={(id) => { setSelectedSuperTypeId(id); clearError(); }}
                workspaceId={workspaceId}
                label="SuperType"
-               readOnly={!isCreateMode || !!superTypeNodeIdProp}
+               readOnly={!isCreateMode || superTypeIsFixed}
                recentContext="superType"
             />
             {isReferenceType && (

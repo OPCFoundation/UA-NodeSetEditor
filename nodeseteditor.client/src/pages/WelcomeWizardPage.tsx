@@ -6,26 +6,19 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Alert from '@mui/material/Alert';
 import Typography from '@mui/material/Typography';
-import { CategoryIcon as CategoryOutlinedIcon, FolderIcon as FolderOutlinedIcon, TaskAltIcon as TaskAltOutlinedIcon, UploadFileIcon } from '../icons';
+import { FolderIcon as FolderOutlinedIcon, UploadFileIcon } from '../icons';
 
 import { WizardActionCard, type ContentBlock } from '../components/WizardActionCard';
 import { InfoPopover } from '../components/InfoPopover';
 import { ImportCsvFlow } from '../components/ImportCsvFlow';
 
+// `aboutModelLibraryWizard` is the Workspaces card — the key name predates the rename.
 const aboutModelLibraryContent: ContentBlock[] = [
     { type: 'paragraph', textKey: 'aboutModelLibraryWizard.intro' },
     { type: 'paragraph', textKey: 'aboutModelLibraryWizard.line1' },
     { type: 'paragraph', textKey: 'aboutModelLibraryWizard.line2' },
     { type: 'paragraph', textKey: 'aboutModelLibraryWizard.line3' },
     { type: 'paragraph', textKey: 'aboutModelLibraryWizard.line4' }
-];
-
-const aboutTypeLibraryContent: ContentBlock[] = [
-    { type: 'paragraph', textKey: 'aboutTypeLibraryWizard.intro' }
-];
-
-const aboutModelValidationContent: ContentBlock[] = [
-   { type: 'paragraph', textKey: 'aboutModelValidationWizard.intro' }
 ];
 
 // What used to be the CSV wizard's opening page. The wizard now starts at the column
@@ -61,18 +54,8 @@ const WelcomeWizardPage: React.FC = () => {
             <a href="mailto:webmaster@opcfoundation.org?subject=OPC%20UA%20NodeSetEditor%20Feedback">webmaster@opcfoundation.org</a>
          </Alert>
 
-         {/* Four cards at md: 6 — a 2x2 grid. */}
+         {/* Two cards at md: 6 — side by side on a single row. */}
          <Grid container spacing={20} sx={{ mt: 32 }}>
-            <Grid size={{ xs: 12, md: 6 }}>
-               <WizardActionCard
-                  icon={<CategoryOutlinedIcon />}
-                  titleKey="aboutTypeLibraryWizard.title"
-                  summaryKey="aboutTypeLibraryWizard.summary"
-                  content={aboutTypeLibraryContent}
-                  buttonKey="aboutTypeLibraryWizard.action"
-                  onButtonClick={() => navigate('/type_library')}
-               />
-            </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
                <WizardActionCard
                   icon={<FolderOutlinedIcon />}
@@ -80,16 +63,6 @@ const WelcomeWizardPage: React.FC = () => {
                   summaryKey="aboutModelLibraryWizard.summary"
                   content={aboutModelLibraryContent}
                   buttonKey="aboutModelLibraryWizard.action"
-                  onButtonClick={() => navigate('/model_library')}
-               />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-               <WizardActionCard
-                  icon={<TaskAltOutlinedIcon />}
-                  titleKey="aboutModelValidationWizard.title"
-                  summaryKey="aboutModelValidationWizard.summary"
-                  content={aboutModelValidationContent}
-                  buttonKey="aboutModelValidationWizard.action"
                   onButtonClick={() => navigate('/model_library')}
                />
             </Grid>
