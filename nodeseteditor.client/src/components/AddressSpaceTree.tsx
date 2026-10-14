@@ -317,6 +317,10 @@ export const AddressSpaceTree: React.FC = () => {
                <AddressSpaceTreeView
                   workspaceId={selectedWorkspaceId}
                   filterModelUri={selectedModelUri || undefined}
+                  // The sidebar's model picker is a filter: show only paths that lead to a
+                  // node in the active model. (The node picker uses the same prune as a
+                  // prefetch instead, so it leaves this off.)
+                  strictFilter
                   highlightNodeId={targetNodeId}
                   onNodeSelect={handleNodeSelect}
                   expandedItems={expandedItems}

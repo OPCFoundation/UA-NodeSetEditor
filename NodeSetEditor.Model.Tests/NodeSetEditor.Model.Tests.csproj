@@ -15,17 +15,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="10.0.1">
+    <PackageReference Include="coverlet.collector" Version="10.1.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.*" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.*" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.10" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
-    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Core" Version="1.5.378.156" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.13" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Core" Version="1.5.378.182" />
     <PackageReference Include="xunit" Version="2.9.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
@@ -56,6 +56,10 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="Nerdbank.GitVersioning" Version="3.10.94" />
   </ItemGroup>
 
 </Project>

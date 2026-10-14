@@ -21,6 +21,14 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                }
+              ],
               "format": "int32",
               "default": 0
             }
@@ -30,6 +38,14 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                }
+              ],
               "format": "int32",
               "default": 100
             }
@@ -282,6 +298,14 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                }
+              ],
               "format": "int32",
               "default": 0
             }
@@ -291,6 +315,14 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                }
+              ],
               "format": "int32",
               "default": 100
             }
@@ -928,6 +960,14 @@
                   },
                   "Length": {
                     "pattern": "^-?(?:0|[1-9]\\d*)$",
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ],
                     "format": "int64"
                   },
                   "Name": {
@@ -1014,6 +1054,14 @@
                       },
                       "Length": {
                         "pattern": "^-?(?:0|[1-9]\\d*)$",
+                        "anyOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "string"
+                          }
+                        ],
                         "format": "int64"
                       },
                       "Name": {
@@ -1037,6 +1085,14 @@
                     "properties": {
                       "chunkIndex": {
                         "pattern": "^-?(?:0|[1-9]\\d*)$",
+                        "anyOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "string"
+                          }
+                        ],
                         "format": "int32",
                         "default": 0
                       }
@@ -1047,6 +1103,14 @@
                     "properties": {
                       "totalChunks": {
                         "pattern": "^-?(?:0|[1-9]\\d*)$",
+                        "anyOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "string"
+                          }
+                        ],
                         "format": "int32",
                         "default": 1
                       }
@@ -1425,6 +1489,14 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                }
+              ],
               "format": "int32",
               "default": 0
             }
@@ -1434,6 +1506,14 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                }
+              ],
               "format": "int32",
               "default": 1000
             }
@@ -1703,6 +1783,14 @@
                   },
                   "Length": {
                     "pattern": "^-?(?:0|[1-9]\\d*)$",
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ],
                     "format": "int64"
                   },
                   "Name": {
@@ -1789,6 +1877,14 @@
                       },
                       "Length": {
                         "pattern": "^-?(?:0|[1-9]\\d*)$",
+                        "anyOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "string"
+                          }
+                        ],
                         "format": "int64"
                       },
                       "Name": {
@@ -1940,6 +2036,14 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                }
+              ],
               "format": "int32",
               "default": 3
             }
@@ -1949,6 +2053,14 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                }
+              ],
               "format": "int32",
               "default": 0
             }
@@ -1958,6 +2070,14 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                }
+              ],
               "format": "int32",
               "default": 1000
             }
@@ -2467,6 +2587,14 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                }
+              ],
               "format": "int32",
               "default": 0
             }
@@ -2476,6 +2604,14 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                }
+              ],
               "format": "int32",
               "default": 25
             }
@@ -2554,6 +2690,14 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                }
+              ],
               "format": "int32",
               "default": 1
             }
@@ -2563,6 +2707,14 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                }
+              ],
               "format": "int32",
               "default": 0
             }
@@ -2572,6 +2724,14 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                }
+              ],
               "format": "int32",
               "default": 1000
             }
@@ -2650,6 +2810,14 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                }
+              ],
               "format": "int32",
               "default": 0
             }
@@ -2659,6 +2827,14 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                }
+              ],
               "format": "int32",
               "default": 1000
             }
@@ -2942,6 +3118,14 @@
                       },
                       "Length": {
                         "pattern": "^-?(?:0|[1-9]\\d*)$",
+                        "anyOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "string"
+                          }
+                        ],
                         "format": "int64"
                       },
                       "Name": {
@@ -2965,6 +3149,14 @@
                     "properties": {
                       "chunkIndex": {
                         "pattern": "^-?(?:0|[1-9]\\d*)$",
+                        "anyOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "string"
+                          }
+                        ],
                         "format": "int32",
                         "default": 0
                       }
@@ -2975,6 +3167,14 @@
                     "properties": {
                       "totalChunks": {
                         "pattern": "^-?(?:0|[1-9]\\d*)$",
+                        "anyOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "string"
+                          }
+                        ],
                         "format": "int32",
                         "default": 1
                       }
@@ -3538,7 +3738,22 @@
           },
           "valueRank": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "format": "int32"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true
+              }
+            ],
+            "format": "int32",
+            "nullable": true
           },
           "arrayDimensions": {
             "type": "string",
@@ -3595,6 +3810,14 @@
           },
           "rowCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
             "format": "int32"
           },
           "delimiter": {
@@ -3625,6 +3848,14 @@
         "properties": {
           "index": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
             "format": "int32"
           },
           "header": {
@@ -3664,7 +3895,8 @@
               {
                 "enum": [
                   null
-                ]
+                ],
+                "nullable": true
               },
               {
                 "$ref": "#/components/schemas/Node"
@@ -3676,7 +3908,8 @@
               {
                 "enum": [
                   null
-                ]
+                ],
+                "nullable": true
               },
               {
                 "$ref": "#/components/schemas/Node"
@@ -3688,7 +3921,8 @@
               {
                 "enum": [
                   null
-                ]
+                ],
+                "nullable": true
               },
               {
                 "$ref": "#/components/schemas/Node"
@@ -3697,14 +3931,38 @@
           },
           "variablesCreated": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
             "format": "int32"
           },
           "propertiesCreated": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
             "format": "int32"
           },
           "rowsSkipped": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
             "format": "int32"
           },
           "warnings": {
@@ -3763,7 +4021,22 @@
           },
           "value": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "format": "int32"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true
+              }
+            ],
+            "format": "int32",
+            "nullable": true
           },
           "dataType": {
             "type": "string",
@@ -3775,7 +4048,22 @@
           },
           "valueRank": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "format": "int32"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true
+              }
+            ],
+            "format": "int32",
+            "nullable": true
           },
           "arrayDimensions": {
             "type": "string",
@@ -3783,7 +4071,22 @@
           },
           "maxStringLength": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "format": "int32"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true
+              }
+            ],
+            "format": "int32",
+            "nullable": true
           },
           "isOptional": {
             "type": "boolean",
@@ -3798,7 +4101,8 @@
               {
                 "enum": [
                   null
-                ]
+                ],
+                "nullable": true
               },
               {
                 "$ref": "#/components/schemas/LocalizedText"
@@ -3823,10 +4127,26 @@
           },
           "chunksReceived": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
             "format": "int32"
           },
           "totalChunks": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
             "format": "int32"
           },
           "isComplete": {
@@ -3932,6 +4252,14 @@
           },
           "sortOrder": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
             "format": "int32"
           }
         }
@@ -4052,6 +4380,14 @@
           },
           "otherWorkspaceCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
             "format": "int32"
           },
           "canDelete": {
@@ -4083,7 +4419,8 @@
               {
                 "enum": [
                   null
-                ]
+                ],
+                "nullable": true
               },
               {
                 "$ref": "#/components/schemas/LocalizedText"
@@ -4092,11 +4429,41 @@
           },
           "writeMask": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "format": "int32"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true
+              }
+            ],
+            "format": "int32",
+            "nullable": true
           },
           "userWriteMask": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "format": "int32"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true
+              }
+            ],
+            "format": "int32",
+            "nullable": true
           },
           "value": { },
           "dataType": {
@@ -4109,27 +4476,95 @@
           },
           "valueRank": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "format": "int32"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true
+              }
+            ],
+            "format": "int32",
+            "nullable": true
           },
           "arrayDimensions": {
             "type": "array",
             "items": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                }
+              ],
               "format": "int32"
             },
             "nullable": true
           },
           "accessLevel": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "format": "int32"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true
+              }
+            ],
+            "format": "int32",
+            "nullable": true
           },
           "userAccessLevel": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "format": "int32"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true
+              }
+            ],
+            "format": "int32",
+            "nullable": true
           },
           "minimumSamplingInterval": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "format": "double"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true
+              }
+            ],
+            "format": "double",
+            "nullable": true
           },
           "historizing": {
             "type": "boolean",
@@ -4164,7 +4599,8 @@
               {
                 "enum": [
                   null
-                ]
+                ],
+                "nullable": true
               },
               {
                 "$ref": "#/components/schemas/LocalizedText"
@@ -4177,7 +4613,22 @@
           },
           "eventNotifier": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "format": "int32"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true
+              }
+            ],
+            "format": "int32",
+            "nullable": true
           },
           "typeDefinition": {
             "type": "string",
@@ -4290,7 +4741,22 @@
           },
           "totalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "format": "int32"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true
+              }
+            ],
+            "format": "int32",
+            "nullable": true
           }
         }
       },
@@ -4305,7 +4771,22 @@
           },
           "totalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "format": "int32"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true
+              }
+            ],
+            "format": "int32",
+            "nullable": true
           }
         }
       },
@@ -4320,7 +4801,22 @@
           },
           "totalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "format": "int32"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true
+              }
+            ],
+            "format": "int32",
+            "nullable": true
           }
         }
       },
@@ -4335,7 +4831,22 @@
           },
           "totalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "format": "int32"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true
+              }
+            ],
+            "format": "int32",
+            "nullable": true
           }
         }
       },
@@ -4347,6 +4858,14 @@
           },
           "sort": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
             "format": "int32"
           }
         }
@@ -4376,7 +4895,8 @@
               {
                 "enum": [
                   null
-                ]
+                ],
+                "nullable": true
               },
               {
                 "$ref": "#/components/schemas/LocalizedText"
@@ -4405,7 +4925,22 @@
           },
           "valueRank": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "format": "int32"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true
+              }
+            ],
+            "format": "int32",
+            "nullable": true
           },
           "isCanonicalParent": {
             "type": "boolean"
@@ -4530,7 +5065,22 @@
           },
           "valueRank": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "format": "int32"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true
+              }
+            ],
+            "format": "int32",
+            "nullable": true
           },
           "arrayDimensions": {
             "type": "string",
@@ -4541,7 +5091,8 @@
               {
                 "enum": [
                   null
-                ]
+                ],
+                "nullable": true
               },
               {
                 "$ref": "#/components/schemas/JsonElement"
@@ -4579,6 +5130,14 @@
           },
           "chunksReceived": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
             "format": "int32"
           },
           "isComplete": {
@@ -4589,7 +5148,8 @@
               {
                 "enum": [
                   null
-                ]
+                ],
+                "nullable": true
               },
               {
                 "$ref": "#/components/schemas/ModelInfo"
@@ -4655,6 +5215,14 @@
           },
           "sizeBytes": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
             "format": "int64"
           },
           "uploadedUtc": {
@@ -4679,15 +5247,60 @@
           },
           "errorCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "format": "int32"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true
+              }
+            ],
+            "format": "int32",
+            "nullable": true
           },
           "warningCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "format": "int32"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true
+              }
+            ],
+            "format": "int32",
+            "nullable": true
           },
           "infoCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "format": "int32"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true
+              }
+            ],
+            "format": "int32",
+            "nullable": true
           },
           "profileGroupName": {
             "type": "string",
@@ -4778,14 +5391,38 @@
           },
           "errorCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
             "format": "int32"
           },
           "warningCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
             "format": "int32"
           },
           "infoCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
             "format": "int32"
           }
         }
@@ -4802,14 +5439,38 @@
           },
           "errorCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
             "format": "int32"
           },
           "warningCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
             "format": "int32"
           },
           "infoCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
             "format": "int32"
           },
           "summary": {
@@ -4818,7 +5479,22 @@
           },
           "exitCode": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "format": "int32"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true
+              }
+            ],
+            "format": "int32",
+            "nullable": true
           },
           "completedUtc": {
             "type": "string",
@@ -4841,7 +5517,8 @@
               {
                 "enum": [
                   null
-                ]
+                ],
+                "nullable": true
               },
               {
                 "$ref": "#/components/schemas/LocalizedText"
@@ -4853,7 +5530,8 @@
               {
                 "enum": [
                   null
-                ]
+                ],
+                "nullable": true
               },
               {
                 "$ref": "#/components/schemas/ServerConfiguration"
@@ -4902,7 +5580,8 @@
               {
                 "enum": [
                   null
-                ]
+                ],
+                "nullable": true
               },
               {
                 "$ref": "#/components/schemas/LocalizedText"
@@ -4999,7 +5678,8 @@
               {
                 "enum": [
                   null
-                ]
+                ],
+                "nullable": true
               },
               {
                 "$ref": "#/components/schemas/LocalizedText"
@@ -5030,6 +5710,14 @@
           },
           "index": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
             "format": "int32"
           },
           "uri": {

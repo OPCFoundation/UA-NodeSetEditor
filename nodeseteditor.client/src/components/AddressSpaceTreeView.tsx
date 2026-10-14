@@ -104,9 +104,11 @@ interface TypeTreeItemProps {
    showTypeChildren?: boolean;
    /** Namespace URI the tree is pruned to, forwarded to the instance-declaration rows. */
    filterModelUri?: string;
+   /** The prune is a filter, not a prefetch — see AddressSpaceTreeView. */
+   strictFilter?: boolean;
 }
 
-const TypeTreeItem: React.FC<TypeTreeItemProps> = ({ node, category, workspaceId, expandedSet, targetNodeId, highlightModelUri, onNodeSelect, filterMode, showTypeChildren, filterModelUri }) => {
+const TypeTreeItem: React.FC<TypeTreeItemProps> = ({ node, category, workspaceId, expandedSet, targetNodeId, highlightModelUri, onNodeSelect, filterMode, showTypeChildren, filterModelUri, strictFilter }) => {
    const targetRef = React.useRef<HTMLDivElement>(null);
    const isTarget = node.nodeId === targetNodeId;
    const nodeNs = extractNamespaceUri(node.nodeId);
@@ -121,10 +123,16 @@ const TypeTreeItem: React.FC<TypeTreeItemProps> = ({ node, category, workspaceId
    // instance declarations AND subtypes: the row was expandable for its children while its
    // subtypes had been pruned away, with nothing to signal they existed.
    //
-   // This applies in filter mode too. Pruning to the active namespace is what keeps the dialog
-   // fast to open, but the pruned-away types are still legal targets, so expanding has to be
-   // able to reach them.
-   const isBoundary = node.subtypesTruncated === true;
+   // This applies in filter mode too, for the node picker: pruning to the active namespace is
+   // what keeps the dialog fast to open, but the pruned-away types are still legal targets, so
+   // expanding has to be able to reach them.
+   //
+   // Not under a strict filter, though. There the prune IS the result the user asked for, and
+   // the pruned payload already holds the whole category tree (CategoryItem fetches it in one
+   // request, undepthed), so there is nothing left to browse — re-browsing would pull the
+   // filtered-out types straight back in and `children` below would prefer them, which is how
+   // expanding a row used to dump the entire unfiltered tree into the sidebar.
+   const isBoundary = node.subtypesTruncated === true && !(filterMode && strictFilter);
    const expanded = expandedSet.has(node.nodeId);
 
    // Fetch subtypes on demand for boundary nodes
@@ -243,6 +251,7 @@ const TypeTreeItem: React.FC<TypeTreeItemProps> = ({ node, category, workspaceId
                filterMode={filterMode}
                showTypeChildren={showTypeChildren}
                filterModelUri={filterModelUri}
+               strictFilter={strictFilter}
             />
          ))}
          {expanded && typeChildren?.map((child) => (
@@ -281,9 +290,11 @@ interface CategoryItemProps {
    filterModelUri?: string;
    /** Also show each type's instance declarations beneath it. */
    showTypeChildren?: boolean;
+   /** The prune is a filter, not a prefetch — see AddressSpaceTreeView. */
+   strictFilter?: boolean;
 }
 
-const CategoryItem: React.FC<CategoryItemProps> = ({ category, rootNodeId, rootNode, folderId, showBaseTypeNode, categoryLabel, workspaceId, expandedSet, targetNodeId, highlightModelUri, onNodeSelect, filterModelUri, showTypeChildren }) => {
+const CategoryItem: React.FC<CategoryItemProps> = ({ category, rootNodeId, rootNode, folderId, showBaseTypeNode, categoryLabel, workspaceId, expandedSet, targetNodeId, highlightModelUri, onNodeSelect, filterModelUri, showTypeChildren, strictFilter }) => {
    const expanded = expandedSet.has(folderId);
    const filterMode = !!filterModelUri;
 
@@ -348,6 +359,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({ category, rootNodeId, rootN
                filterMode={filterMode}
                showTypeChildren={showTypeChildren}
                filterModelUri={filterModelUri}
+               strictFilter={strictFilter}
             />
          ))}
       </TreeItem>
@@ -527,6 +539,18 @@ interface AddressSpaceTreeViewProps {
     * and offers focus mode for drilling into a single type instead.
     */
    showTypeChildren?: boolean;
+   /**
+    * What `filterModelUri` means to this consumer.
+    *
+    * Off (the node picker): the prune is a prefetch optimisation. Rows whose subtypes were
+    * pruned away are re-browsed unfiltered when expanded, because a type outside the active
+    * model is still a legal pick.
+    *
+    * On (the sidebar): the prune is the filter the user asked for. Only paths containing a
+    * node in the model are shown, and expanding never reaches beyond them — the pruned
+    * response is already the complete answer.
+    */
+   strictFilter?: boolean;
 }
 
 /**
@@ -546,6 +570,7 @@ export const AddressSpaceTreeView: React.FC<AddressSpaceTreeViewProps> = ({
    onExpandedItemsChange,
    rootType,
    showTypeChildren = false,
+   strictFilter = false,
 }) => {
    const { t } = useTranslation();
    const expandedSet = React.useMemo(() => new Set(expandedItems), [expandedItems]);
@@ -601,6 +626,7 @@ export const AddressSpaceTreeView: React.FC<AddressSpaceTreeViewProps> = ({
                onNodeSelect={onNodeSelect}
                filterModelUri={filterModelUri}
                showTypeChildren={showTypeChildren}
+               strictFilter={strictFilter}
             />
          ))}
       </SimpleTreeView>
