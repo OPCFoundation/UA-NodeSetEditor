@@ -3746,6 +3746,8 @@ namespace NodeSetEditor.Server.Controllers
         private const string HAS_COMPONENT = "i=47";
         private const string PROPERTY_TYPE = "i=68";              // PropertyType
         private const string HIERARCHICAL_REFERENCES = "i=33";    // HierarchicalReferences
+        private const string HAS_CHILD = "i=34";                  // HasChild
+        private const string ORGANIZES = "i=35";                  // Organizes
         private const string UINTEGER = "i=28";                   // UInteger — the base of every OptionSet
         private const string NAMESPACE_METADATA_TYPE = "i=11616"; // NamespaceMetadataType
         private const string NAMESPACES_FOLDER = "i=11715";       // Server.Namespaces folder (ns=0)
@@ -4062,7 +4064,8 @@ namespace NodeSetEditor.Server.Controllers
                 {
                     if (r.TargetId == parentId
                         && (r.IsForward ?? true) == false
-                        && r.ReferenceTypeId != null)
+                        && r.ReferenceTypeId != null
+                        && IsStructuralReference(addressSpace, r.ReferenceTypeId))
                     {
                         return (parentId, r.ReferenceTypeId);
                     }
@@ -4077,16 +4080,44 @@ namespace NodeSetEditor.Server.Controllers
             // folder's Organizes — the only one a typical model carries.
             var invHier = addressSpace.BrowseWithSubtypes(node.NodeId, "i=33",
                 includeForward: false, includeInverse: true);
-            if (invHier.Count == 0) return null;
+
+            // Only a HasChild-family or Organizes reference can be the structural parent link.
+            // An extra hierarchical reference from the same parent (HasNotifier, HasEventSource)
+            // must never win: it would make the node's canonical parent reference depend on the
+            // order the references happen to be indexed in.
+            var invStructural = invHier
+                .Where(r => IsStructuralReference(addressSpace, r.ReferenceTypeId))
+                .ToList();
+            if (invStructural.Count == 0) return null;
 
             if (parentId != null)
             {
-                var match = invHier.FirstOrDefault(r => r.TargetNodeId == parentId);
+                var match = invStructural.FirstOrDefault(r => r.TargetNodeId == parentId);
                 if (match != null) return (parentId, match.ReferenceTypeId);
             }
 
-            var first = invHier[0];
+            var first = invStructural[0];
             return (first.TargetNodeId, first.ReferenceTypeId);
+        }
+
+        /// <summary>
+        /// True when <paramref name="referenceTypeId"/> can carry a structural parent→child link.
+        ///
+        /// <para>Part 3 splits HierarchicalReferences into HasChild (Aggregates → HasComponent /
+        /// HasProperty / HasOrderedComponent, plus HasSubtype), Organizes, and HasEventSource →
+        /// HasNotifier. Only the first two express ownership; HasNotifier is an event-routing
+        /// reference that happens to be hierarchical. Treating it as structural let an extra
+        /// HasNotifier between an existing parent and child displace the real HasComponent as the
+        /// canonical reference, which deduped /children onto the wrong row.</para>
+        /// </summary>
+        private static bool IsStructuralReference(
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace,
+            string? referenceTypeId)
+        {
+            if (string.IsNullOrEmpty(referenceTypeId)) return false;
+
+            return addressSpace.IsTypeOf(referenceTypeId, HAS_CHILD)
+                || addressSpace.IsTypeOf(referenceTypeId, ORGANIZES);
         }
 
         /// <summary>
@@ -5509,19 +5540,29 @@ namespace NodeSetEditor.Server.Controllers
                 if (DataTypeEncodingMap.TryGetValue(current, out var encoding))
                     return encoding;
 
-                // Walk supertype: find inverse HasSubtype reference
+                // Walk the supertype chain. Annex I.9 makes the supertype a field rather than a
+                // Reference, and the serializer lifts the inverse HasSubtype out of References
+                // into SuperTypeId as it reads a NodeSet — so the field is the normal source and
+                // the References scan is only a fallback for a node built without it. Relying on
+                // References alone made this return String (12) for every custom DataType, which
+                // sent structure values down the scalar path and stored them as raw JSON text.
                 var node = addressSpace.Read(current);
-                if (node?.References == null) break;
+                if (node == null) break;
 
-                string? superTypeId = null;
-                foreach (var r in node.References)
+                string? superTypeId = node.SuperTypeId;
+
+                if (superTypeId == null && node.References != null)
                 {
-                    if (r.ReferenceTypeId == HAS_SUBTYPE && !(r.IsForward ?? true))
+                    foreach (var r in node.References)
                     {
-                        superTypeId = r.TargetId;
-                        break;
+                        if (r.ReferenceTypeId == HAS_SUBTYPE && !(r.IsForward ?? true))
+                        {
+                            superTypeId = r.TargetId;
+                            break;
+                        }
                     }
                 }
+
                 current = superTypeId;
             }
 
