@@ -1588,6 +1588,10 @@ namespace NodeSetEditor.Model
         private const string HasPropertyId = "i=46";
         private const string StringDataTypeId = "i=12";
         private const string DateTimeDataTypeId = "i=13";
+        // NamespaceMetadataType declares ModelVersion as SemanticVersionString, a String subtype.
+        // The value still encodes as a plain String, but the DataType attribute must match the
+        // instance declaration or the property is out of spec.
+        private const string SemanticVersionStringDataTypeId = "i=24263";
         private const string UaTypesXsd = "http://opcfoundation.org/UA/2008/02/Types.xsd";
         private const int MetadataOrdinalBase = 100_000_000;
 
@@ -1613,11 +1617,16 @@ namespace NodeSetEditor.Model
             var pubDate = !string.IsNullOrEmpty(model.PublicationDate)
                 ? model.PublicationDate!
                 : DateTime.UtcNow.ToString("o");
-            var modelVersion = version;
+            // ModelVersion is SemVer, where Version is the human form that keeps its leading
+            // zeros — "1.4.2" against "1.04.2", as Machinery ships. So the value authored in the
+            // model table is normalized, and so is the Version this falls back to when the source
+            // NodeSet declared no ModelVersion at all; writing Version through verbatim is what
+            // used to put a non-compliant "1.04.2" in this property.
+            var modelVersion = Model.ToSemVer(version) ?? string.Empty;
             if (model.Metadata != null
                 && model.Metadata.TryGetPropertyValue("ModelVersion", out var mv) && mv != null)
             {
-                modelVersion = mv.ToString();
+                modelVersion = Model.ToSemVer(mv.ToString()) ?? modelVersion;
             }
 
             // Structural creation lives in the instantiation engine; here we only refresh values on
@@ -1628,17 +1637,47 @@ namespace NodeSetEditor.Model
 
             var objNodeId = obj.NodeId!;
 
-            await UpsertMetadataPropertyAsync(db, model, objNodeId, "NamespaceUri", StringDataTypeId, "String", uri);
-            await UpsertMetadataPropertyAsync(db, model, objNodeId, "NamespaceVersion", StringDataTypeId, "String", version);
-            await UpsertMetadataPropertyAsync(db, model, objNodeId, "NamespacePublicationDate", DateTimeDataTypeId, "DateTime", pubDate);
-            await UpsertMetadataPropertyAsync(db, model, objNodeId, "ModelVersion", StringDataTypeId, "String", modelVersion);
+            // One allocator for the whole pass. A property missing from the source NodeSet gets
+            // created here, and up to four can be: the rows added below are only in EF's change
+            // tracker until SaveChanges, so re-querying the DB for max+1 per property would hand
+            // out the same id every time.
+            var nextNumericId = await NextNumericNodeIdAsync(db, model);
+            string AllocateNodeId() => $"nsu={uri};i={nextNumericId++}";
+
+            await UpsertMetadataPropertyAsync(db, model, objNodeId, "NamespaceUri", StringDataTypeId, "String", uri, AllocateNodeId);
+            await UpsertMetadataPropertyAsync(db, model, objNodeId, "NamespaceVersion", StringDataTypeId, "String", version, AllocateNodeId);
+            await UpsertMetadataPropertyAsync(db, model, objNodeId, "NamespacePublicationDate", DateTimeDataTypeId, "DateTime", pubDate, AllocateNodeId);
+            await UpsertMetadataPropertyAsync(db, model, objNodeId, "ModelVersion", SemanticVersionStringDataTypeId, "String", modelVersion, AllocateNodeId);
 
             await db.SaveChangesAsync();
         }
 
+        /// <summary>
+        /// The next free numeric identifier in the model: max+1 over the "nsu={uri};i=" NodeIds
+        /// already stored. Mirrors WorkspaceAddressSpaceService.GetNextNodeIdAsync, which scans the
+        /// in-memory address space; this runs below that layer and has only the DB rows to go on.
+        /// </summary>
+        private static async Task<long> NextNumericNodeIdAsync(NodeSetEditorDbContext db, Model model)
+        {
+            var prefix = $"nsu={model.Uri};i=";
+            var ids = await db.Nodes
+                .Where(n => n.ModelId == model.Id && n.NodeId != null && n.NodeId.StartsWith(prefix))
+                .Select(n => n.NodeId!)
+                .ToListAsync();
+
+            long max = 0;
+            foreach (var id in ids)
+            {
+                if (long.TryParse(id.AsSpan(prefix.Length), out var numeric) && numeric > max)
+                    max = numeric;
+            }
+            return max + 1;
+        }
+
         private static async Task UpsertMetadataPropertyAsync(
             NodeSetEditorDbContext db, Model model, string objNodeId,
-            string propName, string dataTypeId, string xsdType, string valueText)
+            string propName, string dataTypeId, string xsdType, string valueText,
+            Func<string> allocateNodeId)
         {
             var attrs = new VariableAttributes
             {
@@ -1679,7 +1718,14 @@ namespace NodeSetEditor.Model
                 return;
             }
 
-            var propNodeId = $"nsu={model.Uri};s=NamespaceMetadata.{propName}";
+            // A numeric id, like every other node the editor creates. This used to synthesize
+            // "nsu={uri};s=NamespaceMetadata.{propName}" — a deterministic id needs no allocator,
+            // but it put a string NodeId among numeric siblings in every exported NodeSet whose
+            // source was missing one of these properties (ModelVersion, usually, on models that
+            // predate it being mandatory). Idempotency does not depend on the id: the lookup
+            // above matches on the local BrowseName, and the ParentNodeId set here is what makes
+            // the next pass find this node.
+            var propNodeId = allocateNodeId();
             db.Nodes.Add(new Node
             {
                 ModelId = model.Id,

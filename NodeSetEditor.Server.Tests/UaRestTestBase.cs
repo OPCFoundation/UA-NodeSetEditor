@@ -89,14 +89,20 @@ public abstract class UaRestTestBase
         return await resp.Content.ReadFromJsonAsync<JsonElement>();
     }
 
+    /// <param name="requestedNodeId">
+    /// The identifier to ask for ("s=Foo.Bar", "i=6038"); null lets the server allocate
+    /// a numeric one, which is what every caller did before string ids were offered.
+    /// </param>
     protected async Task<string> CreateChildNode(string parentNodeId, string nodeClass, string browseName,
-        string? typeDefinitionId = null, string referenceTypeId = "i=47", string? modelUri = null)
+        string? typeDefinitionId = null, string referenceTypeId = "i=47", string? modelUri = null,
+        string? requestedNodeId = null)
     {
         var req = WithServer(HttpMethod.Post,
             $"/api/opcua/v1/nodes/{Slug(parentNodeId)}/children");
         req.Content = JsonContent.Create(new
         {
             modelUri = modelUri ?? ApiFixture.TestModelUri,
+            requestedNodeId,
             nodeClass,
             browseName,
             displayName = browseName,

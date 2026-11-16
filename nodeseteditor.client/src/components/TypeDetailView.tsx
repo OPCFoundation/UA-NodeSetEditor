@@ -765,6 +765,7 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
             {
                modelUri: data.modelUri,
                browseNameModelUri: data.browseNameModelUri,
+               requestedNodeId: data.requestedNodeId,
                nodeClass: ncMap[data.nodeClass] ?? 'Object',
                browseName: data.browseName,
                displayName: data.displayName,

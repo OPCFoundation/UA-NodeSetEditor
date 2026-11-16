@@ -3677,6 +3677,10 @@
             "type": "string",
             "nullable": true
           },
+          "requestedNodeId": {
+            "type": "string",
+            "nullable": true
+          },
           "browseName": {
             "type": "string",
             "nullable": true

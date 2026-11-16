@@ -406,6 +406,24 @@ namespace NodeSetEditor.Model
         }
 
         /// <summary>
+        /// The SemVer form of a version string: each component stripped of its leading zeros,
+        /// any pre-release label kept. "1.04.2" → "1.4.2", "1.05.07-alpha" → "1.5.7-alpha".
+        ///
+        /// A NodeSet carries both forms and they are not interchangeable: the Version attribute
+        /// is for humans and keeps its zero padding ("1.04.2"), while ModelVersion is SemVer and
+        /// must not have any (Machinery 1.04.2 ships exactly that pair). Use this wherever a
+        /// ModelVersion is derived from, or defaulted to, a Version.
+        /// </summary>
+        public static string? ToSemVer(string? version)
+        {
+            if (string.IsNullOrWhiteSpace(version)) return null;
+
+            var (major, minor, patch, prerelease) = ParseSemVer(version);
+            var core = $"{major}.{minor}.{patch}";
+            return prerelease != null ? $"{core}-{prerelease}" : core;
+        }
+
+        /// <summary>
         /// Compute the working-copy version produced by checking a model out for editing.
         /// Any pre-release suffix is stripped, the patch is incremented, and <c>-alpha</c> is
         /// appended — ALWAYS, including when the source is itself an <c>-alpha</c> checkpoint, so

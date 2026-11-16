@@ -1645,8 +1645,21 @@ namespace NodeSetEditor.Server.Controllers
                     return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument, nameof(Opc.Ua.StatusCodes.BadInvalidArgument),
                         $"nodeClass must be 'Object' or 'Variable'; got '{request.NodeClass}'."));
 
-                var numericId = await _addressSpace.GetNextNodeIdAsync(workspaceId, request.ModelUri);
-                var nodeId = $"nsu={request.ModelUri};i={numericId}";
+                var (requestedNodeId, requestedNodeIdError) =
+                    ResolveRequestedNodeId(request.RequestedNodeId, request.ModelUri, addressSpace);
+                if (requestedNodeIdError != null) return requestedNodeIdError;
+
+                string nodeId;
+                if (requestedNodeId != null)
+                {
+                    nodeId = requestedNodeId;
+                }
+                else
+                {
+                    var numericId = await _addressSpace.GetNextNodeIdAsync(workspaceId, request.ModelUri);
+                    nodeId = $"nsu={request.ModelUri};i={numericId}";
+                }
+
                 var browseNameNs = request.BrowseNameModelUri ?? request.ModelUri;
                 var qualifiedBrowseName = $"nsu={browseNameNs};{request.BrowseName}";
                 // A blank DisplayName means "unset" — an empty LocalizedText would survive
@@ -1800,9 +1813,22 @@ namespace NodeSetEditor.Server.Controllers
                 var effectiveModellingRuleId =
                     addressSpace.IsInsideTypeTree(parentNode) ? request.ModellingRuleId : null;
 
-                // Allocate NodeId
-                var numericId = await _addressSpace.GetNextNodeIdAsync(workspaceId, request.ModelUri);
-                var nodeId = $"nsu={request.ModelUri};i={numericId}";
+                // Allocate NodeId — the caller's own, when it asked for one
+                var (requestedNodeId, requestedNodeIdError) =
+                    ResolveRequestedNodeId(request.RequestedNodeId, request.ModelUri, addressSpace);
+                if (requestedNodeIdError != null) return requestedNodeIdError;
+
+                string nodeId;
+                if (requestedNodeId != null)
+                {
+                    nodeId = requestedNodeId;
+                }
+                else
+                {
+                    var numericId = await _addressSpace.GetNextNodeIdAsync(workspaceId, request.ModelUri);
+                    nodeId = $"nsu={request.ModelUri};i={numericId}";
+                }
+
                 var browseNameNs = request.BrowseNameModelUri ?? request.ModelUri;
                 var qualifiedBrowseName = $"nsu={browseNameNs};{request.BrowseName}";
                 // Blank DisplayName == unset; see CreateNode.
@@ -3771,6 +3797,93 @@ namespace NodeSetEditor.Server.Controllers
             if (value == null) return "";
             var semi = value.IndexOf(';');
             return semi >= 0 ? value[(semi + 1)..] : value;
+        }
+
+        /// <summary>Numeric identifiers are UInt32 (Part 6 §5.2.2.9).</summary>
+        private const long MAX_NUMERIC_IDENTIFIER = 4294967295;
+
+        /// <summary>A string identifier is capped at 4096 characters (Part 6 §5.2.2.9).</summary>
+        private const int MAX_STRING_IDENTIFIER_LENGTH = 4096;
+
+        /// <summary>
+        /// Resolves a caller-supplied NodeId identifier into the full NodeId for the model
+        /// being written to. Returns (null, null) when nothing was requested, which leaves the
+        /// caller on its existing numeric-allocation path.
+        ///
+        /// The uniqueness check here is the only thing enforcing uniqueness anywhere:
+        /// AddressSpace.AddNodeInternal assigns into a dictionary and would silently overwrite
+        /// an existing node, and the Nodes table carries only a non-unique index on NodeId.
+        /// Neither layer would complain, so a typo would clobber a node.
+        /// </summary>
+        private (string? NodeId, ActionResult? Error) ResolveRequestedNodeId(
+            string? requestedNodeId,
+            string modelUri,
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace)
+        {
+            if (string.IsNullOrWhiteSpace(requestedNodeId))
+                return (null, null);
+
+            ActionResult Invalid(string message) => BadRequest(MakeError(
+                Opc.Ua.StatusCodes.BadInvalidArgument, nameof(Opc.Ua.StatusCodes.BadInvalidArgument), message));
+
+            var requested = requestedNodeId.Trim();
+            if (requested.StartsWith("nsu=", StringComparison.Ordinal)
+                || requested.StartsWith("ns=", StringComparison.Ordinal)
+                || requested.StartsWith("svr=", StringComparison.Ordinal))
+            {
+                return (null, Invalid(
+                    $"requestedNodeId must be the identifier alone (e.g. 's=Foo' or 'i=6038'), not '{requested}'. "
+                    + "The namespace comes from modelUri."));
+            }
+
+            if (requested.Length < 3 || requested[1] != '=')
+                return (null, Invalid($"requestedNodeId '{requested}' must start with 'i=', 's=', 'g=' or 'b='."));
+
+            var idType = requested[0];
+            var identifier = requested[2..];
+
+            switch (idType)
+            {
+                case 'i':
+                    if (!long.TryParse(identifier, out var numeric) || numeric < 0)
+                        return (null, Invalid("A numeric identifier must be a non-negative integer."));
+                    if (numeric > MAX_NUMERIC_IDENTIFIER)
+                        return (null, Invalid($"A numeric identifier must be at most {MAX_NUMERIC_IDENTIFIER}."));
+                    break;
+                case 's':
+                    if (identifier.Trim().Length == 0)
+                        return (null, Invalid("A string identifier must not be empty."));
+                    if (identifier.Length > MAX_STRING_IDENTIFIER_LENGTH)
+                        return (null, Invalid(
+                            $"A string identifier must be at most {MAX_STRING_IDENTIFIER_LENGTH} characters."));
+                    // ';' separates the namespace from the identifier in every NodeId the
+                    // editor stores, so one inside the identifier would make the id unparseable.
+                    if (identifier.Contains(';'))
+                        return (null, Invalid("A string identifier may not contain ';'."));
+                    if (identifier.Any(char.IsControl))
+                        return (null, Invalid("A string identifier may not contain control characters."));
+                    break;
+                case 'g':
+                    if (!Guid.TryParseExact(identifier, "D", out _))
+                        return (null, Invalid("A GUID identifier must be of the form 00000000-0000-0000-0000-000000000000."));
+                    break;
+                case 'b':
+                    if (!Convert.TryFromBase64String(identifier, new byte[((identifier.Length * 3) + 3) / 4], out _))
+                        return (null, Invalid("An opaque identifier must be valid Base64."));
+                    break;
+                default:
+                    return (null, Invalid($"requestedNodeId '{requested}' must start with 'i=', 's=', 'g=' or 'b='."));
+            }
+
+            var nodeId = $"nsu={modelUri};{idType}={identifier}";
+            if (addressSpace.Read(nodeId) != null)
+            {
+                return (null, Conflict(MakeError(
+                    Opc.Ua.StatusCodes.BadNodeIdExists, nameof(Opc.Ua.StatusCodes.BadNodeIdExists),
+                    $"NodeId '{idType}={identifier}' is already used in '{modelUri}'.")));
+            }
+
+            return (nodeId, null);
         }
 
         /// <summary>
@@ -5818,6 +5931,15 @@ namespace NodeSetEditor.Server.Controllers
     {
         public string? ModelUri { get; set; }
         public string? NodeClass { get; set; }
+
+        /// <summary>
+        /// Optional: the NodeId to give the new node, as the identifier alone —
+        /// "s=Machine.NamespaceMetadata.ModelVersion", "i=6038", "g=&lt;guid&gt;", "b=&lt;base64&gt;".
+        /// Never a whole "nsu=...;...": the namespace always comes from ModelUri, so a caller
+        /// cannot plant a node in a namespace it does not own. Omit it to have a numeric id
+        /// allocated, which is what every caller did before string ids were offered.
+        /// </summary>
+        public string? RequestedNodeId { get; set; }
         public string? BrowseName { get; set; }
         /// <summary>
         /// Optional: namespace URI for the BrowseName. When set, overrides ModelUri for BrowseName qualification.

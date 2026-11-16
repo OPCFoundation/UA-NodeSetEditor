@@ -18,6 +18,8 @@ import { ModelDialog } from './ModelDialog';
 import { NodeIdAutocomplete } from './NodeIdAutocomplete';
 import type { NodeIdOption } from './NodeIdAutocomplete';
 import { NodeLocationField } from './NodeLocationField';
+import { NodeIdModeField } from './NodeIdModeField';
+import { useRequestedNodeId } from '../hooks/useRequestedNodeId';
 import { useHierarchicalReferenceTypes } from '../hooks/useHierarchicalReferenceTypes';
 import { autoInstantiateMandatoryChildren } from '../utils/instantiateUtils';
 import { getLastModelUri, setLastModelUri } from '../utils/lastModelUri';
@@ -236,9 +238,20 @@ export const CreateInstanceDialog: React.FC<CreateInstanceDialogProps> = ({
       onClose();
    };
 
+   // Create-time NodeId choice. An instance organized under a node with a string
+   // id follows that node's convention, even though it takes no ParentId.
+   const nodeIdState = useRequestedNodeId({
+      open,
+      workspaceId,
+      modelUri,
+      browseName,
+      parentNodeId: organizes ? location : undefined,
+   });
+
    const canSave = browseName.trim() !== '' && modelUri !== '' && typeDefNodeId !== ''
       // An organized instance has to have somewhere to go.
-      && (!organizes || (location !== '' && locationRefType !== ''));
+      && (!organizes || (location !== '' && locationRefType !== ''))
+      && nodeIdState.canSave;
 
    const handleSave = async () => {
       if (!canSave) return;
@@ -249,6 +262,7 @@ export const CreateInstanceDialog: React.FC<CreateInstanceDialogProps> = ({
             '/opcua/v1/nodes',
             {
                modelUri,
+               requestedNodeId: nodeIdState.requestedNodeId,
                nodeClass: instanceNodeClass,
                browseName: browseName.trim(),
                displayName: displayName.trim() || browseName.trim(),
@@ -362,6 +376,9 @@ export const CreateInstanceDialog: React.FC<CreateInstanceDialogProps> = ({
                      </MenuItem>
                   ))}
                </TextField>
+
+               {/* NodeId — numeric by default, or a string identifier the author picks */}
+               <NodeIdModeField state={nodeIdState} />
 
                {/* Which type to instantiate, when the caller didn't name one. */}
                {pickTypeDef && (

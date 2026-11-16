@@ -722,6 +722,7 @@ namespace NodeSetEditor.Server.Services
                     // dialog offers the stripped one, editable); either way the working-copy
                     // suffix comes off. A model kept at an unchanged version is left alone so
                     // repeated keeps are a no-op.
+                    var wasEditable = link.IsEditable;
                     var keptVersion = DbModel.StripWorkingSuffix(
                         string.IsNullOrWhiteSpace(version) ? model.Version : version);
 
@@ -744,8 +745,11 @@ namespace NodeSetEditor.Server.Services
                     link.IsEditable = false;
                     ws.ModifiedAt = DateTime.UtcNow;
                     await _db.SaveChangesAsync();
-                    // The version lives in the model's own NamespaceMetadata node too.
-                    await TrySyncNamespaceMetadataAsync(model);
+                    // The version lives in the model's own NamespaceMetadata node too. Only a
+                    // model that was actually being edited is touched: a keep on a link that was
+                    // never checked out must leave the content exactly as it was.
+                    if (wasEditable)
+                        await TrySyncNamespaceMetadataAsync(model);
                     return ToModelInfo(model);
                 }
 
@@ -1291,8 +1295,10 @@ namespace NodeSetEditor.Server.Services
             }
             await _db.SaveChangesAsync();
 
-            // Every model gets a NamespaceMetadata object kept in sync with its version.
-            await TrySyncNamespaceMetadataAsync(dbModel);
+            // No NamespaceMetadata sync here. An imported NodeSet is stored exactly as authored —
+            // a Cloud Library or shared model never changes, and even an editable upload is left
+            // alone until something changes its version (checkout, Finish Editing, publish, a
+            // manual version edit), which is where the sync runs.
 
             // Add dependencies to workspace too
             await AddDependenciesToWorkspaceAsync(ws, nodeSet);
@@ -1382,9 +1388,9 @@ namespace NodeSetEditor.Server.Services
             // can write to ANY workspace could mutate another workspace's (or a
             // published) model by id. Require the (workspaceId, modelId) link to
             // exist first, mirroring the membership check in CheckoutModelAsync.
-            var isLinked = await _db.WorkspaceModels
-                .AnyAsync(wm => wm.WorkspaceId == workspaceId && wm.ModelId == modelId);
-            if (!isLinked)
+            var link = await _db.WorkspaceModels
+                .FirstOrDefaultAsync(wm => wm.WorkspaceId == workspaceId && wm.ModelId == modelId);
+            if (link == null)
                 throw new KeyNotFoundException($"Model '{modelId}' is not in workspace '{workspaceId}'.");
 
             var model = await _db.Models.FindAsync(modelId)
@@ -1429,7 +1435,9 @@ namespace NodeSetEditor.Server.Services
             await _db.SaveChangesAsync();
 
             // Refresh NamespaceMetadata (NamespaceVersion / NamespacePublicationDate / ModelVersion).
-            if (versionChanged)
+            // Only on the workspace's own private model: a shared / Cloud Library row's content
+            // is never rewritten, even when an admin curates its version.
+            if (versionChanged && link.IsPrivate)
                 await TrySyncNamespaceMetadataAsync(model);
 
             return ToModelInfo(model);

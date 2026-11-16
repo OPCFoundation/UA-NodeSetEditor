@@ -15,6 +15,8 @@ import MenuItem from '@mui/material/MenuItem';
 import { ModelDialog } from './ModelDialog';
 import { NodeIdAutocomplete } from './NodeIdAutocomplete';
 import type { NodeIdOption } from './NodeIdAutocomplete';
+import { NodeIdModeField } from './NodeIdModeField';
+import { useRequestedNodeId } from '../hooks/useRequestedNodeId';
 import { extractNamespaceUri } from '../utils/formatNodeId';
 import { getAllowedValueRankOptions } from '../utils/valueRank';
 
@@ -34,6 +36,11 @@ interface VariableTypeInfo {
 export interface CreateChildData {
    modelUri: string;
    browseNameModelUri?: string;
+   /**
+    * The NodeId the author asked for, as the identifier alone ("s=Foo.Bar").
+    * Absent means "let the server allocate a numeric one", which is the default.
+    */
+   requestedNodeId?: string;
    referenceTypeId: string;
    nodeClass: number;
    browseName: string;
@@ -333,10 +340,21 @@ export const AddChildDialog: React.FC<AddChildDialogProps> = ({
       }
    }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
+   // Create-time NodeId choice. A child of a string-id parent extends the
+   // parent's identifier; anything else defaults to server-allocated numeric.
+   const nodeIdState = useRequestedNodeId({
+      open,
+      workspaceId,
+      modelUri: selectedModelUri,
+      browseName,
+      parentNodeId: _parentNodeId,
+   });
+
    const canSave = browseName.trim() !== ''
       && selectedModelUri !== ''
       && referenceTypeId !== ''
-      && (!showTypeDefinition || typeDefinitionId !== '');
+      && (!showTypeDefinition || typeDefinitionId !== '')
+      && nodeIdState.canSave;
 
    const handleBrowseNameChange = (value: string) => {
       setBrowseName(value);
@@ -366,6 +384,7 @@ export const AddChildDialog: React.FC<AddChildDialogProps> = ({
       onSave({
          modelUri: selectedModelUri,
          browseNameModelUri: browseNameNs !== parentModelUri ? browseNameNs : undefined,
+         requestedNodeId: nodeIdState.requestedNodeId,
          referenceTypeId,
          nodeClass: nodeClassValue,
          browseName: browseName.trim(),
@@ -419,6 +438,9 @@ export const AddChildDialog: React.FC<AddChildDialogProps> = ({
                size="small"
                slotProps={{ inputLabel: { shrink: true }, input: { readOnly: true } }}
             />
+
+            {/* NodeId — numeric by default, or a string identifier the author picks */}
+            <NodeIdModeField state={nodeIdState} />
 
             {/* Reference Type — shown for Object/Variable children, restricted to
                 subtypes of HierarchicalReferences. Implied (hidden) for Methods. */}

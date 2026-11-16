@@ -18,7 +18,8 @@ import MenuItem from '@mui/material/MenuItem';
 import { ModelDialog } from './ModelDialog';
 import { NodeIdAutocomplete } from './NodeIdAutocomplete';
 import type { NodeIdOption } from './NodeIdAutocomplete';
-import { validateNodeIdValue, type NodeIdPrefix } from '../utils/nodeIdValidation';
+import { NodeIdModeField } from './NodeIdModeField';
+import { useRequestedNodeId } from '../hooks/useRequestedNodeId';
 import { formatWithModelPrefix } from '../utils/formatNodeId';
 import { resolveExtendSuperTypeId } from '../utils/extendSuperType';
 import { getAllowedValueRankOptions } from '../utils/valueRank';
@@ -184,10 +185,7 @@ export const EditTypeDialog: React.FC<EditTypeDialogProps> = ({
 
    // Create-mode state
    const [selectedModelUri, setSelectedModelUri] = React.useState('');
-   const [nodeIdPrefix, setNodeIdPrefix] = React.useState<NodeIdPrefix>('i');
-   const [nodeIdValue, setNodeIdValue] = React.useState('');
    const [, setDisplayNameManuallyEdited] = React.useState(false);
-   const [defaultNumericId, setDefaultNumericId] = React.useState<string>('');
 
    const attrMap = React.useMemo(() => {
       const map = new Map<string, string>();
@@ -342,31 +340,15 @@ export const EditTypeDialog: React.FC<EditTypeDialogProps> = ({
       [parentVtInfo?.valueRank],
    );
 
-   // NodeId is allocated server-side on create; this is for display preview only
-   const { data: nextNodeIdData } = useQuery({
-      queryKey: ['nextNodeId', workspaceId, selectedModelUri],
-      queryFn: async () => {
-         return '';
-      },
-      enabled: open && isCreateMode && !!selectedModelUri,
+   // Create-time NodeId choice. A supertype is not a containment parent, so a new
+   // type's string identifier starts from its BrowseName rather than extending
+   // anything — hence no parentNodeId here.
+   const nodeIdState = useRequestedNodeId({
+      open: open && isCreateMode,
+      workspaceId,
+      modelUri: selectedModelUri,
+      browseName,
    });
-
-   // Update default numeric ID when fetched
-   React.useEffect(() => {
-      if (nextNodeIdData) {
-         setDefaultNumericId(nextNodeIdData);
-         if (nodeIdPrefix === 'i') {
-            setNodeIdValue(nextNodeIdData);
-         }
-      }
-   }, [nextNodeIdData]); // eslint-disable-line react-hooks/exhaustive-deps
-
-   // Invalidate cached next node ID when dialog opens in create mode
-   React.useEffect(() => {
-      if (open && isCreateMode) {
-         queryClient.invalidateQueries({ queryKey: ['nextNodeId'] });
-      }
-   }, [open, isCreateMode, queryClient]);
 
    // Initialize state from attributes when dialog opens and data is available.
    // Create mode only needs namespace data (for private model selection); it does not
@@ -389,8 +371,6 @@ export const EditTypeDialog: React.FC<EditTypeDialogProps> = ({
             setVtValueRank(-1);
             setVtArrayDimensions('');
             setDisplayNameManuallyEdited(false);
-            setNodeIdPrefix('i');
-            setNodeIdValue('');
 
             // Default model selection precedence:
             //   1) Caller's explicit page-context model (defaultModelUri)
@@ -464,7 +444,7 @@ export const EditTypeDialog: React.FC<EditTypeDialogProps> = ({
       if (!open) {
          setInitialized(false);
       }
-   }, [open, readyToInit, superTypeOptions, attrMap, attrNodeIdMap, initialized, isCreateMode, superTypeNodeIdProp, superTypeModelUri, privateModels, defaultNumericId, isDataType, isVariableType, isReferenceType, conformanceUnitsProp]);
+   }, [open, readyToInit, superTypeOptions, attrMap, attrNodeIdMap, initialized, isCreateMode, superTypeNodeIdProp, superTypeModelUri, privateModels, isDataType, isVariableType, isReferenceType, conformanceUnitsProp]);
 
    const showIsOptionSet = isDataType && selectedSuperType != null && isOrDerives(selectedSuperType, UINTEGER_NODE_ID);
 
@@ -508,20 +488,9 @@ export const EditTypeDialog: React.FC<EditTypeDialogProps> = ({
       }
    }, [parentVtInfo, isVariableType, isCreateMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
-   // NodeId validation for create mode
-   const nodeIdError = React.useMemo(() => {
-      if (!isCreateMode || !nodeIdValue) return null;
-      return validateNodeIdValue(nodeIdPrefix, nodeIdValue);
-   }, [isCreateMode, nodeIdPrefix, nodeIdValue]);
-   void nodeIdError;
-
-   // Compute full NodeId for create mode
-   const fullNodeId = isCreateMode
-      ? `nsu=${selectedModelUri};${nodeIdPrefix}=${nodeIdValue}`
-      : nodeId;
-
    const canSave = !inverseNameRequired && (isCreateMode
       ? browseName.trim() !== '' && selectedSuperTypeId !== '' && selectedModelUri !== ''
+         && nodeIdState.canSave
       : browseName.trim() !== '' && selectedSuperTypeId !== '');
 
    // Clear error when user modifies fields
@@ -540,14 +509,6 @@ export const EditTypeDialog: React.FC<EditTypeDialogProps> = ({
       }
    };
 
-   const handleNodeIdPrefixChange = (newPrefix: NodeIdPrefix) => {
-      setNodeIdPrefix(newPrefix);
-      clearError();
-      // Reset value when changing prefix; restore default for 'i'
-      setNodeIdValue(newPrefix === 'i' ? defaultNumericId : '');
-   };
-   void handleNodeIdPrefixChange;
-
    const handleSave = async () => {
       if (!canSave || !selectedSuperTypeId) return;
       setIsSaving(true);
@@ -557,6 +518,7 @@ export const EditTypeDialog: React.FC<EditTypeDialogProps> = ({
          if (isCreateMode) {
             const body: Record<string, unknown> = {
                modelUri: selectedModelUri,
+               requestedNodeId: nodeIdState.requestedNodeId,
                nodeClass: getNodeClassString(nodeClass),
                browseName: browseName.trim(),
                displayName: displayName.trim(),
@@ -587,7 +549,12 @@ export const EditTypeDialog: React.FC<EditTypeDialogProps> = ({
                body,
                { headers: { 'OpcUa-Server': idToUrn(workspaceId) } }
             );
-            const createdNodeId = createResponse.data?.nodeId ?? fullNodeId;
+            // The server is the only authority on the id: it may have allocated a
+            // numeric one, so never substitute what was asked for.
+            const createdNodeId = createResponse.data?.nodeId;
+            if (!createdNodeId) {
+               throw new Error('The server did not return a NodeId for the new type.');
+            }
 
             // Refresh any cached type lists so other dialogs (e.g. AddChild's
             // TypeDefinition dropdown) pick up the newly created type.
@@ -682,6 +649,9 @@ export const EditTypeDialog: React.FC<EditTypeDialogProps> = ({
                   ))}
                </TextField>
             )}
+            {/* NodeId — numeric by default, or a string identifier the author picks.
+                Create mode only: the id cannot change once the type exists. */}
+            {isCreateMode && <NodeIdModeField state={nodeIdState} />}
             {!isCreateMode && (
                <TextField
                   label="NodeId"
