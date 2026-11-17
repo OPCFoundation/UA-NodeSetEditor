@@ -62,6 +62,15 @@ namespace NodeSetEditor.Server.Services
         public string? TypeDefinitionId { get; set; }
         public string? ModellingRule { get; set; }
         public JsonObject? Attributes { get; set; }
+
+        /// <summary>
+        /// Upsert of an existing node: merge <see cref="Attributes"/> into the stored JSON key by
+        /// key, and keep the stored Description when none is given, instead of replacing both.
+        /// For writers that change one or two fields of a node they did not build — the
+        /// regenerated Value of an imported dictionary must not cost it its SymbolicName,
+        /// ReleaseStatus or AccessLevel. Ignored when the node is new.
+        /// </summary>
+        public bool MergeAttributes { get; set; }
     }
 
     public class ReferenceChange

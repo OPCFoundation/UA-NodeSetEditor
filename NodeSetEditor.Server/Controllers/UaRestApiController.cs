@@ -969,6 +969,13 @@ namespace NodeSetEditor.Server.Controllers
                 if (user?.UserId != null)
                     await _storage.EnsureUserPreferenceAsync(user.UserId, user.Email, user.DisplayName, user.TenantId);
 
+                // Leaving editing settles the model's DataTypeDictionaries, if it has any, while
+                // it is still editable. A model without dictionaries is not given one here — that
+                // takes the explicit Generate DataType Dictionaries action.
+                var action = request.Action?.Trim().ToLowerInvariant();
+                if (action is "keep" or "publish")
+                    await TryRefreshDataTypeDictionariesAsync(workspaceId, id);
+
                 await _storage.CheckinModelAsync(workspaceId, id, request.Action ?? string.Empty,
                     request.Version, request.Description, creator, user?.UserId);
                 _addressSpace.Invalidate(workspaceId);
@@ -990,6 +997,47 @@ namespace NodeSetEditor.Server.Controllers
             catch (Exception e)
             {
                 _logger.LogError(e, "Error checking in namespace {Id}", id);
+                return InternalError(e);
+            }
+        }
+
+        /// <summary>
+        /// Generate the model's legacy DataTypeDictionaries: add a BSD and an XSD dictionary when
+        /// the model has none, otherwise rebuild the existing ones from the current DataTypes —
+        /// blobs regenerated, DataTypeDescriptions added, renamed or deleted to match, missing
+        /// Default Binary / Default XML encodings created. Existing NodeIds never change. The
+        /// model must be checked out.
+        /// </summary>
+        [HttpPost("namespaces/info/{id}/datatype-dictionaries")]
+        public async Task<ActionResult<DataTypeDictionaryResult>> GenerateDataTypeDictionaries(
+            Guid id,
+            [FromHeader(Name = "OpcUa-Server")] string? opcUaServer)
+        {
+            try
+            {
+                var (user, workspace, error) = await ResolveServer(opcUaServer, requireWrite: true);
+                if (error != null) return error;
+
+                var workspaceId = workspace!.Id!.Value;
+                var models = await _storage.GetWorkspaceModelsAsync(workspaceId);
+                var modelUri = models.FirstOrDefault(m => m?.Id == id)?.ModelUri;
+                if (string.IsNullOrEmpty(modelUri))
+                    return NotFound(MakeError(Opc.Ua.StatusCodes.BadNotFound, nameof(Opc.Ua.StatusCodes.BadNotFound),
+                        $"Model '{id}' is not in this workspace."));
+
+                return Ok(await SyncDataTypeDictionariesAsync(workspaceId, modelUri, createIfMissing: true));
+            }
+            catch (ModelReadOnlyException e)
+            {
+                return Forbidden(MakeError(Opc.Ua.StatusCodes.BadNotWritable, nameof(Opc.Ua.StatusCodes.BadNotWritable), e.Message));
+            }
+            catch (InvalidOperationException e)
+            {
+                return BadRequest(MakeError(Opc.Ua.StatusCodes.BadInvalidArgument, nameof(Opc.Ua.StatusCodes.BadInvalidArgument), e.Message));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error generating DataTypeDictionaries for namespace {Id}", id);
                 return InternalError(e);
             }
         }
@@ -1111,7 +1159,8 @@ namespace NodeSetEditor.Server.Controllers
             [FromHeader(Name = "OpcUa-Server")] string? opcUaServer,
             [FromQuery] string format = "xml",
             [FromQuery] bool includeDependencies = false,
-            [FromQuery] bool removeUnusedNodes = false)
+            [FromQuery] bool removeUnusedNodes = false,
+            [FromQuery] bool includeDictionaries = false)
         {
             try
             {
@@ -1141,13 +1190,14 @@ namespace NodeSetEditor.Server.Controllers
                         $"The '{fmt}' download format is not available for this account."));
                 }
 
-                if (includeDependencies)
+                if (includeDependencies || includeDictionaries)
                 {
                     // Trimming is generated from the DB, which emits XML; the other formats are
                     // serialized from the address space and have no trimmed path.
-                    var trim = removeUnusedNodes && fmt == OpenExportFormat;
+                    var trim = includeDependencies && removeUnusedNodes && fmt == OpenExportFormat;
                     return await ExportNamespaceBundle(
-                        workspaceId, modelInfo, models, addressSpace, fmt, trim, user, workspace!.Name);
+                        workspaceId, modelInfo, models, addressSpace, fmt, trim, user, workspace!.Name,
+                        includeDependencies, includeDictionaries);
                 }
 
                 var ms = SerializeModel(addressSpace, modelInfo.ModelUri!, fmt, out var contentType, out var extension,
@@ -1171,10 +1221,12 @@ namespace NodeSetEditor.Server.Controllers
         }
 
         /// <summary>
-        /// Export a model together with every dependency that resolves its
-        /// references and is also present in the workspace, bundled into a single
-        /// ZIP. Required models that are not in the workspace are ignored, so the
-        /// bundle is always a subset of the workspace's models.
+        /// Export a model as a ZIP: with <paramref name="includeDependencies"/>, together with every
+        /// dependency that resolves its references and is also present in the workspace (required
+        /// models that are not in the workspace are ignored, so the bundle is always a subset of the
+        /// workspace's models); with <paramref name="includeDictionaries"/>, together with the
+        /// model's BSD and XSD as separate files. Dictionaries are only ever the downloaded
+        /// model's — never a dependency's.
         /// </summary>
         private async Task<IActionResult> ExportNamespaceBundle(
             Guid workspaceId,
@@ -1184,24 +1236,33 @@ namespace NodeSetEditor.Server.Controllers
             string fmt,
             bool removeUnusedNodes = false,
             AuthenticatedUser? user = null,
-            string? workspaceName = null)
+            string? workspaceName = null,
+            bool includeDependencies = true,
+            bool includeDictionaries = false)
         {
             var modelByUri = models
                 .Where(m => m != null && !string.IsNullOrEmpty(m!.ModelUri))
                 .GroupBy(m => m!.ModelUri!)
                 .ToDictionary(g => g.Key, g => g.First()!);
 
-            Dictionary<string, List<string>> modelDeps;
-            try
+            List<string> bundleUris;
+            if (includeDependencies)
             {
-                modelDeps = await _addressSpace.GetModelDependenciesAsync(workspaceId);
+                Dictionary<string, List<string>> modelDeps;
+                try
+                {
+                    modelDeps = await _addressSpace.GetModelDependenciesAsync(workspaceId);
+                }
+                catch
+                {
+                    modelDeps = new Dictionary<string, List<string>>();
+                }
+                bundleUris = ResolveDependencyClosure(modelInfo.ModelUri!, modelByUri.Keys, modelDeps);
             }
-            catch
+            else
             {
-                modelDeps = new Dictionary<string, List<string>>();
+                bundleUris = [modelInfo.ModelUri!];
             }
-
-            var bundleUris = ResolveDependencyClosure(modelInfo.ModelUri!, modelByUri.Keys, modelDeps);
 
             // "Remove unused nodes": each DEPENDENCY keeps only what the downloaded model reaches.
             // The model itself is never trimmed — it is the thing being shipped.
@@ -1271,11 +1332,42 @@ namespace NodeSetEditor.Server.Controllers
                     using var entryStream = entry.Open();
                     modelStream.CopyTo(entryStream);
                 }
+
+                if (includeDictionaries)
+                {
+                    var (bsd, xsd) = GetDictionarySchemas(addressSpace, modelInfo.ModelUri!);
+                    void AddText(string? text, string extension)
+                    {
+                        if (text == null) return;
+                        var entry = archive.CreateEntry(GenerateExportFileName(modelInfo, extension), CompressionLevel.Optimal);
+                        using var writer = new StreamWriter(entry.Open(), new System.Text.UTF8Encoding(false));
+                        writer.Write(text);
+                    }
+                    AddText(bsd, ".bsd");
+                    AddText(xsd, ".xsd");
+                }
             }
 
             zipStream.Seek(0, SeekOrigin.Begin);
             var zipName = GenerateExportFileName(modelInfo, ".zip");
             return File(zipStream, "application/zip", zipName);
+        }
+
+        /// <summary>
+        /// The BSD and XSD to ship with a download: the ones the model's dictionaries hold, so
+        /// they match the NodeSet in the same ZIP. A model without dictionaries gets them
+        /// generated from its DataTypes on the fly (the model itself is not changed); one with no
+        /// DataTypes to describe gets none.
+        /// </summary>
+        private static (string? Binary, string? Xml) GetDictionarySchemas(
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace, string modelUri)
+        {
+            var (bsd, xsd) = JsonNodeSet::Opc.Ua.NodeSetSerializer.DataTypeDictionaries.DataTypeDictionarySync.ReadSchemas(addressSpace, modelUri);
+            if (bsd != null && xsd != null) return (bsd, xsd);
+
+            var generator = new JsonNodeSet::Opc.Ua.NodeSetSerializer.DataTypeDictionaries.DataTypeDictionaryGenerator(addressSpace, modelUri);
+            if (generator.Types.Count == 0) return (bsd, xsd);
+            return (bsd ?? generator.GenerateBinarySchema(), xsd ?? generator.GenerateXmlSchema());
         }
 
         /// <summary>
@@ -2581,11 +2673,31 @@ namespace NodeSetEditor.Server.Controllers
                     ? nodeToDelete.ParentId
                     : nodeId;
 
+                // A DataType's encodings go with it. The database delete below removes one row,
+                // so they would otherwise be left behind as orphans pointing at nothing.
+                var encodingIds = new List<string>();
+                if (nodeToDelete is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UADataType)
+                {
+                    var modelPrefix = nodeId.StartsWith("nsu=", StringComparison.Ordinal)
+                        ? nodeId[..(nodeId.IndexOf(';') + 1)]
+                        : null;
+                    encodingIds = addressSpace.Browse(nodeId, "i=38", includeForward: true, includeInverse: false)
+                        .Select(r => r.TargetNodeId)
+                        .Where(t => modelPrefix != null && t.StartsWith(modelPrefix, StringComparison.Ordinal))
+                        .Distinct()
+                        .ToList();
+                }
+
                 if (!addressSpace.RemoveNode(nodeId))
                     return NotFound(MakeError(Opc.Ua.StatusCodes.BadNotFound, nameof(Opc.Ua.StatusCodes.BadNotFound), $"Node '{nodeId}' not found."));
 
                 var changeset = new ModelChangeset();
                 changeset.Nodes.Add(new NodeChange { Kind = ChangeKind.Delete, NodeId = nodeId });
+                foreach (var encodingId in encodingIds)
+                {
+                    addressSpace.RemoveNode(encodingId);
+                    changeset.Nodes.Add(new NodeChange { Kind = ChangeKind.Delete, NodeId = encodingId });
+                }
                 await PersistModelAsync(addressSpace, workspaceId, persistNodeId, changeset);
                 _addressSpace.Invalidate(workspaceId);
                 return NoContent();
@@ -4481,6 +4593,160 @@ namespace NodeSetEditor.Server.Controllers
             return semi >= 0 ? browseName[(semi + 1)..] : browseName;
         }
 
+        /// <summary>
+        /// Bring the model's legacy DataTypeDictionaries in line with its DataTypes (see
+        /// <see cref="JsonNodeSet::Opc.Ua.NodeSetSerializer.DataTypeDictionaries.DataTypeDictionarySync"/>)
+        /// and persist exactly what moved. Existing dictionary, description and encoding nodes keep
+        /// their NodeIds. With <paramref name="createIfMissing"/> a model without dictionaries gets
+        /// a BSD and an XSD one; without it such a model is left alone.
+        ///
+        /// Only an editable (checked-out, private) model is touched: the check runs before the
+        /// cached address space is mutated, so a read-only model is never changed even in memory.
+        /// </summary>
+        private async Task<DataTypeDictionaryResult> SyncDataTypeDictionariesAsync(
+            Guid workspaceId, string modelUri, bool createIfMissing)
+        {
+            if (!await IsModelEditableAsync(workspaceId, modelUri))
+                throw new ModelReadOnlyException(
+                    $"Model '{modelUri}' is read-only in this workspace. Check it out before editing.");
+
+            var addressSpace = await _addressSpace.GetAddressSpaceAsync(workspaceId);
+            JsonNodeSet::Opc.Ua.NodeSetSerializer.DataTypeDictionaries.DataTypeDictionarySyncResult sync;
+            try
+            {
+                sync = JsonNodeSet::Opc.Ua.NodeSetSerializer.DataTypeDictionaries.DataTypeDictionarySync
+                    .Sync(addressSpace, modelUri, createIfMissing);
+            }
+            catch
+            {
+                // A sync that failed halfway has left the cached copy part-changed.
+                _addressSpace.Invalidate(workspaceId);
+                throw;
+            }
+
+            var result = new DataTypeDictionaryResult
+            {
+                HasDictionaries = sync.HasDictionaries,
+                DictionariesCreated = sync.DictionariesCreated,
+                DictionariesUpdated = sync.DictionariesUpdated,
+                DescriptionsCreated = sync.DescriptionsCreated,
+                DescriptionsUpdated = sync.DescriptionsUpdated,
+                DescriptionsDeleted = sync.DescriptionsDeleted,
+                EncodingsCreated = sync.EncodingsCreated,
+                EncodingsDeleted = sync.EncodingsDeleted,
+                Warnings = sync.Warnings,
+            };
+            if (!sync.Changed) return result;
+
+            var changeset = new ModelChangeset();
+            foreach (var nodeId in sync.DeletedNodeIds)
+                changeset.Nodes.Add(new NodeChange { Kind = ChangeKind.Delete, NodeId = nodeId });
+
+            foreach (var node in sync.CreatedNodes)
+            {
+                changeset.Nodes.Add(BuildNodeChange(node, ChangeKind.Upsert));
+                foreach (var r in node.References ?? new())
+                {
+                    changeset.References.Add(new ReferenceChange
+                    {
+                        Kind = ChangeKind.Upsert,
+                        SourceNodeId = node.NodeId!,
+                        ReferenceTypeId = r.ReferenceTypeId!,
+                        TargetNodeId = r.TargetId!,
+                        IsForward = r.IsForward ?? true,
+                    });
+                }
+            }
+
+            // An existing node changed in one or two fields; merge them so everything else the
+            // imported node carries (SymbolicName, ReleaseStatus, AccessLevel…) survives.
+            foreach (var node in sync.UpdatedNodes)
+            {
+                var attrs = new System.Text.Json.Nodes.JsonObject();
+                var displayName = LocalizedTextToAttr(node.DisplayName);
+                if (displayName != null) attrs["DisplayName"] = displayName;
+                if (node is JsonNodeSet::Opc.Ua.NodeSetSerializer.Model.UAVariable v && v.Value != null)
+                    attrs["Value"] = VariantToTypedJson(v.Value, v.DataType);
+                changeset.Nodes.Add(new NodeChange
+                {
+                    Kind = ChangeKind.Upsert,
+                    NodeId = node.NodeId!,
+                    BrowseName = node.BrowseName,
+                    DisplayName = GetLocalizedText(node.DisplayName),
+                    Attributes = attrs,
+                    MergeAttributes = true,
+                });
+            }
+
+            foreach (var r in sync.RemovedReferences)
+            {
+                changeset.References.Add(new ReferenceChange
+                {
+                    Kind = ChangeKind.Delete,
+                    SourceNodeId = r.SourceNodeId,
+                    ReferenceTypeId = r.ReferenceTypeId,
+                    TargetNodeId = r.TargetNodeId,
+                    IsForward = r.IsForward,
+                });
+            }
+            foreach (var r in sync.AddedReferences)
+            {
+                changeset.References.Add(new ReferenceChange
+                {
+                    Kind = ChangeKind.Upsert,
+                    SourceNodeId = r.SourceNodeId,
+                    ReferenceTypeId = r.ReferenceTypeId,
+                    TargetNodeId = r.TargetNodeId,
+                    IsForward = r.IsForward,
+                });
+            }
+
+            try
+            {
+                await PersistModelAsync(addressSpace, workspaceId, $"nsu={modelUri};i=0", changeset);
+            }
+            finally
+            {
+                _addressSpace.Invalidate(workspaceId);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Refresh the dictionaries of a model that already has them, on its way out of editing
+        /// (Finish Editing / Publish). Best-effort, like the NamespaceMetadata sync at check-in:
+        /// a failure is logged and must not block the check-in itself.
+        /// </summary>
+        private async Task TryRefreshDataTypeDictionariesAsync(Guid workspaceId, Guid modelId)
+        {
+            string? modelUri = null;
+            try
+            {
+                var models = await _storage.GetWorkspaceModelsAsync(workspaceId);
+                modelUri = models.FirstOrDefault(m => m?.Id == modelId)?.ModelUri;
+                if (string.IsNullOrEmpty(modelUri) || !await IsModelEditableAsync(workspaceId, modelUri))
+                    return;
+
+                await SyncDataTypeDictionariesAsync(workspaceId, modelUri, createIfMissing: false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to refresh DataTypeDictionaries of model '{Uri}' at check-in", modelUri);
+            }
+        }
+
+        /// <summary>The same condition PersistModelAsync enforces: a private, checked-out link.</summary>
+        private async Task<bool> IsModelEditableAsync(Guid workspaceId, string modelUri)
+        {
+            var models = await _storage.GetWorkspaceModelsAsync(workspaceId);
+            var modelInfo = models.FirstOrDefault(m => m != null
+                && string.Equals(m.ModelUri, modelUri, StringComparison.OrdinalIgnoreCase));
+            if (modelInfo?.Id == null) return false;
+            var ws = await _storage.GetWorkspaceAsync(workspaceId);
+            var link = ws?.Models?.FirstOrDefault(r => r.Id == modelInfo.Id.Value);
+            return link is { IsPrivate: true, IsEditable: true };
+        }
+
         private async Task PersistModelAsync(
             JsonNodeSet::Opc.Ua.NodeSetSerializer.AddressSpace addressSpace,
             Guid workspaceId,
@@ -4601,6 +4867,14 @@ namespace NodeSetEditor.Server.Controllers
 
             if (node.IsAbstract == true)
                 attrs["IsAbstract"] = true;
+
+            // Like DisplayName, both are read back from the Attributes JSON on the XML rebuild
+            // path; the whole JSON is replaced on upsert, so leaving them out would drop an
+            // imported node's SymbolicName / ReleaseStatus the first time it is edited.
+            if (!string.IsNullOrEmpty(node.SymbolicName))
+                attrs["SymbolicName"] = node.SymbolicName;
+            if (node.ReleaseStatus is { } releaseStatus)
+                attrs["ReleaseStatus"] = releaseStatus.ToString();
 
             // DesignToolOnly is an instance-only flag (top-level Object/Variable).
             // Mirror it into the Attributes JSON so it survives the address-space

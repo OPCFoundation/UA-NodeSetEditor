@@ -6,7 +6,7 @@ import api, { ApiError } from '../api/axios.api';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { EditDocumentIcon, ErrorOutlineIcon, AccountTreeIcon, DownloadIcon, DeleteIcon, FactCheckIcon, EditIcon, VisibilityIcon, HistoryIcon, LockIcon, LockOpenIcon, ModelStateIcon } from '../icons';
+import { EditDocumentIcon, ErrorOutlineIcon, AccountTreeIcon, DownloadIcon, DeleteIcon, FactCheckIcon, EditIcon, VisibilityIcon, HistoryIcon, LockIcon, LockOpenIcon, ModelStateIcon, SchemaIcon } from '../icons';
 import { resolveModelState } from '../icons/resolveModelState';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -53,6 +53,19 @@ interface ModelInfo {
 import { urnToId, idToUrn } from '../model/WorkspaceDescription';
 import type { WorkspaceDescription, PaginatedResponse } from '../model/WorkspaceDescription';
 import type { WorkspaceNamespaceInfo } from '../model/WorkspaceNamespaceInfo';
+
+/** What POST namespaces/info/{id}/datatype-dictionaries changed. */
+interface DataTypeDictionaryResult {
+   hasDictionaries: boolean;
+   dictionariesCreated: number;
+   dictionariesUpdated: number;
+   descriptionsCreated: number;
+   descriptionsUpdated: number;
+   descriptionsDeleted: number;
+   encodingsCreated: number;
+   encodingsDeleted: number;
+   warnings: string[];
+}
 import { useTheme } from '@mui/material/styles';
 import { ImportModelDialog } from '../components/ImportModelDialog';
 import { ImportSharedModelDialog } from '../components/ImportSharedModelDialog';
@@ -99,6 +112,7 @@ const ModelLibraryPage: React.FC = () => {
    const [downloadFormat, setDownloadFormat] = React.useState<string>('xml');
    const [downloadIncludeDeps, setDownloadIncludeDeps] = React.useState<boolean>(false);
    const [downloadRemoveUnused, setDownloadRemoveUnused] = React.useState<boolean>(false);
+   const [downloadIncludeDicts, setDownloadIncludeDicts] = React.useState<boolean>(false);
 
    // Create menu and workspace dialog state
    const [createMenuAnchor, setCreateMenuAnchor] = React.useState<HTMLElement | null>(null);
@@ -160,6 +174,12 @@ const ModelLibraryPage: React.FC = () => {
    const [checkinDescription, setCheckinDescription] = React.useState('');
    const [isCheckingIn, setIsCheckingIn] = React.useState(false);
    const [checkinError, setCheckinError] = React.useState<string | null>(null);
+
+   // Generate DataType Dictionaries: confirm, then show what changed
+   const [dictionaryModel, setDictionaryModel] = React.useState<WorkspaceNamespaceInfo | null>(null);
+   const [isGeneratingDictionaries, setIsGeneratingDictionaries] = React.useState(false);
+   const [dictionaryResult, setDictionaryResult] = React.useState<DataTypeDictionaryResult | null>(null);
+   const [dictionaryError, setDictionaryError] = React.useState<string | null>(null);
 
    // Import menu and file upload state
    const [importMenuAnchor, setImportMenuAnchor] = React.useState<HTMLElement | null>(null);
@@ -625,6 +645,7 @@ const ModelLibraryPage: React.FC = () => {
       setDownloadFormat('xml');
       setDownloadIncludeDeps(false);
       setDownloadRemoveUnused(false);
+      setDownloadIncludeDicts(false);
       setDownloadDialogOpen(true);
    };
 
@@ -643,8 +664,11 @@ const ModelLibraryPage: React.FC = () => {
          // Mirrors the checkbox's own enablement — the server ignores it otherwise anyway.
          const trimParam = downloadIncludeDeps && downloadRemoveUnused && downloadFormat === 'xml'
             ? '&removeUnusedNodes=true' : '';
+         const dictsParam = downloadIncludeDicts ? '&includeDictionaries=true' : '';
+         // Either option makes the download a ZIP.
+         const isZip = downloadIncludeDeps || downloadIncludeDicts;
          const response = await api.get(
-            `/opcua/v1/namespaces/info/${modelToDownload.id}/export?format=${downloadFormat}${depsParam}${trimParam}`,
+            `/opcua/v1/namespaces/info/${modelToDownload.id}/export?format=${downloadFormat}${depsParam}${trimParam}${dictsParam}`,
             {
                responseType: 'blob',
                headers: { 'OpcUa-Server': idToUrn(selectedWorkspaceId) }
@@ -653,7 +677,7 @@ const ModelLibraryPage: React.FC = () => {
 
          // Extract filename from Content-Disposition header if available
          const contentDisposition = response.headers['content-disposition'];
-         const defaultExt = downloadIncludeDeps ? '.zip'
+         const defaultExt = isZip ? '.zip'
             : downloadFormat === 'json' ? '.json'
             : downloadFormat === 'compressed' ? '.uanodeset'
             : downloadFormat === 'jsonld' ? '.jsonld'
@@ -667,7 +691,7 @@ const ModelLibraryPage: React.FC = () => {
          }
 
          // Determine blob type based on format
-         const blobType = downloadIncludeDeps
+         const blobType = isZip
             ? 'application/zip'
             : downloadFormat === 'json'
             ? 'application/json'
@@ -832,6 +856,39 @@ const ModelLibraryPage: React.FC = () => {
          setCheckoutError(msg);
       } finally {
          setIsCheckingOut(false);
+      }
+   };
+
+   // --- Generate DataType Dictionaries ---
+   const handleGenerateDictionaries = (ns: WorkspaceNamespaceInfo) => {
+      setDictionaryModel(ns);
+      setDictionaryResult(null);
+      setDictionaryError(null);
+   };
+
+   const handleDictionaryDialogClose = () => {
+      setDictionaryModel(null);
+      setDictionaryResult(null);
+      setDictionaryError(null);
+   };
+
+   const handleGenerateDictionariesConfirm = async () => {
+      if (!dictionaryModel?.id || !selectedWorkspaceId) return;
+
+      setIsGeneratingDictionaries(true);
+      setDictionaryError(null);
+      try {
+         const response = await api.post<DataTypeDictionaryResult>(
+            `/opcua/v1/namespaces/info/${dictionaryModel.id}/datatype-dictionaries`, null,
+            { headers: { 'OpcUa-Server': idToUrn(selectedWorkspaceId) } });
+         setDictionaryResult(response.data);
+         // New dictionary/description/encoding nodes show up in the type and node views.
+         await invalidateWorkspaceData();
+      } catch (e) {
+         const msg = e instanceof ApiError ? e.message : (e instanceof Error ? e.message : 'Failed to generate the DataType Dictionaries');
+         setDictionaryError(msg);
+      } finally {
+         setIsGeneratingDictionaries(false);
       }
    };
 
@@ -1107,6 +1164,14 @@ const ModelLibraryPage: React.FC = () => {
                                  hidden: !ns.isPrivate
                               },
                               {
+                                 onAction: () => handleGenerateDictionaries(ns),
+                                 icon: <SchemaIcon />,
+                                 tooltipKey: 'modelLibrary.generateDictionaries',
+                                 // Rewrites nodes of the model, so only on a checked-out copy.
+                                 hidden: !ns.isEditable,
+                                 disabled: !canWrite
+                              },
+                              {
                                  onAction: () => handleDownloadModel(ns),
                                  icon: <DownloadIcon />,
                                  tooltipKey: 'modelLibrary.download'
@@ -1333,6 +1398,19 @@ const ModelLibraryPage: React.FC = () => {
                            />
                         }
                         label={t('modelLibrary.downloadRemoveUnusedNodes', 'Remove unused nodes')}
+                     />
+                  </Tooltip>
+                  {/* Only this model's dictionaries, even when dependencies are included. */}
+                  <Tooltip title={t('modelLibrary.downloadIncludeDictionariesHelp',
+                     "Adds this model's DataType dictionaries to a ZIP as separate .bsd and .xsd files. Dependencies' dictionaries are not included.")}>
+                     <FormControlLabel
+                        control={
+                           <Checkbox
+                              checked={downloadIncludeDicts}
+                              onChange={(e) => setDownloadIncludeDicts(e.target.checked)}
+                           />
+                        }
+                        label={t('modelLibrary.downloadIncludeDictionaries', 'Include Dictionaries (ZIP)')}
                      />
                   </Tooltip>
                </Box>
@@ -1563,6 +1641,68 @@ const ModelLibraryPage: React.FC = () => {
                      <Typography variant="body1">
                         {t('modelLibrary.checkoutConfirmation', { name: checkoutModel.name ?? checkoutModel.uri })}
                      </Typography>
+                  </Box>
+               )}
+            </ModelDialog>
+         )}
+
+         {/* Generate DataType Dictionaries: confirm, then the summary of what changed */}
+         {dictionaryModel && (
+            <ModelDialog
+               open
+               onClose={handleDictionaryDialogClose}
+               title={t('modelLibrary.generateDictionaries')}
+               isLoading={isGeneratingDictionaries}
+               isError={!!dictionaryError}
+               error={dictionaryError ? new Error(dictionaryError) : null}
+               actions={dictionaryError || dictionaryResult ? [] : [
+                  {
+                     label: isGeneratingDictionaries ? t('modelLibrary.generatingDictionaries') : t('common.ok'),
+                     onClick: handleGenerateDictionariesConfirm,
+                     disabled: isGeneratingDictionaries
+                  }
+               ]}
+            >
+               {!dictionaryError && (
+                  <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                     {!dictionaryResult && (
+                        <Typography variant="body1">
+                           {t('modelLibrary.generateDictionariesConfirmation', { name: dictionaryModel.name ?? dictionaryModel.uri })}
+                        </Typography>
+                     )}
+                     {dictionaryResult && (() => {
+                        const r = dictionaryResult;
+                        const changed = r.dictionariesCreated + r.dictionariesUpdated + r.descriptionsCreated
+                           + r.descriptionsUpdated + r.descriptionsDeleted + r.encodingsCreated + r.encodingsDeleted > 0;
+                        return (
+                           <>
+                              <Typography variant="body1">
+                                 {changed ? t('modelLibrary.generateDictionariesDone') : t('modelLibrary.generateDictionariesNoChange')}
+                              </Typography>
+                              {changed && (
+                                 <>
+                                    <Typography variant="body2" color="text.secondary">
+                                       {t('modelLibrary.generateDictionariesDictionaries', { created: r.dictionariesCreated, updated: r.dictionariesUpdated })}
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                       {t('modelLibrary.generateDictionariesDescriptions', { created: r.descriptionsCreated, updated: r.descriptionsUpdated, deleted: r.descriptionsDeleted })}
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                       {t('modelLibrary.generateDictionariesEncodings', { created: r.encodingsCreated, deleted: r.encodingsDeleted })}
+                                    </Typography>
+                                 </>
+                              )}
+                              {r.warnings.length > 0 && (
+                                 <Alert severity="warning">
+                                    <Typography variant="subtitle2">{t('modelLibrary.generateDictionariesWarnings')}</Typography>
+                                    {r.warnings.map((w, i) => (
+                                       <Typography key={i} variant="body2">{w}</Typography>
+                                    ))}
+                                 </Alert>
+                              )}
+                           </>
+                        );
+                     })()}
                   </Box>
                )}
             </ModelDialog>

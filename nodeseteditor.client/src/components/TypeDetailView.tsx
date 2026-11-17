@@ -1697,8 +1697,9 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
          </Box>
 
          {/* Sections. Each one opens and closes on its own — the set that is open is
-             remembered as the user moves between nodes and pages. Only the view filters
-             live in the section headers; every command is in the action bar above. */}
+             remembered as the user moves between nodes and pages. Section toolbars hold the
+             view filters and the "+" that adds a row to that section (field, reference);
+             node-level commands are in the action bar above, which repeats the adds. */}
          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <DetailSection
                id="attributes"
@@ -1729,11 +1730,22 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
                   expanded={isOpen('fields')}
                   onToggle={toggleSection}
                   toolbar={
-                     <Tooltip title={hideInheritedFields ? t('typeDetail.showInherited') : t('typeDetail.hideInherited')}>
-                        <IconButton onClick={() => setHideInheritedFields(!hideInheritedFields)} size="small">
-                           {hideInheritedFields ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                        </IconButton>
-                     </Tooltip>
+                     <>
+                        {/* Adding a field belongs next to the fields: tucked away in the
+                            header's More menu alone, it was effectively lost. */}
+                        {activeIsEditable && (
+                           <Tooltip title={t('typeDetail.addField')}>
+                              <IconButton onClick={() => openFieldDialog('add')} size="small" aria-label={t('typeDetail.addField')}>
+                                 <AddIcon />
+                              </IconButton>
+                           </Tooltip>
+                        )}
+                        <Tooltip title={hideInheritedFields ? t('typeDetail.showInherited') : t('typeDetail.hideInherited')}>
+                           <IconButton onClick={() => setHideInheritedFields(!hideInheritedFields)} size="small">
+                              {hideInheritedFields ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                           </IconButton>
+                        </Tooltip>
+                     </>
                   }
                >
                   <ContentLoader isLoading={fieldsLoading} isError={fieldsError} error={fieldsErrorObj}>
@@ -1812,13 +1824,22 @@ export const TypeDetailView: React.FC<TypeDetailViewProps> = ({
                expanded={isOpen('references')}
                onToggle={toggleSection}
                toolbar={
-                  <Tooltip title={hideParentChildRefs
-                     ? t('typeDetail.showParentChildRefs', 'Show parent/child references')
-                     : t('typeDetail.hideParentChildRefs', 'Hide parent/child references')}>
-                     <IconButton onClick={() => setHideParentChildRefs(!hideParentChildRefs)} size="small">
-                        {hideParentChildRefs ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                     </IconButton>
-                  </Tooltip>
+                  <>
+                     {activeIsEditable && !referencesLocked && (
+                        <Tooltip title={t('typeDetail.addReference')}>
+                           <IconButton onClick={openAddReference} size="small" aria-label={t('typeDetail.addReference')}>
+                              <AddIcon />
+                           </IconButton>
+                        </Tooltip>
+                     )}
+                     <Tooltip title={hideParentChildRefs
+                        ? t('typeDetail.showParentChildRefs', 'Show parent/child references')
+                        : t('typeDetail.hideParentChildRefs', 'Hide parent/child references')}>
+                        <IconButton onClick={() => setHideParentChildRefs(!hideParentChildRefs)} size="small">
+                           {hideParentChildRefs ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                        </IconButton>
+                     </Tooltip>
+                  </>
                }
             >
                <ContentLoader isLoading={refsLoading} isError={refsError} error={refsErrorObj}>

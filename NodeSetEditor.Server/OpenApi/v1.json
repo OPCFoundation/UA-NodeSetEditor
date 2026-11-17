@@ -932,6 +932,61 @@
         ]
       }
     },
+    "/api/opcua/v1/namespaces/info/{id}/datatype-dictionaries": {
+      "post": {
+        "tags": [
+          "Editor"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "OpcUa-Server",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataTypeDictionaryResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataTypeDictionaryResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataTypeDictionaryResult"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AzureAd": [ ]
+          },
+          {
+            "EmailCookie": [ ]
+          }
+        ]
+      }
+    },
     "/api/opcua/v1/namespaces/info/detect-license": {
       "post": {
         "tags": [
@@ -1226,6 +1281,14 @@
           },
           {
             "name": "removeUnusedNodes",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "includeDictionaries",
             "in": "query",
             "schema": {
               "type": "boolean",
@@ -4014,6 +4077,104 @@
               "$ref": "#/components/schemas/DataTypeFieldDescription"
             },
             "nullable": true
+          }
+        }
+      },
+      "DataTypeDictionaryResult": {
+        "type": "object",
+        "properties": {
+          "hasDictionaries": {
+            "type": "boolean"
+          },
+          "dictionariesCreated": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "format": "int32"
+          },
+          "dictionariesUpdated": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "format": "int32"
+          },
+          "descriptionsCreated": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "format": "int32"
+          },
+          "descriptionsUpdated": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "format": "int32"
+          },
+          "descriptionsDeleted": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "format": "int32"
+          },
+          "encodingsCreated": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "format": "int32"
+          },
+          "encodingsDeleted": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "format": "int32"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },

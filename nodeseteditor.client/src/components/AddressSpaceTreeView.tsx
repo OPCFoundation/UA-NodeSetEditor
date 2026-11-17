@@ -516,6 +516,99 @@ const ObjectsCategory: React.FC<ObjectsCategoryProps> = ({
    );
 };
 
+// The Types/DataTypes *folder* (Part 5 §8.2.5) — not BaseDataType (i=24), which is what the
+// "DataTypes" category row stands for. It organizes the TypeSystemType instances (OPC Binary
+// i=93, XML Schema i=92) that the legacy DataTypeDictionaries hang under.
+const DATA_TYPES_FOLDER_NODE_ID = 'i=90';
+const TYPE_SYSTEM_TYPE_NODE_ID = 'i=75';
+const DICTIONARIES_TREE_ID = 'dictionaries';
+
+interface DictionariesCategoryProps {
+   workspaceId: string;
+   expandedSet: Set<string>;
+   selectedNodeId: string | null;
+   onNodeSelect: (node: Node) => void;
+   categoryLabel: string;
+   /** When set, prune to the type systems holding a node in this namespace. */
+   filterModelUri?: string;
+}
+
+/**
+ * Top-level "Dictionaries" branch: the TypeSystemType instances under the DataTypes folder
+ * (i=90), with each one's dictionaries and their DataTypeDescriptions beneath it. The folder
+ * row is a grouping, not a node — i=90 also organizes the DataTypes themselves, which the
+ * tree already shows under "DataTypes" — so clicking it only expands it.
+ */
+const DictionariesCategory: React.FC<DictionariesCategoryProps> = ({
+   workspaceId,
+   expandedSet,
+   selectedNodeId,
+   onNodeSelect,
+   categoryLabel,
+   filterModelUri,
+}) => {
+   const expanded = expandedSet.has(DICTIONARIES_TREE_ID);
+   const filterMode = !!filterModelUri;
+
+   // Same request shape as ObjectsCategory: lazy depth-1 children normally, the pruned
+   // subtree (built into a tree) in filter mode. Either way only the type systems are kept.
+   const { data: children, isLoading } = useQuery<Node[]>({
+      queryKey: ['nodeChildren', workspaceId, DATA_TYPES_FOLDER_NODE_ID, true, filterModelUri ?? null],
+      queryFn: async () => {
+         const response = await api.get<PaginatedResponse<Node>>(
+            `/opcua/v1/nodes/${slugifyNodeId(DATA_TYPES_FOLDER_NODE_ID)}/children`,
+            {
+               params: filterMode ? { modelUri: filterModelUri } : { includeSubtypes: true },
+               headers: { 'OpcUa-Server': idToUrn(workspaceId) },
+            },
+         );
+         const results = response.data.results ?? [];
+         return filterMode ? buildTree(results, DATA_TYPES_FOLDER_NODE_ID) : results;
+      },
+      enabled: filterMode || expanded,
+      staleTime: 1000 * 60 * 5,
+   });
+   const typeSystems = React.useMemo(
+      () => (children ?? []).filter((n) => n.typeDefinition === TYPE_SYSTEM_TYPE_NODE_ID),
+      [children],
+   );
+
+   // Hide the branch when the namespace has no dictionaries.
+   if (filterMode && typeSystems.length === 0) return null;
+
+   return (
+      <TreeItem
+         itemId={DICTIONARIES_TREE_ID}
+         label={
+            <Box sx={treeLabelSx(false, true, false)}>
+               <NodeIcon nodeClass={nodeClassToNum('Object')} icon="folder" size={IconSize.tree} />
+               <span className="tree-label-text">{categoryLabel}</span>
+            </Box>
+         }
+      >
+         {!expanded && <TreeItem itemId={`${DICTIONARIES_TREE_ID}__placeholder`} label="" />}
+         {expanded && isLoading && (
+            <TreeItem
+               itemId={`${DICTIONARIES_TREE_ID}__loading`}
+               label={<CircularProgress size={14} sx={{ ml: 1 }} />}
+            />
+         )}
+         {expanded && typeSystems.map((child) => (
+            <HierarchicalTreeItem
+               key={child.nodeId}
+               node={child}
+               workspaceId={workspaceId}
+               expandedSet={expandedSet}
+               selectedNodeId={selectedNodeId}
+               onSelect={onNodeSelect}
+               filterMode={filterMode}
+               filterModelUri={filterModelUri}
+            />
+         ))}
+      </TreeItem>
+   );
+};
+
 interface AddressSpaceTreeViewProps {
    workspaceId: string;
    /** When set, prune the tree to branches containing a node in this namespace
@@ -556,7 +649,7 @@ interface AddressSpaceTreeViewProps {
 /**
  * The complete address-space tree body: an "Objects" instance branch plus the
  * four type categories (ObjectTypes/VariableTypes/DataTypes/ReferenceTypes),
- * with optional namespace filtering. Shared between the left-pane
+ * a "Dictionaries" branch at the bottom, with optional namespace filtering. Shared between the left-pane
  * AddressSpaceTree and the NodePickerDialog so both render an identical tree;
  * the surrounding chrome (toolbar, focus mode, selection wiring) lives with
  * each caller.
@@ -629,6 +722,14 @@ export const AddressSpaceTreeView: React.FC<AddressSpaceTreeViewProps> = ({
                strictFilter={strictFilter}
             />
          ))}
+         <DictionariesCategory
+            workspaceId={workspaceId}
+            expandedSet={expandedSet}
+            selectedNodeId={highlightNodeId}
+            onNodeSelect={onNodeSelect}
+            categoryLabel={t('addressSpaceTree.dictionaries', 'Dictionaries')}
+            filterModelUri={filterModelUri}
+         />
       </SimpleTreeView>
    );
 };

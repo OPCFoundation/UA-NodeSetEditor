@@ -739,7 +739,68 @@ namespace NodeSetEditor.Model
             }
 
             nodeSet.Items = items.ToArray();
+
+            // Models stored before the XmlSchemaUri was derived on load (see BuildMetadata) get
+            // it here, so downloads and every address space built from this export agree.
+            if (string.IsNullOrEmpty(modelEntry.XmlSchemaUri))
+                modelEntry.XmlSchemaUri = FindXmlDictionaryNamespaceUri(nodeSet, model.Uri!, aliases: null);
             return nodeSet;
+        }
+
+        private const string XmlSchemaFolderId = "i=92";        // XmlSchema TypeSystem
+        private const string DataTypeDictionaryTypeId = "i=72";
+        private const string HasComponentId = "i=47";
+
+        /// <summary>
+        /// The NamespaceUri property value of the model's XML DataTypeDictionary (the i=72 variable
+        /// under the XmlSchema type system, i=92), or null when the model has none. A NodeSet that
+        /// does not declare an XmlSchemaUri takes this as its XmlSchemaUri: not a normative change,
+        /// but it keeps the model's XML namespace consistent with the dictionary it ships.
+        /// </summary>
+        internal static string? FindXmlDictionaryNamespaceUri(
+            Opc.Ua.Export.UANodeSet nodeSet, string modelUri, IReadOnlyDictionary<string, string>? aliases)
+        {
+            if (nodeSet.Items == null || nodeSet.NamespaceUris == null) return null;
+            var nsIndex = Array.IndexOf(nodeSet.NamespaceUris, modelUri) + 1;
+            if (nsIndex <= 0) return null;
+            var modelPrefix = $"ns={nsIndex};";
+
+            string Resolve(string? id)
+            {
+                var t = id?.Trim() ?? string.Empty;
+                return aliases != null && aliases.TryGetValue(t, out var resolved) ? resolved.Trim() : t;
+            }
+            bool Is(string? id, string coreId)
+            {
+                var r = Resolve(id);
+                return r == coreId || r == "ns=0;" + coreId;
+            }
+
+            foreach (var dict in nodeSet.Items.OfType<Opc.Ua.Export.UAVariable>())
+            {
+                if (dict.NodeId == null || !dict.NodeId.StartsWith(modelPrefix, StringComparison.Ordinal)) continue;
+                var refs = dict.References ?? [];
+                if (!refs.Any(r => r.IsForward && Is(r.ReferenceType, HasTypeDefinitionId) && Is(r.Value, DataTypeDictionaryTypeId)))
+                    continue;
+                var underXmlSchema = Is(dict.ParentNodeId, XmlSchemaFolderId)
+                    || refs.Any(r => !r.IsForward && Is(r.ReferenceType, HasComponentId) && Is(r.Value, XmlSchemaFolderId))
+                    || nodeSet.Items.Any(n => Is(n.NodeId, XmlSchemaFolderId) && (n.References ?? []).Any(r =>
+                        r.IsForward && Is(r.ReferenceType, HasComponentId) && r.Value?.Trim() == dict.NodeId));
+                if (!underXmlSchema) continue;
+
+                // The property is linked from either end: the dictionary's forward HasProperty,
+                // or the property's ParentNodeId / inverse HasProperty.
+                var propIds = refs.Where(r => r.IsForward && Is(r.ReferenceType, HasPropertyId))
+                    .Select(r => r.Value?.Trim()).OfType<string>().ToHashSet(StringComparer.Ordinal);
+                var prop = nodeSet.Items.OfType<Opc.Ua.Export.UAVariable>().FirstOrDefault(p =>
+                    ParseBrowseNamePrefix(p.BrowseName ?? string.Empty).name == "NamespaceUri"
+                    && (propIds.Contains(p.NodeId)
+                        || p.ParentNodeId == dict.NodeId
+                        || (p.References ?? []).Any(r => !r.IsForward && Is(r.ReferenceType, HasPropertyId) && r.Value?.Trim() == dict.NodeId)));
+                var value = prop?.Value?.InnerText?.Trim();
+                if (!string.IsNullOrEmpty(value)) return value;
+            }
+            return null;
         }
 
         /// <summary>
@@ -1226,8 +1287,15 @@ namespace NodeSetEditor.Model
 
             if (modelTable.ModelVersion != null)
                 metadata["ModelVersion"] = modelTable.ModelVersion;
-            if (modelTable.XmlSchemaUri != null)
-                metadata["XmlSchemaUri"] = modelTable.XmlSchemaUri;
+            // A NodeSet that declares no XmlSchemaUri takes its XML dictionary's NamespaceUri, so
+            // the stored model, downloads and the address space all use the namespace the
+            // dictionary was published with. No dictionary: nothing is set.
+            var xmlSchemaUri = !string.IsNullOrEmpty(modelTable.XmlSchemaUri)
+                ? modelTable.XmlSchemaUri
+                : FindXmlDictionaryNamespaceUri(nodeSet, modelTable.ModelUri!,
+                    nodeSet.Aliases?.GroupBy(a => a.Alias).ToDictionary(g => g.Key, g => g.First().Value));
+            if (xmlSchemaUri != null)
+                metadata["XmlSchemaUri"] = xmlSchemaUri;
             if (nodeSet.ServerUris != null && nodeSet.ServerUris.Length > 0)
                 metadata["ServerUris"] = JsonSerializer.SerializeToNode(nodeSet.ServerUris);
             if (nodeSet.LastModified != DateTime.MinValue)

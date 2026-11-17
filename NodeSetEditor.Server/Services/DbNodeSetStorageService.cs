@@ -1474,12 +1474,28 @@ namespace NodeSetEditor.Server.Services
                     if (nc.NodeClass.HasValue) existing.NodeClass = nc.NodeClass.Value;
                     existing.BrowseName = nc.BrowseName ?? existing.BrowseName;
                     existing.DisplayName = nc.DisplayName ?? existing.DisplayName;
-                    existing.Description = nc.Description;
+                    existing.Description = nc.MergeAttributes
+                        ? nc.Description ?? existing.Description
+                        : nc.Description;
                     existing.ParentNodeId = nc.ParentNodeId ?? existing.ParentNodeId;
                     existing.SuperTypeId = nc.SuperTypeId ?? existing.SuperTypeId;
                     existing.TypeDefinitionId = nc.TypeDefinitionId ?? existing.TypeDefinitionId;
                     existing.ModellingRule = nc.ModellingRule ?? existing.ModellingRule;
-                    if (nc.Attributes != null) existing.Attributes = nc.Attributes;
+                    if (nc.Attributes != null)
+                    {
+                        if (nc.MergeAttributes && existing.Attributes != null)
+                        {
+                            // Reassign a merged copy so EF sees the JSON column as modified.
+                            var merged = (System.Text.Json.Nodes.JsonObject)existing.Attributes.DeepClone();
+                            foreach (var (key, value) in nc.Attributes)
+                                merged[key] = value?.DeepClone();
+                            existing.Attributes = merged;
+                        }
+                        else
+                        {
+                            existing.Attributes = nc.Attributes;
+                        }
+                    }
 
                     // Sync denormalized references when node columns change
                     if (nc.TypeDefinitionId != null)
